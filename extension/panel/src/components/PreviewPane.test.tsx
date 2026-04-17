@@ -153,12 +153,11 @@ describe('PreviewPane', () => {
   })
 
   describe('filter panel reveal', () => {
-    it('shows filters by default in header', () => {
+    it('hides filters by default in header', () => {
       renderPreview(populatedState)
 
-      // Filters are now always visible in the header (compact filter controls)
-      expect(screen.getByTestId('console-filter-input')).toBeInTheDocument()
-      expect(screen.getByTestId('network-filter-input')).toBeInTheDocument()
+      expect(screen.queryByTestId('console-filter-input')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('network-filter-input')).not.toBeInTheDocument()
     })
 
     it('shows filters when toggle is clicked', () => {
@@ -176,7 +175,7 @@ describe('PreviewPane', () => {
 
       const toggle = screen.getByTestId('filters-panel-toggle')
       expect(toggle).toHaveAttribute('aria-label', 'Show filters')
-      expect(toggle).toHaveAttribute('aria-expanded', 'false')
+      expect(toggle).toHaveAttribute('aria-pressed', 'false')
     })
 
     it('toggle button shows correct aria state when filters visible', () => {
@@ -186,7 +185,7 @@ describe('PreviewPane', () => {
       fireEvent.click(toggle)
 
       expect(toggle).toHaveAttribute('aria-label', 'Hide filters')
-      expect(toggle).toHaveAttribute('aria-expanded', 'true')
+      expect(toggle).toHaveAttribute('aria-pressed', 'true')
     })
   })
 
@@ -514,11 +513,13 @@ describe('PreviewPane', () => {
     it('shows visibility toggle buttons with correct initial state', () => {
       renderPreview(populatedState)
 
+      fireEvent.click(screen.getByTestId('filters-panel-toggle'))
+
       const consoleBtn = screen.getByTestId('console-visibility-toggle')
       const networkBtn = screen.getByTestId('network-visibility-toggle')
 
-      expect(consoleBtn).toHaveTextContent('Hide Console')
-      expect(networkBtn).toHaveTextContent('Hide Network')
+      expect(consoleBtn).toHaveAttribute('aria-pressed', 'true')
+      expect(networkBtn).toHaveAttribute('aria-pressed', 'true')
     })
 
     it('shows include agent context toggle with correct initial state', () => {

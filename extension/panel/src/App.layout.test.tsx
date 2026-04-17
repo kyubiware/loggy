@@ -7,10 +7,7 @@ describe('App layout structure', () => {
     render(<App />)
 
     const ids = [
-      'console-filter-input',
-      'network-filter-input',
-      'console-visibility-toggle',
-      'network-visibility-toggle',
+      'filters-panel-toggle',
       'refresh-button',
       'clear-all-button',
       'copy-button',
