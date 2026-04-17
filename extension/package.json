@@ -14,7 +14,7 @@
     "build:ts": "tsc",
     "build:copy": "cp manifest.json icons/*.png dist/ && cp devtools.html dist/ && cp devtools.mjs dist/",
     "postbuild:chrome": "cp manifest-chrome.json dist-chrome/manifest.json && mkdir -p dist-chrome/icons && cp icons/*.png dist-chrome/icons/",
-    "postbuild:firefox": "cp manifest-firefox.json dist-firefox/manifest.json && mkdir -p dist-firefox/icons && cp icons/*.png dist-firefox/icons/ && node scripts/rewrite-firefox-manifest.js && node scripts/sanitize-firefox-bundle.js",
+    "postbuild:firefox": "cp manifest-firefox.json dist-firefox/manifest.json && mkdir -p dist-firefox/icons && cp icons/*.png dist-firefox/icons/ && node scripts/rewrite-firefox-manifest.cjs && node scripts/sanitize-firefox-bundle.cjs",
     "clean": "rm -rf dist dist-*",
     "prebuild": "npm run clean",
     "prebuild:chrome": "rm -rf dist dist-chrome",
@@ -30,7 +30,7 @@
   "keywords": [],
   "author": "",
   "license": "MIT",
-  "type": "commonjs",
+  "type": "module",
   "devDependencies": {
     "@biomejs/biome": "^2.4.6",
     "@crxjs/vite-plugin": "^2.4.0",
