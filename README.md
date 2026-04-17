@@ -100,7 +100,7 @@ npm run format        # Format with Biome
 
 ### Requirements
 
-- Node.js 18+
+- Node.js 24+
 - Chrome or Firefox
 
 ## Privacy
