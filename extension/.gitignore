@@ -6,7 +6,9 @@ dist-*/
 *.js
 *.js.map
 *.d.ts
+!.mjs.d.ts
 *.d.ts.map
+!types/*.d.ts
 
 # Logs
 *.log
