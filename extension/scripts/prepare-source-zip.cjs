@@ -55,15 +55,21 @@ try {
   console.log('Regenerated standalone package-lock.json');
 
   // 4. Write AMO build instructions
-  writeFileSync(
+    writeFileSync(
     join(stagingDir, 'BUILD_INSTRUCTIONS.md'),
     `# Loggy — Source Code Build Instructions
 
 ## Prerequisites
 
-- **Node.js** 24 or later
-- **npm** (included with Node.js)
-- **zip** (standard on Linux/macOS)
+| Program | Version | How to Install |
+|---------|---------|----------------|
+| **Node.js** | 24 or later | Download from [nodejs.org](https://nodejs.org) or use [nvm](https://github.com/nvm-sh/nvm) |
+| **npm** | Included with Node.js | Installed automatically with Node.js |
+| **zip** | Any recent version | Linux: \`sudo apt install zip\` · macOS: pre-installed · Windows: [7-Zip](https://7-zip.org) or WSL |
+
+All other build dependencies (Vite, TypeScript, React, Tailwind CSS, Biome, etc.) are installed automatically via \`npm ci\` below — no separate installation needed.
+
+**Supported operating systems:** Linux, macOS, Windows (WSL recommended for the packaging step).
 
 ## Build Steps
 
@@ -73,6 +79,13 @@ npm run build:firefox
 \`\`\`
 
 > **Note:** \`--ignore-scripts\` skips Husky git hooks which require a git repository.
+
+The build script (\`npm run build:firefox\`) performs these steps automatically:
+1. Runs \`vite build --mode firefox\` to compile TypeScript, bundle React/JSX, and process Tailwind CSS
+2. Copies \`manifest-firefox.json\` → \`dist-firefox/manifest.json\`
+3. Copies extension icons to \`dist-firefox/icons/\`
+4. Rewrites content script paths in the manifest to match Vite's hashed chunk filenames
+5. Sanitizes the bundle (replaces \`innerHTML\` assignments with \`textContent\` for Firefox compliance)
 
 The built extension will be in \`dist-firefox/\`.
 
@@ -88,7 +101,7 @@ ls dist-firefox/manifest.json
 npm run package:firefox
 \`\`\`
 
-This produces \`loggy-firefox.xpi\` (a ZIP file with the built extension).
+This rebuilds Firefox, then creates \`loggy-firefox.xpi\` (a ZIP file containing the built extension).
 
 ## Notes
 

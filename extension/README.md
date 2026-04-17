@@ -57,9 +57,15 @@ The extension generates structured Markdown:
 
 ### Prerequisites
 
-- **Node.js** 24 or later — download from [nodejs.org](https://nodejs.org)
-- **npm** (included with Node.js)
-- Linux, macOS, or Windows
+| Program | Version | How to Install |
+|---------|---------|----------------|
+| **Node.js** | 24 or later | Download from [nodejs.org](https://nodejs.org) or use a version manager like [nvm](https://github.com/nvm-sh/nvm) |
+| **npm** | Included with Node.js | Installed automatically with Node.js |
+| **zip** | Any recent version | Linux: `sudo apt install zip` · macOS: pre-installed · Windows: use [7-Zip](https://7-zip.org) or WSL |
+
+All other build dependencies (Vite, TypeScript, React, Tailwind CSS, Biome, etc.) are installed automatically via `npm ci` in the steps below — no separate installation needed.
+
+**Supported operating systems:** Linux, macOS, Windows (with WSL recommended for the packaging step).
 
 ### Setup
 

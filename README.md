@@ -100,8 +100,15 @@ npm run format        # Format with Biome
 
 ### Requirements
 
-- Node.js 24+
-- Chrome or Firefox
+| Program | Version | How to Install |
+|---------|---------|----------------|
+| **Node.js** | 24 or later | [nodejs.org](https://nodejs.org) or [nvm](https://github.com/nvm-sh/nvm) |
+| **npm** | Included with Node.js | Installed automatically |
+| **zip** | Any recent version | Linux: `sudo apt install zip` · macOS: pre-installed · Windows: [7-Zip](https://7-zip.org) or WSL |
+
+All other build dependencies (Vite, TypeScript, React, Tailwind CSS, Biome, etc.) are installed automatically via `npm install`.
+
+**Supported operating systems:** Linux, macOS, Windows (WSL recommended for packaging).
 
 ## Privacy
 
