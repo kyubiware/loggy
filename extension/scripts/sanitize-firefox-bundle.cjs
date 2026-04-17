@@ -1,15 +1,26 @@
 const { readdirSync, readFileSync, writeFileSync } = require('node:fs');
 const { join } = require('node:path');
 
-const assetsDir = join(__dirname, '..', 'dist-firefox', 'assets');
-const jsFiles = readdirSync(assetsDir).filter((fileName) => fileName.endsWith('.js'));
+const distDir = join(__dirname, '..', 'dist-firefox');
+const directories = ['assets', 'chunks'];
 
-for (const fileName of jsFiles) {
-  const filePath = join(assetsDir, fileName);
-  const source = readFileSync(filePath, 'utf8');
-  const sanitized = source.replace(/\.innerHTML=([A-Za-z_$][\w$]*)/g, '.textContent=$1');
+for (const dir of directories) {
+  const dirPath = join(distDir, dir);
+  let jsFiles;
+  try {
+    jsFiles = readdirSync(dirPath).filter((fileName) => fileName.endsWith('.js'));
+  } catch {
+    continue;
+  }
 
-  if (sanitized !== source) {
-    writeFileSync(filePath, sanitized);
+  for (const fileName of jsFiles) {
+    const filePath = join(dirPath, fileName);
+    const source = readFileSync(filePath, 'utf8');
+    const sanitized = source.replace(/\.innerHTML=([A-Za-z_$][\w$]*)/g, '.textContent=$1');
+
+    if (sanitized !== source) {
+      writeFileSync(filePath, sanitized);
+      console.log(`Sanitized innerHTML in ${dir}/${fileName}`);
+    }
   }
 }

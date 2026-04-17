@@ -5,10 +5,10 @@
   "description": "Capture and export Console & Network logs for LLM debugging",
   "devtools_page": "devtools.html",
   "background": {
-    "service_worker": "background/index.js",
     "scripts": ["background/index.js"],
     "type": "module"
   },
+  "optional_permissions": ["devtools"],
   "content_scripts": [
     {
       "matches": ["<all_urls>"],

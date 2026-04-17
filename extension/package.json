@@ -25,7 +25,8 @@
     "typecheck": "npx tsc --noEmit",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "source-zip": "node scripts/prepare-source-zip.cjs"
   },
   "keywords": [],
   "author": "",
