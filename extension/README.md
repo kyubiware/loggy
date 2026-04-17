@@ -57,8 +57,9 @@ The extension generates structured Markdown:
 
 ### Prerequisites
 
-- Node.js 24+
-- Chrome browser
+- **Node.js** 24 or later — download from [nodejs.org](https://nodejs.org)
+- **npm** (included with Node.js)
+- Linux, macOS, or Windows
 
 ### Setup
 
@@ -66,57 +67,35 @@ The extension generates structured Markdown:
 npm install
 ```
 
-### Build
+### Build from Source
 
-```bash
-npm ci --ignore-scripts
-npm run build:firefox
-```
+These steps produce an exact copy of the Firefox add-on from source code.
 
-### Load in Chrome
-
-Follow installation steps above, pointing to the project directory.
-
-## Building from Source (Firefox)
-
-This section provides instructions for building an exact copy of the Firefox add-on from source.
-
-### Prerequisites
-
-- **Node.js**: Version 24 or later is required.
-- **npm**: Included with Node.js.
-- **Operating System**: Linux, macOS, or Windows.
-
-### 1. Install Node.js
-
-If you do not have Node.js 24+ installed, download it from [nodejs.org](https://nodejs.org).
-
-### 2. Step-by-Step Build Instructions
-
-1. Clone or download the source code repository.
-2. Open a terminal in the `extension/` directory.
-3. Install dependencies:
+1. Open a terminal in the `extension/` directory.
+2. Install dependencies (use `--ignore-scripts` to skip git hooks):
    ```bash
    npm ci --ignore-scripts
    ```
-   Note: `--ignore-scripts` is used to skip the installation of git hooks (Husky).
-4. Run the build script:
+3. Run the build script:
    ```bash
    npm run build:firefox
    ```
-5. The build script executes `vite build --mode firefox` followed by post-processing steps (copying the manifest, icons, and sanitizing the bundle).
+   This runs `vite build --mode firefox`, then copies the manifest and icons, rewrites content script paths, and sanitizes the bundle.
 
-### 3. Verification
+4. Verify the output:
+   ```bash
+   ls dist-firefox/manifest.json
+   ```
 
-Once the build completes, verify that the `dist-firefox/` directory exists and contains `manifest.json`.
+5. Package as `.xpi`:
+   ```bash
+   npm run package:firefox
+   ```
+   Produces `loggy-firefox.xpi` in the current directory.
 
-### 4. Packaging
+### Load in Chrome
 
-To create the `.xpi` package for submission or local testing:
-```bash
-npm run package:firefox
-```
-This produces `loggy-firefox.xpi` in the `extension/` directory.
+Follow the installation steps above, pointing to the project directory.
 
 ## Privacy
 
