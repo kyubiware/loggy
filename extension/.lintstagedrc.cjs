@@ -1,4 +1,4 @@
 module.exports = {
   '*.{ts,tsx,js,jsx}': () => 'npx biome check --write .',
-  '*': () => 'npm run build',
+  '*': () => 'npm run build && npm run source-zip',
 }

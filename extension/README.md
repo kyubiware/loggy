@@ -57,7 +57,7 @@ The extension generates structured Markdown:
 
 ### Prerequisites
 
-- Node.js 18+
+- Node.js 24+
 - Chrome browser
 
 ### Setup
@@ -69,12 +69,54 @@ npm install
 ### Build
 
 ```bash
-npx tsc
+npm ci --ignore-scripts
+npm run build:firefox
 ```
 
 ### Load in Chrome
 
 Follow installation steps above, pointing to the project directory.
+
+## Building from Source (Firefox)
+
+This section provides instructions for building an exact copy of the Firefox add-on from source.
+
+### Prerequisites
+
+- **Node.js**: Version 24 or later is required.
+- **npm**: Included with Node.js.
+- **Operating System**: Linux, macOS, or Windows.
+
+### 1. Install Node.js
+
+If you do not have Node.js 24+ installed, download it from [nodejs.org](https://nodejs.org).
+
+### 2. Step-by-Step Build Instructions
+
+1. Clone or download the source code repository.
+2. Open a terminal in the `extension/` directory.
+3. Install dependencies:
+   ```bash
+   npm ci --ignore-scripts
+   ```
+   Note: `--ignore-scripts` is used to skip the installation of git hooks (Husky).
+4. Run the build script:
+   ```bash
+   npm run build:firefox
+   ```
+5. The build script executes `vite build --mode firefox` followed by post-processing steps (copying the manifest, icons, and sanitizing the bundle).
+
+### 3. Verification
+
+Once the build completes, verify that the `dist-firefox/` directory exists and contains `manifest.json`.
+
+### 4. Packaging
+
+To create the `.xpi` package for submission or local testing:
+```bash
+npm run package:firefox
+```
+This produces `loggy-firefox.xpi` in the `extension/` directory.
 
 ## Privacy
 
