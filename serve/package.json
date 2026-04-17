@@ -1,0 +1,47 @@
+{
+  "name": "loggy-serve",
+  "version": "1.0.0",
+  "description": "Fastify companion server for Loggy markdown exports",
+  "type": "module",
+  "author": "kyubiware",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kyubiware/loggy.git",
+    "directory": "serve"
+  },
+  "bin": {
+    "loggy": "./bin/loggy-serve.js"
+  },
+  "files": [
+    "bin/",
+    "dist/"
+  ],
+  "exports": {
+    ".": {
+      "import": "./dist/server.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build",
+    "start": "node bin/loggy-serve.js",
+    "dev": "tsx --watch bin/loggy-serve.js",
+    "curl:post": "curl -s -w '\\nHTTP %{http_code}' -X POST http://127.0.0.1:8743/loggy -H 'Content-Type: text/plain' -d 'Hello Loggy!'",
+    "curl:export": "curl -s -w '\\nHTTP %{http_code}' http://127.0.0.1:8743/loggy/export",
+    "curl:handshake": "curl -s -w '\\nHTTP %{http_code}' http://127.0.0.1:8743/loggy/handshake",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.1.0",
+    "clipboardy": "^5.3.1",
+    "fastify": "^5.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.6.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
+  }
+}

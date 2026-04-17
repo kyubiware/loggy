@@ -1,0 +1,10 @@
+{
+  "name": "loggy",
+  "private": true,
+  "workspaces": ["extension", "serve"],
+  "scripts": {
+    "build": "npm run build --workspace=extension",
+    "test": "npm run test --workspace=extension && npm run test --workspace=serve",
+    "lint": "npm run lint --workspace=extension"
+  }
+}

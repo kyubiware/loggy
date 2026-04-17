@@ -1,0 +1,25 @@
+--- extension/panel/src/hooks/useCaptureData.test.tsx
++++ extension/panel/src/hooks/useCaptureData.test.tsx
+@@ -165,6 +165,24 @@
+     )
+   })
+ 
++  it('probes server again when serverUrl is updated via dispatch', async () => {
++    const { result } = renderHook(() => useCaptureData())
++    
++    await flushMicrotasks()
++    
++    // Initial probe on mount
++    expect(mockProbeServer).toHaveBeenCalledWith('http://localhost:8743')
++    mockProbeServer.mockClear()
++
++    // Update URL
++    await act(async () => {
++      result.current.dispatch({ type: 'SET_SERVER_URL', value: 'http://new-url:1234' })
++    })
++    await flushMicrotasks()
++
++    expect(mockProbeServer).toHaveBeenCalledWith('http://new-url:1234')
++  })
++
+   it('hydrates settings from storage on mount when persisted data exists', async () => {
