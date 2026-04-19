@@ -8,6 +8,7 @@ function parseArgs(argv) {
   let port = 8743
   let outputPath
   let quiet = false
+  let subcommand
 
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i]
@@ -44,14 +45,50 @@ function parseArgs(argv) {
       continue
     }
 
+    if (!arg.startsWith('--') && !subcommand) {
+      if (arg === 'print') {
+        subcommand = 'print'
+        continue
+      }
+
+      throw new Error(`Unknown command: ${arg}`)
+    }
+
     throw new Error(`Unknown flag: ${arg}`)
   }
 
-  return { port, outputPath, quiet }
+  return { port, outputPath, quiet, subcommand }
+}
+
+async function printLatestExport(port) {
+  try {
+    const response = await fetch(`http://127.0.0.1:${port}/loggy/export`)
+
+    if (response.status === 404) {
+      console.error('No export available yet. Send logs from the browser extension first.')
+      process.exit(1)
+    }
+
+    if (!response.ok) {
+      console.error(`Error: loggy-serve returned HTTP ${response.status}`)
+      process.exit(1)
+    }
+
+    process.stdout.write(await response.text())
+  } catch {
+    console.error('Error: loggy-serve is not running. Start it first with: loggy')
+    process.exit(1)
+  }
 }
 
 async function main() {
-  const { port, outputPath, quiet } = parseArgs(process.argv)
+  const { port, outputPath, quiet, subcommand } = parseArgs(process.argv)
+
+  if (subcommand === 'print') {
+    await printLatestExport(port)
+    return
+  }
+
   const app = createServer({ outputPath })
 
   try {
