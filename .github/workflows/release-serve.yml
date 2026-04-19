@@ -1,0 +1,88 @@
+name: Release serve
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: "Version bump type"
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck --workspace=serve
+
+      - name: Test
+        run: npm run test --workspace=serve
+
+      - name: Build
+        run: npm run build --workspace=serve
+
+      - name: Bump version
+        id: bump
+        working-directory: serve
+        run: |
+          npm version ${{ github.event.inputs.bump_type }} -m "release(serve): %s"
+          NEW_VERSION=$(node -p "require('./package.json').version")
+          echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=serve-v${NEW_VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Publish to npm
+        working-directory: serve
+        run: npm publish --provenance --access public
+
+      - name: Push commit and tag
+        run: |
+          git push origin HEAD:${{ github.ref_name }}
+          git push origin ${{ steps.bump.outputs.tag }}
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git tag --list 'serve-v*' --sort=-version:refname | head -2 | tail -1)
+          if [ -n "$PREV_TAG" ]; then
+            LOG=$(git log "${PREV_TAG}..${{ steps.bump.outputs.tag }}" --pretty=format:"- %s (%h)" -- serve/)
+          else
+            LOG=$(git log "${{ steps.bump.outputs.tag }}" --pretty=format:"- %s (%h)" -- serve/)
+          fi
+          # Write to file for multiline output
+          echo "body<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$LOG" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.bump.outputs.tag }}
+          name: serve v${{ steps.bump.outputs.version }}
+          body: |
+            ## Changes
+            ${{ steps.changelog.outputs.body }}
+          draft: false
+          prerelease: false
