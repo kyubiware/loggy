@@ -19,9 +19,10 @@ function Popup() {
   const [status, setStatus] = useState<StatusResponse | null>(null)
   const [loadingStatus, setLoadingStatus] = useState(true)
   const [isFirefox, setIsFirefox] = useState(false)
+  const [tabId, setTabId] = useState<number | undefined>(undefined)
 
   const { settings, setSetting, loading: loadingSettings } = usePopupSettings()
-  const { tokenCount, markdown, hasData, loading: loadingData } = usePopupData()
+  const { tokenCount, markdown, hasData, loading: loadingData } = usePopupData(tabId)
   const { copyToClipboard, copyStatus } = usePopupExport({ markdown, hasData })
 
   const {
@@ -43,6 +44,7 @@ function Popup() {
 
     chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
       const tabId = tabs[0]?.id
+      setTabId(tabId)
       if (!tabId) {
         setLoadingStatus(false)
         return

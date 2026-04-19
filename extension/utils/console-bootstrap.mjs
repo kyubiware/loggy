@@ -28,6 +28,9 @@ function bootstrapConsoleCapture() {
   window.__loggyConsoleLogs = Array.isArray(window.__loggyConsoleLogs)
     ? window.__loggyConsoleLogs
     : [];
+  window.__loggyNetworkLogs = Array.isArray(window.__loggyNetworkLogs)
+    ? window.__loggyNetworkLogs
+    : [];
 
   const originalConsole = {
     log: console.log,
@@ -414,6 +417,17 @@ function bootstrapConsoleCapture() {
                   contentType: contentType,
                   duration: Date.now() - startTime
                 });
+
+                window.__loggyNetworkLogs.push({
+                  timestamp: new Date(startTime).toISOString(),
+                  url: responseUrl,
+                  method: responseMethod,
+                  status: status,
+                  responseBodyPreview: String(body || '').slice(0, 1024),
+                  contentType: contentType,
+                  duration: Date.now() - startTime
+                });
+                if (window.__loggyNetworkLogs.length > 500) { window.__loggyNetworkLogs.shift(); }
               })
               .catch(function () {
                 relay('network', {
@@ -425,6 +439,17 @@ function bootstrapConsoleCapture() {
                   contentType: contentType,
                   duration: Date.now() - startTime
                 });
+
+                window.__loggyNetworkLogs.push({
+                  timestamp: new Date(startTime).toISOString(),
+                  url: responseUrl,
+                  method: responseMethod,
+                  status: status,
+                  responseBodyPreview: '',
+                  contentType: contentType,
+                  duration: Date.now() - startTime
+                });
+                if (window.__loggyNetworkLogs.length > 500) { window.__loggyNetworkLogs.shift(); }
               });
           } catch (_error) {
             relay('network', {
@@ -436,6 +461,17 @@ function bootstrapConsoleCapture() {
               contentType: contentType,
               duration: Date.now() - startTime
             });
+
+            window.__loggyNetworkLogs.push({
+              timestamp: new Date(startTime).toISOString(),
+              url: responseUrl,
+              method: responseMethod,
+              status: status,
+              responseBodyPreview: '',
+              contentType: contentType,
+              duration: Date.now() - startTime
+            });
+            if (window.__loggyNetworkLogs.length > 500) { window.__loggyNetworkLogs.shift(); }
           }
 
           return response;
@@ -450,6 +486,17 @@ function bootstrapConsoleCapture() {
             error: error && error.message ? String(error.message) : String(error || 'Fetch failed'),
             duration: Date.now() - startTime
           });
+
+          window.__loggyNetworkLogs.push({
+            timestamp: new Date(startTime).toISOString(),
+            url: url,
+            method: method,
+            status: 0,
+            responseBodyPreview: '',
+            error: error && error.message ? String(error.message) : String(error || 'Fetch failed'),
+            duration: Date.now() - startTime
+          });
+          if (window.__loggyNetworkLogs.length > 500) { window.__loggyNetworkLogs.shift(); }
 
           throw error;
         }
@@ -481,6 +528,15 @@ function bootstrapConsoleCapture() {
             status: typeof this.status === 'number' ? this.status : 0,
             duration: Date.now() - startTime
           });
+
+          window.__loggyNetworkLogs.push({
+            timestamp: new Date(startTime).toISOString(),
+            url: this.__loggyUrl ? String(this.__loggyUrl) : '',
+            method: this.__loggyMethod ? String(this.__loggyMethod) : 'GET',
+            status: typeof this.status === 'number' ? this.status : 0,
+            duration: Date.now() - startTime
+          });
+          if (window.__loggyNetworkLogs.length > 500) { window.__loggyNetworkLogs.shift(); }
         }.bind(this),
         { once: true }
       );
