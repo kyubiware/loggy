@@ -52,6 +52,7 @@ jobs:
           NEW_VERSION=$(node -p "require('./package.json').version")
           echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=serve-v${NEW_VERSION}" >> "$GITHUB_OUTPUT"
+          git tag "serve-v${NEW_VERSION}"
 
       - name: Publish to npm
         working-directory: serve
