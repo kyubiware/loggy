@@ -1,6 +1,6 @@
 {
   "name": "loggy-serve",
-  "version": "1.0.1",
+  "version": "1.1.1",
   "description": "Fastify companion server for Loggy markdown exports",
   "type": "module",
   "author": "kyubiware",
