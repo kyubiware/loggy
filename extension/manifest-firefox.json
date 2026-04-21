@@ -10,9 +10,6 @@
     ],
     "type": "module"
   },
-  "optional_permissions": [
-    "devtools"
-  ],
   "content_scripts": [
     {
       "matches": [

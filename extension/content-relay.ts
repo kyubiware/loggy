@@ -4,7 +4,10 @@ import type {
   CaptureMessage,
   ContentRelayReadyMessage,
 } from './types/messages'
-import { LOGGY_MESSAGE_NAMESPACE } from './types/messages'
+
+// Inlined to avoid ES module imports in the built content script
+// (Firefox loads content_scripts as classic scripts, not modules)
+const LOGGY_MESSAGE_NAMESPACE = '__LOGGY_RELAY__' as const
 
 const MAX_QUEUE_SIZE = 50
 
