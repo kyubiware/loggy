@@ -1,24 +1,36 @@
 {
   "manifest_version": 3,
   "name": "Loggy",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Capture and export Console & Network logs for LLM debugging",
   "devtools_page": "devtools.html",
   "background": {
-    "scripts": ["background/index.js"],
+    "scripts": [
+      "background/index.js"
+    ],
     "type": "module"
   },
-  "optional_permissions": ["devtools"],
+  "optional_permissions": [
+    "devtools"
+  ],
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["chunks/console-bootstrap.mjs"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "chunks/console-bootstrap.mjs"
+      ],
       "run_at": "document_start",
       "world": "MAIN"
     },
     {
-      "matches": ["<all_urls>"],
-      "js": ["content-relay.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content-relay.js"
+      ],
       "run_at": "document_start"
     }
   ],
@@ -35,14 +47,22 @@
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "permissions": ["storage", "activeTab", "scripting"],
-  "host_permissions": ["http://localhost/*"],
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "http://localhost/*"
+  ],
   "browser_specific_settings": {
     "gecko": {
       "id": "loggy@devtools-extension",
       "strict_min_version": "140.0",
       "data_collection_permissions": {
-        "required": ["none"]
+        "required": [
+          "none"
+        ]
       }
     },
     "gecko_android": {
