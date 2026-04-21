@@ -26,7 +26,10 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
-    "source-zip": "node scripts/prepare-source-zip.cjs"
+    "source-zip": "node scripts/prepare-source-zip.cjs",
+    "sign:firefox": "dotenv -- web-ext sign --source-dir dist-firefox --channel unlisted",
+    "lint:firefox": "web-ext lint --source-dir dist-firefox",
+    "release": "node scripts/release.cjs"
   },
   "keywords": [],
   "author": "",

@@ -99,6 +99,26 @@ These steps produce an exact copy of the Firefox add-on from source code.
    ```
    Produces `loggy-firefox.xpi` in the current directory.
 
+### Sign & Publish to AMO
+
+To get a signed XPI for distribution via addons.mozilla.org:
+
+1. Create API credentials at [addons.mozilla.org/developers/addon/api/key/](https://addons.mozilla.org/developers/addon/api/key/).
+2. Copy `.env.example` to `.env` and fill in your credentials:
+   ```bash
+   cp .env.example .env
+   ```
+3. Build and sign:
+   ```bash
+   npm run sign:firefox
+   ```
+   The signed XPI is downloaded to the current directory.
+
+4. Optionally, lint your build before signing:
+   ```bash
+   npm run lint:firefox
+   ```
+
 ### Load in Chrome
 
 Follow the installation steps above, pointing to the project directory.
