@@ -54,14 +54,14 @@ jobs:
           echo "tag=serve-v${NEW_VERSION}" >> "$GITHUB_OUTPUT"
           git tag "serve-v${NEW_VERSION}"
 
-      - name: Publish to npm
-        working-directory: serve
-        run: npm publish --provenance --access public
-
       - name: Push commit and tag
         run: |
           git push origin HEAD:${{ github.ref_name }}
           git push origin ${{ steps.bump.outputs.tag }}
+
+      - name: Publish to npm
+        working-directory: serve
+        run: npm publish --provenance --access public
 
       - name: Generate changelog
         id: changelog
