@@ -73,7 +73,7 @@ describe('extractPersistedSettings', () => {
       includeResponseBodies: true,
       truncateConsoleLogs: false,
       redactSensitiveInfo: true,
-      networkExportEnabled: true,
+      networkExportEnabled: false,
       autoServerSync: false,
       serverUrl: 'http://custom:1234',
     })

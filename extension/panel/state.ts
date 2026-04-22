@@ -79,7 +79,7 @@ export function createInitialState(): LoggyState {
     includeResponseBodies: false,
     truncateConsoleLogs: true,
     redactSensitiveInfo: true,
-    networkExportEnabled: true,
+    networkExportEnabled: false,
     autoServerSync: false,
     serverSyncError: false,
     serverUrl: 'http://localhost:8743',
