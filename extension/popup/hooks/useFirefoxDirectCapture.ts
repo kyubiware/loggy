@@ -11,6 +11,7 @@ import {
 } from '../../panel/state'
 import type { ConsoleMessage } from '../../types/console'
 import type { HAREntry } from '../../types/har'
+import type { CaptureMode } from '../../types/messages'
 import { estimateTokenCount } from '../../utils/token-estimate'
 
 const POLL_INTERVAL_MS = 2000
@@ -78,6 +79,24 @@ export function useFirefoxDirectCapture(tabId: number): {
 
   const captureData = useCallback(async (): Promise<void> => {
     try {
+      const status: { mode: CaptureMode } = await new Promise((resolve) => {
+        chrome.runtime.sendMessage({ type: 'get-status' }, (response: unknown) => {
+          if (chrome.runtime.lastError || typeof response !== 'object' || response === null) {
+            resolve({ mode: 'inactive' })
+            return
+          }
+
+          const { mode } = response as { mode?: CaptureMode }
+          resolve({ mode: mode ?? 'inactive' })
+        })
+      })
+
+      if (status.mode === 'inactive') {
+        setData(createDefaultData())
+        setLoading(false)
+        return
+      }
+
       const scriptResults = await chrome.scripting.executeScript({
         target: { tabId },
         world: 'MAIN' as any,

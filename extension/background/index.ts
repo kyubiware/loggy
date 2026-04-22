@@ -11,22 +11,42 @@ import {
   isAttached as isDebuggerAttached,
   setCaptureCallback,
 } from '../capture/debugger-capture'
+import {
+  LOGGY_ALWAYS_LOG_HOSTS_KEY,
+  addAlwaysLogHost,
+  getAlwaysLogHosts,
+  isHostInAlwaysLogList,
+  removeAlwaysLogHost,
+} from './storage'
 import type { ConsoleMessage } from '../types/console'
 import type { HAREntry, HARHeader } from '../types/har'
 import {
   LOGGY_MESSAGE_NAMESPACE,
+  type AddAlwaysLogMessage,
+  type AlwaysLogHost,
+  type AlwaysLogHostsResponse,
   type CapturedConsoleEntry,
   type CapturedNetworkEntry,
   type CaptureControlMessage,
   type CaptureMessage,
   type CaptureMode,
+  type ConsentResponseMessage,
+  type ConsentState,
+  type GetAlwaysLogHostsMessage,
   type LoggyMessage,
+  type RemoveAlwaysLogMessage,
+  type RequestConsentMessage,
+  type StartLoggingMessage,
   type StatusResponse,
+  type StopLoggingMessage,
   type TabExportDataResponse,
   type TabCaptureState,
 } from '../types/messages'
 import { formatMarkdown } from '../utils/formatter'
+import { isLocalPage } from '../utils/is-local-page'
 import { estimateTokenCount } from '../utils/token-estimate'
+
+declare const __BROWSER__: string
 
 const DEFAULT_SERVER_URL = 'http://localhost:8743'
 const EXPORT_PATH = '/loggy'
@@ -152,6 +172,46 @@ export async function setMode(tabId: number, mode: CaptureMode): Promise<TabCapt
 
 export function getMode(tabId: number): CaptureMode {
   return tabStates.get(tabId)?.mode ?? 'inactive'
+}
+
+async function evaluateConsent(tabId: number, url: string): Promise<ConsentState> {
+  if (isLocalPage(url)) {
+    return { hasConsent: true, captureMode: 'content-script', reason: 'local-page' }
+  }
+
+  try {
+    const parsedUrl = new URL(url)
+    const host = parsedUrl.hostname
+
+    if (await isHostInAlwaysLogList(host)) {
+      const mode: CaptureMode = __BROWSER__ === 'chrome' ? 'debugger' : 'content-script'
+      return { hasConsent: true, captureMode: mode, reason: 'always-log' }
+    }
+  } catch {
+    // Invalid URL — no consent
+  }
+
+  const current = getOrCreateTabState(tabId)
+  if (current.mode !== 'inactive' && current.connected) {
+    return { hasConsent: true, captureMode: current.mode, reason: 'per-session' }
+  }
+
+  return { hasConsent: false, captureMode: 'none', reason: 'no-consent' }
+}
+
+function updateIconForTab(tabId: number): void {
+  const state = tabStates.get(tabId)
+  const isActive = state && state.mode !== 'inactive'
+
+  const iconPath = isActive
+    ? {
+        16: 'icons/icon16-active.png',
+        48: 'icons/icon48-active.png',
+        128: 'icons/icon128-active.png',
+      }
+    : { 16: 'icons/icon16.png', 48: 'icons/icon48.png', 128: 'icons/icon128.png' }
+
+  chrome.action.setIcon({ tabId, path: iconPath })
 }
 
 export function getActiveTabStatus(): StatusResponse {
@@ -362,7 +422,16 @@ async function handleCaptureMessage(
 async function handleControlMessage(
   message: CaptureControlMessage,
   sender: chrome.runtime.MessageSender
-): Promise<StatusResponse | TabCaptureState | TabExportDataResponse | { ok: boolean }> {
+): Promise<
+  | StatusResponse
+  | TabCaptureState
+  | (TabCaptureState & { consent: ConsentState })
+  | TabExportDataResponse
+  | ConsentState
+  | ConsentResponseMessage
+  | AlwaysLogHostsResponse
+  | { ok: boolean }
+> {
   if (message.type === 'get-status') {
     return getActiveTabStatus()
   }
@@ -405,14 +474,43 @@ async function handleControlMessage(
       return { ok: false }
     }
 
+    const url = message.url || (sender.tab?.url ?? '')
+    const consent = await evaluateConsent(tabId, url)
+
+    if (consent.hasConsent) {
+      const current = getOrCreateTabState(tabId)
+      const updated: TabCaptureState = {
+        ...current,
+        connected: true,
+        mode:
+          consent.captureMode === 'debugger'
+            ? 'debugger'
+            : current.mode === 'inactive'
+              ? 'content-script'
+              : current.mode,
+      }
+      await setTabState(updated)
+      updateIconForTab(tabId)
+
+      if (consent.captureMode === 'debugger' && consent.reason === 'always-log') {
+        attachToTab(tabId, (error) => {
+          if (error) {
+            console.error('[Loggy] Failed to attach debugger for always-log:', error.message)
+            void setMode(tabId, 'content-script')
+          }
+        })
+      }
+
+      return { ...updated, consent }
+    }
+
     const current = getOrCreateTabState(tabId)
     const updated: TabCaptureState = {
       ...current,
       connected: true,
-      mode: current.mode === 'inactive' ? 'content-script' : current.mode,
     }
     await setTabState(updated)
-    return updated
+    return { ...updated, consent }
   }
 
   if (message.type === 'panel-opened') {
@@ -545,6 +643,175 @@ async function handleControlMessage(
     }
   }
 
+  if (message.type === 'request-consent') {
+    const request: RequestConsentMessage = message
+    const tabId = sender.tab?.id
+    if (typeof tabId !== 'number') {
+      return { hasConsent: false, captureMode: 'none' as const, reason: 'unknown-tab' }
+    }
+
+    const url = request.url || (sender.tab?.url ?? '')
+    return evaluateConsent(tabId, url)
+  }
+
+  if (message.type === 'consent-response') {
+    const response: ConsentResponseMessage = message
+    return response
+  }
+
+  if (message.type === 'start-logging') {
+    const startMessage: StartLoggingMessage = message
+    const tabId = startMessage.tabId
+    const current = getOrCreateTabState(tabId)
+
+    if (current.mode === 'devtools') {
+      return { ...current }
+    }
+
+    const updated = await setMode(tabId, 'content-script')
+    updateIconForTab(tabId)
+
+    try {
+      await chrome.tabs.sendMessage(tabId, {
+        type: 'consent-changed',
+        hasConsent: true,
+        captureMode: 'content-script',
+      })
+    } catch {
+      // Content script may not be loaded yet
+    }
+
+    return updated
+  }
+
+  if (message.type === 'stop-logging') {
+    const stopMessage: StopLoggingMessage = message
+    const tabId = stopMessage.tabId
+    const current = getOrCreateTabState(tabId)
+
+    if (current.mode === 'devtools') {
+      return { ...current }
+    }
+
+    if (current.mode === 'debugger' && isDebuggerAttached(tabId)) {
+      detachFromTab(tabId)
+    }
+
+    const updated = await setMode(tabId, 'inactive')
+    updateIconForTab(tabId)
+
+    try {
+      await chrome.tabs.sendMessage(tabId, {
+        type: 'consent-changed',
+        hasConsent: false,
+        captureMode: 'none',
+      })
+    } catch {
+      // Content script may not be loaded
+    }
+
+    return updated
+  }
+
+  if (message.type === 'add-always-log') {
+    const addMessage: AddAlwaysLogMessage = message
+    await addAlwaysLogHost(addMessage.host)
+
+    try {
+      const tabs = await chrome.tabs.query({})
+      for (const tab of tabs) {
+        if (typeof tab.id !== 'number' || !tab.url) {
+          continue
+        }
+
+        try {
+          const parsedUrl = new URL(tab.url)
+          if (parsedUrl.hostname === addMessage.host) {
+            const consent = await evaluateConsent(tab.id, tab.url)
+            if (consent.hasConsent) {
+              const current = getOrCreateTabState(tab.id)
+              if (current.mode === 'inactive') {
+                await setMode(tab.id, 'content-script')
+                updateIconForTab(tab.id)
+
+                try {
+                  await chrome.tabs.sendMessage(tab.id, {
+                    type: 'consent-changed',
+                    hasConsent: true,
+                    captureMode: 'content-script',
+                  })
+                } catch {
+                  // Content script may not be loaded
+                }
+              }
+            }
+          }
+        } catch {
+          // Invalid URL
+        }
+      }
+    } catch {
+      // Failed to query tabs
+    }
+
+    return { ok: true }
+  }
+
+  if (message.type === 'remove-always-log') {
+    const removeMessage: RemoveAlwaysLogMessage = message
+    await removeAlwaysLogHost(removeMessage.host)
+
+    try {
+      const tabs = await chrome.tabs.query({})
+      for (const tab of tabs) {
+        if (typeof tab.id !== 'number' || !tab.url) {
+          continue
+        }
+
+        try {
+          const parsedUrl = new URL(tab.url)
+          if (parsedUrl.hostname === removeMessage.host) {
+            const consent = await evaluateConsent(tab.id, tab.url)
+            if (!consent.hasConsent) {
+              const current = getOrCreateTabState(tab.id)
+              if (current.mode !== 'devtools' && current.mode !== 'inactive') {
+                if (current.mode === 'debugger' && isDebuggerAttached(tab.id)) {
+                  detachFromTab(tab.id)
+                }
+
+                await setMode(tab.id, 'inactive')
+                updateIconForTab(tab.id)
+
+                try {
+                  await chrome.tabs.sendMessage(tab.id, {
+                    type: 'consent-changed',
+                    hasConsent: false,
+                    captureMode: 'none',
+                  })
+                } catch {
+                  // Content script may not be loaded
+                }
+              }
+            }
+          }
+        } catch {
+          // Invalid URL
+        }
+      }
+    } catch {
+      // Failed to query tabs
+    }
+
+    return { ok: true }
+  }
+
+  if (message.type === 'get-always-log-hosts') {
+    const getAlwaysLogHostsMessage: GetAlwaysLogHostsMessage = message
+    const hosts: AlwaysLogHost[] = await getAlwaysLogHosts()
+    void getAlwaysLogHostsMessage
+    return { type: 'always-log-hosts-response', hosts } as AlwaysLogHostsResponse
+  }
+
   return { ok: false }
 }
 
@@ -569,7 +836,15 @@ function isControlMessage(message: unknown): message is CaptureControlMessage {
     type === 'content-relay-ready' ||
     type === 'panel-opened' ||
     type === 'panel-closed' ||
-    type === 'get-tab-export-data'
+    type === 'get-tab-export-data' ||
+    type === 'request-consent' ||
+    type === 'consent-response' ||
+    type === 'start-logging' ||
+    type === 'stop-logging' ||
+    type === 'add-always-log' ||
+    type === 'remove-always-log' ||
+    type === 'get-always-log-hosts' ||
+    type === 'always-log-hosts-response'
   )
 }
 
@@ -645,6 +920,12 @@ async function initialize(): Promise<void> {
   await restoreTabStatesFromStorage()
   await restoreLogCountsFromStorage()
   await refreshActiveTabId()
+
+  if (activeTabId !== null) {
+    updateIconForTab(activeTabId)
+  }
+
+  await chrome.storage.local.get(LOGGY_ALWAYS_LOG_HOSTS_KEY)
 }
 
 chrome.runtime.onMessage.addListener((rawMessage, sender, sendResponse) => {
@@ -721,6 +1002,73 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
 chrome.tabs.onActivated.addListener((activeInfo) => {
   activeTabId = activeInfo.tabId
+  updateIconForTab(activeInfo.tabId)
+})
+
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  // Only react to URL changes (SPA navigation or full page navigation)
+  if (!changeInfo.url) {
+    return
+  }
+
+  const url = changeInfo.url
+  void (async () => {
+    try {
+      const consent = await evaluateConsent(tabId, url)
+
+      if (consent.hasConsent) {
+        // Host changed to a consented host — start capture if not already active
+        const current = getOrCreateTabState(tabId)
+        if (current.mode === 'inactive') {
+          const captureMode =
+            consent.captureMode === 'debugger' ? 'debugger' : 'content-script'
+          await setMode(tabId, captureMode)
+          updateIconForTab(tabId)
+
+          if (captureMode === 'debugger') {
+            attachToTab(tabId, (error) => {
+              if (error) {
+                console.error('[Loggy] Failed to attach debugger for SPA nav:', error.message)
+                void setMode(tabId, 'content-script')
+              }
+            })
+          }
+
+          try {
+            await chrome.tabs.sendMessage(tabId, {
+              type: 'consent-changed',
+              hasConsent: true,
+              captureMode,
+            })
+          } catch {
+            // Content script may not be loaded
+          }
+        }
+      } else {
+        // Host changed to a non-consented host — stop capture if active
+        const current = getOrCreateTabState(tabId)
+        if (current.mode !== 'inactive' && current.mode !== 'devtools') {
+          if (current.mode === 'debugger' && isDebuggerAttached(tabId)) {
+            detachFromTab(tabId)
+          }
+          await setMode(tabId, 'inactive')
+          updateIconForTab(tabId)
+
+          try {
+            await chrome.tabs.sendMessage(tabId, {
+              type: 'consent-changed',
+              hasConsent: false,
+              captureMode: 'none',
+            })
+          } catch {
+            // Content script may not be loaded
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[Loggy] SPA navigation consent re-evaluation failed:', error)
+    }
+  })()
 })
 
 chrome.runtime.onInstalled.addListener(() => {

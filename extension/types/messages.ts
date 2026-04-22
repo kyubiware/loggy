@@ -112,6 +112,28 @@ export interface StatusResponse {
 }
 
 /**
+ * Stored always-log host entry.
+ */
+export interface AlwaysLogHost {
+  /** Host name. */
+  host: string
+  /** Creation timestamp. */
+  createdAt: number
+}
+
+/**
+ * Consent state returned by the background service.
+ */
+export interface ConsentState {
+  /** Whether the host has consent. */
+  hasConsent: boolean
+  /** Current capture mode or none. */
+  captureMode: CaptureMode | 'none'
+  /** Optional reason for the consent decision. */
+  reason?: string
+}
+
+/**
  * Export data response for a tab.
  */
 export interface TabExportDataResponse {
@@ -158,6 +180,88 @@ export interface ContentRelayReadyMessage {
 }
 
 /**
+ * Request consent for the current page URL.
+ */
+export interface RequestConsentMessage {
+  /** Message type. */
+  type: 'request-consent'
+  /** Current page URL. */
+  url: string
+}
+
+/**
+ * Consent response returned by the background service.
+ */
+export interface ConsentResponseMessage {
+  /** Message type. */
+  type: 'consent-response'
+  /** Whether the host has consent. */
+  hasConsent: boolean
+  /** Current capture mode or none. */
+  captureMode: CaptureMode | 'none'
+  /** Optional reason for the consent decision. */
+  reason?: string
+}
+
+/**
+ * Request to start logging for a tab.
+ */
+export interface StartLoggingMessage {
+  /** Message type. */
+  type: 'start-logging'
+  /** Target tab identifier. */
+  tabId: number
+}
+
+/**
+ * Request to stop logging for a tab.
+ */
+export interface StopLoggingMessage {
+  /** Message type. */
+  type: 'stop-logging'
+  /** Target tab identifier. */
+  tabId: number
+}
+
+/**
+ * Add a host to the always-log list.
+ */
+export interface AddAlwaysLogMessage {
+  /** Message type. */
+  type: 'add-always-log'
+  /** Host name. */
+  host: string
+}
+
+/**
+ * Remove a host from the always-log list.
+ */
+export interface RemoveAlwaysLogMessage {
+  /** Message type. */
+  type: 'remove-always-log'
+  /** Host name. */
+  host: string
+}
+
+/**
+ * Request the stored always-log hosts.
+ */
+export interface GetAlwaysLogHostsMessage {
+  /** Message type. */
+  type: 'get-always-log-hosts'
+}
+
+/**
+ * Response containing all stored always-log hosts.
+ */
+export interface AlwaysLogHostsResponse {
+  /** Message type. */
+  type: 'always-log-hosts-response'
+  /** Stored hosts. */
+  hosts: AlwaysLogHost[]
+}
+
+/**
  * Tab capture state snapshot.
  */
 export interface TabCaptureState {
@@ -198,6 +302,14 @@ export type CaptureControlMessage =
   | PanelOpenedMessage
   | PanelClosedMessage
   | ContentRelayReadyMessage
+  | RequestConsentMessage
+  | ConsentResponseMessage
+  | StartLoggingMessage
+  | StopLoggingMessage
+  | AddAlwaysLogMessage
+  | RemoveAlwaysLogMessage
+  | GetAlwaysLogHostsMessage
+  | AlwaysLogHostsResponse
 
 /**
  * Background status message payloads.
