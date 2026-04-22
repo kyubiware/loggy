@@ -3,13 +3,14 @@
 **Scope:** Fastify companion server
 
 ## OVERVIEW
-Fastify server providing HTTP endpoints for receiving and retrieving Loggy markdown exports. CLI-ready with configurable port and output path.
+Fastify server providing HTTP endpoints for receiving and retrieving Loggy markdown exports. Features interactive TUI mode for live status and clipboard integration. CLI-ready with configurable port and output path.
 
 ## STRUCTURE
-```
 serve/
 ├── src/
-│   └── server.ts       # Fastify app factory + start function
+│   ├── server.ts       # Fastify app factory + start function
+│   ├── tui.ts          # Interactive terminal UI (bless-based)
+│   └── clipboard.ts    # Cross-platform clipboard integration
 ├── tests/
 │   └── server.test.ts  # Vitest tests
 ├── bin/
@@ -17,21 +18,24 @@ serve/
 ├── package.json        # Fastify deps + Vitest
 └── tsconfig.json       # TypeScript config
 ```
-
 ## WHERE TO LOOK
 
 | Task | Location | Notes |
 |------|----------|-------|
-| Server factory | src/server.ts:19-60 | createServer() with CORS + routes |
-| Start server | src/server.ts:62-74 | startServer() with port/host options |
-| POST endpoint | src/server.ts:28-43 | /loggy - receive markdown export |
-| GET export | src/server.ts:49-57 | /loggy/export - retrieve latest |
-| Handshake | src/server.ts:45-47 | /loggy/handshake - version check |
-| Error formatting | src/server.ts:76-91 | formatStartupError() for EADDRINUSE |
+| Server factory | src/server.ts | createServer() with CORS + routes |
+| Start server | src/server.ts | startServer() with port/host options |
+| POST endpoint | src/server.ts | /loggy - receive markdown export |
+| GET export | src/server.ts | /loggy/export - retrieve latest |
+| Handshake | src/server.ts | /loggy/handshake - version check |
+| TUI logic | src/tui.ts | Interactive status bar and shortcuts |
+| Clipboard | src/clipboard.ts | Cross-platform copy integration |
+| Error formatting | src/server.ts | formatStartupError() for EADDRINUSE |
 | CLI entry | bin/loggy-serve.js | Parses args, calls startServer() |
 
 ## CONVENTIONS
 
+- **Interactive TUI**: On by default in TTY; --quiet for plain logs
+- **TUI Comms**: Server decorates Fastify with EventEmitter for UI updates
 - **ES modules**: `"type": "module"` in package.json
 - **Factory pattern**: createServer() returns configured Fastify instance
 - **CORS**: Wildcard origin allowed (`*`) for local dev
@@ -48,6 +52,8 @@ serve/
 
 ## NOTES
 
+- TUI shortcuts: `c` to copy latest export, `q` to quit
+- Server decorates Fastify instance with custom state + EventEmitter
 - Default port: 8743, default host: 127.0.0.1
 - Body must be text/plain string (validated in POST handler)
 - Stores latest export in memory (latestExport variable)

@@ -22,7 +22,7 @@ panel/
 │       └── useToast.ts         # Toast state management
 ├── state.ts               # State interface (LoggyState)
 ├── capture.ts             # Console & network capture
-├── export.ts              # Clipboard export
+├── export.ts              # Clipboard & server export (via background)
 ├── preview.ts             # Preview rendering (non-React)
 ├── toast.ts               # Toast notification (non-React)
 ├── debounce.ts            # Debounce utility
@@ -48,7 +48,8 @@ panel/
 | Debounce utility | debounce.ts | Generic TypeScript debounce |
 | Toast notifications | toast.ts | ToastType + rendering (non-React) |
 | Preview rendering | preview.ts | DOM updates for filtered data |
-| Clipboard export | export.ts | formatMarkdown + clipboard API |
+| Clipboard export | export.ts | formatMarkdown + clipboard API & server export |
+| Server export | export.ts | POST to loggy-serve via background |
 | Action handlers | actions.ts | Button click handlers |
 | Browser APIs | ../browser-apis/index.ts | Cross-browser API abstractions |
 
@@ -61,6 +62,7 @@ panel/
 - **Error display**: Use toast notifications, not console-only
 - **Chrome APIs**: Wrap in Promises for async/await compatibility
 - **React patterns**: Functional components, hooks for state, no classes
+- **Message passing**: Use `chrome.runtime.sendMessage()` with typed `LoggyMessage` to communicate with background
 
 ## ANTI-PATTERNS
 
@@ -76,6 +78,8 @@ panel/
 - Logs stored in inspected page's `window.__loggyConsoleLogs`
 - Circular buffer limits console logs to prevent memory bloat
 - Clipboard requires user gesture (button click) per browser security
-- Panel has dual architecture: React UI (src/) + legacy non-React (root)
+- Panel has dual architecture: React UI (src/) + vanilla JS (root)
 - React components use hooks for state management and side effects
 - Toast system has both React (Toast.tsx) and non-React implementations (toast.ts)
+- Panel communicates with background service worker for capture coordination and server export
+- Capture data source depends on mode: content-script/debugger modes get data from background, devtools mode captures directly

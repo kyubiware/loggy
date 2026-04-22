@@ -3,15 +3,14 @@
 **Scope:** Type definitions for Loggy
 
 ## OVERVIEW
-TypeScript type definitions for console messages and HAR (HTTP Archive) network entries.
+TypeScript type definitions for console messages, HAR (HTTP Archive) network entries, and extension message passing.
 
 ## STRUCTURE
-```
 types/
 ├── console.ts          # ConsoleMessage interface
 ├── har.ts              # HAREntry and related types
+├── messages.ts         # LoggyMessage union type for extension message passing
 └── js-modules.d.ts     # JavaScript module declarations
-```
 
 ## WHERE TO LOOK
 
@@ -21,6 +20,7 @@ types/
 | Console levels | console.ts | LogLevel enum |
 | HAR entry types | har.ts | HAREntry, Request, Response |
 | Network timing | har.ts | Timings interface |
+| Extension messages | messages.ts | LoggyMessage union type (all inter-component messages) |
 | Module declarations | js-modules.d.ts | global type augmentations |
 
 ## CONVENTIONS
@@ -39,6 +39,7 @@ types/
 
 ## NOTES
 
+- LoggyMessage: Central type for background ↔ panel/popup communication
 - ConsoleMessage: timestamp, level, message, args
 - LogLevel: log, info, warn, error, debug
 - HAREntry: request, response, timings, status

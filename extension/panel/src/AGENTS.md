@@ -9,15 +9,17 @@ React application providing the DevTools panel UI with filter controls, data pre
 ```
 src/
 ├── main.tsx           # React entry point (mounts App)
-├── App.tsx            # Main component (orchestration)
-├── index.css          # Global styles
+├── App.tsx            # App shell (LoggyProvider + AppContent)
+├── AppContent.tsx     # Main layout orchestration
+├── LoggyContext.tsx   # Shared state (LoggyProvider)
+├── index.css          # Global styles (Tailwind via PostCSS)
 ├── components/        # UI components
 │   ├── controls/      # Filter controls and action buttons
 │   ├── PreviewPane.tsx  # Console/network data preview
 │   ├── Toast.tsx     # Toast notification component
 │   └── *.test.tsx    # Component tests
 └── hooks/             # React hooks
-    ├── useCaptureData.ts   # Console/network capture logic
+    ├── useCaptureData.ts   # Messaging with background service worker
     ├── useToast.ts         # Toast state management
     └── *.test.tsx         # Hook tests
 ```
@@ -27,19 +29,20 @@ src/
 | Task | Location | Notes |
 |------|----------|-------|
 | React mounting | main.tsx | ReactDOM.createRoot |
-| App layout | App.tsx | Component structure |
+| Shared state | LoggyContext.tsx | LoggyProvider & useLoggy |
+| App layout | AppContent.tsx | Main component structure |
 | Filter inputs | components/controls/ | State-bound inputs |
 | Preview display | components/PreviewPane.tsx | Data tables |
 | Toast UI | components/Toast.tsx | Notification component |
-| Data capture | hooks/useCaptureData.ts | Chrome API integration |
+| Data capture | hooks/useCaptureData.ts | Messaging via chrome.runtime.sendMessage |
 | Toast state | hooks/useToast.ts | Visibility/timeout |
 
 ## CONVENTIONS
 
 - **Components**: Functional components with hooks only (no classes)
-- **State**: useState, useEffect for local state
+- **State**: LoggyContext for shared state, useState for local
 - **Event handlers**: Inline handlers with useCallback optimization
-- **Styling**: Tailwind CSS classes (via index.css import)
+- **Styling**: Tailwind CSS classes (PostCSS/Vite plugin)
 - **Testing**: React Testing Library, @testing-library/jest-dom
 
 ## ANTI-PATTERNS
@@ -52,6 +55,8 @@ src/
 ## NOTES
 
 - Components are tested with React Testing Library
-- useCaptureData handles all Chrome DevTools API interactions
+- useCaptureData communicates with background via chrome.runtime.sendMessage()
+- useCaptureData uses typed LoggyMessage from types/messages.ts
 - useToast manages toast visibility and auto-dismissal
-- Tailwind CSS used for styling via CDN in index.css
+- Tailwind CSS is compiled via PostCSS (Vite), not CDN
+- LoggyContext provides shared state across the panel app
