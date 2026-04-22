@@ -1,7 +1,6 @@
 import { Brain, FileText, RefreshCw, Scissors, Shield, Upload } from 'lucide-react'
 import type React from 'react'
 import { IconButtonToggle } from '../../../shared/components/IconButtonToggle'
-import { Tooltip } from '../../../shared/components/Tooltip'
 import { useActions, useSettings } from '../LoggyContext'
 
 interface ToggleConfig {
@@ -14,14 +13,12 @@ interface ToggleConfig {
 
 function ToggleButton({ label, pressed, onToggle, icon, error }: ToggleConfig): React.JSX.Element {
   return (
-    <Tooltip content={label}>
-      <div className="relative flex">
-        <IconButtonToggle icon={icon} label={label} pressed={pressed} onToggle={onToggle} />
-        {error && (
-          <span className="absolute top-0 right-0 -mt-0.5 -mr-0.5 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-stone-900" />
-        )}
-      </div>
-    </Tooltip>
+    <div className="relative flex">
+      <IconButtonToggle icon={icon} label={label} pressed={pressed} onToggle={onToggle} />
+      {error && (
+        <span className="absolute top-0 right-0 -mt-0.5 -mr-0.5 block h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-white dark:ring-stone-900" />
+      )}
+    </div>
   )
 }
 

@@ -1,4 +1,5 @@
 import React, { type ReactNode } from 'react'
+import { Tooltip } from './Tooltip'
 
 export interface IconButtonToggleProps {
   icon: ReactNode
@@ -6,6 +7,7 @@ export interface IconButtonToggleProps {
   pressed: boolean
   onToggle: () => void
   testId?: string
+  tooltip?: string
 }
 
 export const IconButtonToggle = React.memo(function IconButtonToggle({
@@ -14,8 +16,9 @@ export const IconButtonToggle = React.memo(function IconButtonToggle({
   pressed,
   onToggle,
   testId,
+  tooltip,
 }: IconButtonToggleProps): React.JSX.Element {
-  return (
+  const button = (
     <button
       type="button"
       aria-label={label}
@@ -31,4 +34,6 @@ export const IconButtonToggle = React.memo(function IconButtonToggle({
       {icon}
     </button>
   )
+
+  return <Tooltip content={tooltip ?? label}>{button}</Tooltip>
 })

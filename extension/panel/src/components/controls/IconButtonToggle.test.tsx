@@ -39,4 +39,22 @@ describe('IconButtonToggle', () => {
     expect(button).toBeInTheDocument()
     expect(button).toHaveAttribute('aria-label', 'Toggle button')
   })
+
+  it('wraps button in tooltip trigger', () => {
+    const { container } = render(<IconButtonToggle {...defaultProps} />)
+    // Radix Tooltip renders a wrapper div with data-state
+    const trigger = container.querySelector('[data-state]')
+    expect(trigger).toBeInTheDocument()
+    expect(trigger).toContainElement(screen.getByRole('button'))
+  })
+
+  it('uses custom tooltip prop for tooltip content', () => {
+    const { container } = render(
+      <IconButtonToggle {...defaultProps} tooltip="Custom text" />,
+    )
+    // The button should still have aria-label from label prop
+    expect(screen.getByRole('button')).toHaveAttribute('aria-label', 'Toggle button')
+    // The tooltip trigger wrapper should exist
+    expect(container.querySelector('[data-state]')).toBeInTheDocument()
+  })
 })

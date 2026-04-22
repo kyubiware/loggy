@@ -9,7 +9,6 @@ import {
 } from 'lucide-react'
 
 import { IconButtonToggle } from '../../shared/components/IconButtonToggle'
-import { Tooltip } from '../../shared/components/Tooltip'
 import type { PersistedLoggySettings } from '../../panel/state'
 
 export type ToggleSettingKey =
@@ -42,14 +41,13 @@ export function ExportOptionToggles({
     <div className='flex justify-center'>
       <div className='flex items-center gap-0.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded p-0.5'>
         {TOGGLE_CONFIGS.map(([key, label, Icon]) => (
-          <Tooltip key={key} content={label}>
-            <IconButtonToggle
-              icon={<Icon size={16} />}
-              label={label}
-              pressed={settings[key]}
-              onToggle={() => onToggle(key)}
-            />
-          </Tooltip>
+          <IconButtonToggle
+            key={key}
+            icon={<Icon size={16} />}
+            label={label}
+            pressed={settings[key]}
+            onToggle={() => onToggle(key)}
+          />
         ))}
       </div>
     </div>
