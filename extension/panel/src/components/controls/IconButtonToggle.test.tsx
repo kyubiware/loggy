@@ -49,12 +49,11 @@ describe('IconButtonToggle', () => {
   })
 
   it('uses custom tooltip prop for tooltip content', () => {
-    const { container } = render(
-      <IconButtonToggle {...defaultProps} tooltip="Custom text" />,
-    )
+    const { container } = render(<IconButtonToggle {...defaultProps} tooltip="Custom text" />)
     // The button should still have aria-label from label prop
     expect(screen.getByRole('button')).toHaveAttribute('aria-label', 'Toggle button')
     // The tooltip trigger wrapper should exist
     expect(container.querySelector('[data-state]')).toBeInTheDocument()
   })
 })
+// deliberate bad format test

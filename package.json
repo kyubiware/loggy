@@ -6,9 +6,14 @@
   },
   "workspaces": ["extension", "serve"],
   "scripts": {
+    "prepare": "husky",
     "build": "npm run build --workspace=extension",
     "test": "npm run test --workspace=extension && npm run test --workspace=serve",
     "lint": "npm run lint --workspace=extension",
     "publish:serve": "npm publish --workspace=serve --access public"
+  },
+  "devDependencies": {
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.3"
   }
 }
