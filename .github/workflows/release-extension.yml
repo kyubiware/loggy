@@ -70,7 +70,7 @@ jobs:
         working-directory: extension
         run: npm run source-zip
 
-      - name: Sign with AMO (unlisted)
+      - name: Sign with AMO (listed)
         working-directory: extension
         run: |
           npx web-ext sign \
