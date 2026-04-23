@@ -6,3 +6,5 @@ node_modules
 .playwright-cli-output/
 .env
 *.xpi
+server.log
+test-run.js
