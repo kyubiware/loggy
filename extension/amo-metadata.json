@@ -3,7 +3,7 @@
     "license": "MIT"
   },
   "categories": {
-    "firefox": ["developer-tools"]
+    "firefox": ["web-development"]
   },
   "summary": {
     "en-US": "Capture and export Console & Network logs as structured Markdown for LLM debugging"
