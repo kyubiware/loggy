@@ -1,0 +1,108 @@
+name: Sign & release extension
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to sign and release (e.g. v1.2.3)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  sign-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref_name }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch tags for changelog
+        run: git fetch --tags --force
+
+      - name: Resolve tag
+        id: resolve
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          # Strip refs/tags/ prefix if present
+          TAG="${TAG#refs/tags/}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          VERSION="${TAG#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build Firefox extension
+        working-directory: extension
+        run: npm run build:firefox
+
+      - name: Lint with web-ext
+        working-directory: extension
+        run: npx web-ext lint --source-dir dist-firefox
+
+      - name: Package XPI
+        working-directory: extension
+        run: |
+          rm -f loggy-firefox.xpi
+          (cd dist-firefox && zip -r ../loggy-firefox.xpi .)
+
+      - name: Package source code for AMO
+        working-directory: extension
+        run: npm run source-zip
+
+      - name: Sign with AMO (listed)
+        working-directory: extension
+        run: |
+          npx web-ext sign \
+            --source-dir dist-firefox \
+            --channel listed \
+            --artifacts-dir web-ext-artifacts \
+            --upload-source-code loggy-source.zip \
+            --amo-metadata amo-metadata.json \
+            --api-key "$AMO_API_KEY" \
+            --api-secret "$AMO_API_SECRET"
+        env:
+          AMO_API_KEY: ${{ secrets.AMO_API_KEY }}
+          AMO_API_SECRET: ${{ secrets.AMO_API_SECRET }}
+
+      - name: Generate changelog
+        id: changelog
+        run: |
+          PREV_TAG=$(git tag --list 'v*' --sort=-version:refname | head -2 | tail -1)
+          if [ -n "$PREV_TAG" ] && [ "$PREV_TAG" != "${{ steps.resolve.outputs.tag }}" ]; then
+            LOG=$(git log "${PREV_TAG}..${{ steps.resolve.outputs.tag }}" --pretty=format:"- %s (%h)" -- extension/)
+          else
+            LOG=$(git log "${{ steps.resolve.outputs.tag }}" --pretty=format:"- %s (%h)" -- extension/)
+          fi
+          echo "body<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$LOG" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.resolve.outputs.tag }}
+          name: Extension v${{ steps.resolve.outputs.version }}
+          body: |
+            ## Changes
+            ${{ steps.changelog.outputs.body }}
+          draft: false
+          prerelease: false
+          files: |
+            extension/web-ext-artifacts/*.xpi
+            extension/loggy-firefox.xpi
+            extension/loggy-source.zip
