@@ -75,7 +75,7 @@ jobs:
         run: |
           npx web-ext sign \
             --source-dir dist-firefox \
-            --channel unlisted \
+            --channel listed \
             --artifacts-dir web-ext-artifacts \
             --upload-source-code loggy-source.zip \
             --api-key "$AMO_API_KEY" \
