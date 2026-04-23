@@ -25,13 +25,17 @@ import {
   type AddAlwaysLogMessage,
   type AlwaysLogHost,
   type AlwaysLogHostsResponse,
+  type CachePreviewMessage,
+  type CachePreviewResponse,
   type CapturedConsoleEntry,
   type CapturedNetworkEntry,
   type CaptureControlMessage,
   type CaptureMessage,
   type CaptureMode,
+  type CachedPreviewResponse,
   type ConsentResponseMessage,
   type ConsentState,
+  type GetCachedPreviewMessage,
   type GetAlwaysLogHostsMessage,
   type LoggyMessage,
   type RemoveAlwaysLogMessage,
@@ -67,6 +71,8 @@ interface StoredPanelSettings {
 const tabStates = new Map<number, TabCaptureState>()
 const previousModeByTab = new Map<number, CaptureMode>()
 const debuggerResumeTimersByTab = new Map<number, ReturnType<typeof setTimeout>>()
+const previewCache = new Map<string, { markdown: string; createdAt: number }>()
+const PREVIEW_CACHE_TTL_MS = 5 * 60 * 1000
 let activeTabId: number | null = null
 
 function createDefaultTabState(tabId: number): TabCaptureState {
@@ -427,6 +433,8 @@ async function handleControlMessage(
   | TabCaptureState
   | (TabCaptureState & { consent: ConsentState })
   | TabExportDataResponse
+  | CachePreviewResponse
+  | CachedPreviewResponse
   | ConsentState
   | ConsentResponseMessage
   | AlwaysLogHostsResponse
@@ -812,6 +820,31 @@ async function handleControlMessage(
     return { type: 'always-log-hosts-response', hosts } as AlwaysLogHostsResponse
   }
 
+  if (message.type === 'cache-preview') {
+    const cacheMessage: CachePreviewMessage = message
+    const id = crypto.randomUUID()
+    previewCache.set(id, { markdown: cacheMessage.markdown, createdAt: Date.now() })
+    return { id } as CachePreviewResponse
+  }
+
+  if (message.type === 'get-cached-preview') {
+    const getMessage: GetCachedPreviewMessage = message
+    const entry = previewCache.get(getMessage.id)
+
+    if (!entry) {
+      return { markdown: null } as CachedPreviewResponse
+    }
+
+    const age = Date.now() - entry.createdAt
+    if (age > PREVIEW_CACHE_TTL_MS) {
+      previewCache.delete(getMessage.id)
+      return { markdown: null } as CachedPreviewResponse
+    }
+
+    previewCache.delete(getMessage.id)
+    return { markdown: entry.markdown } as CachedPreviewResponse
+  }
+
   return { ok: false }
 }
 
@@ -843,6 +876,8 @@ function isControlMessage(message: unknown): message is CaptureControlMessage {
     type === 'stop-logging' ||
     type === 'add-always-log' ||
     type === 'remove-always-log' ||
+    type === 'cache-preview' ||
+    type === 'get-cached-preview' ||
     type === 'get-always-log-hosts' ||
     type === 'always-log-hosts-response'
   )

@@ -25,6 +25,7 @@ export default defineConfig(({ mode, command }) => {
     'background/index': 'background/index.ts',
     'content-relay': 'content-relay.ts',
     'popup/popup': 'popup/popup.html',
+    'preview/preview': 'preview/preview.html',
   }
   const input = useCrx
     ? Object.fromEntries(

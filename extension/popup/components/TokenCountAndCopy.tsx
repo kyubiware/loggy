@@ -1,4 +1,4 @@
-import { Coins, Copy } from 'lucide-react'
+import { Coins, Copy, Eye } from 'lucide-react'
 
 import { Tooltip } from '../../shared/components/Tooltip'
 import { formatTokenCount } from '../constants'
@@ -8,6 +8,7 @@ export interface TokenCountAndCopyProps {
   tokenCount: number
   copyStatus: 'idle' | 'success' | 'error' | 'no-data'
   onCopy: () => void
+  onPreview: () => void
 }
 
 export function TokenCountAndCopy({
@@ -15,6 +16,7 @@ export function TokenCountAndCopy({
   tokenCount,
   copyStatus,
   onCopy,
+  onPreview,
 }: TokenCountAndCopyProps): React.JSX.Element {
   return (
     <div className='flex items-center justify-between border-t border-stone-200 dark:border-stone-700 pt-3'>
@@ -36,6 +38,19 @@ export function TokenCountAndCopy({
         {copyStatus === 'no-data' && (
           <span className='text-xs text-stone-500 dark:text-stone-400'>No data</span>
         )}
+        <button
+          type='button'
+          onClick={onPreview}
+          disabled={!hasData}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+            hasData
+              ? 'bg-stone-800 text-white hover:bg-stone-700 dark:bg-stone-200 dark:text-stone-900 dark:hover:bg-white'
+              : 'bg-stone-200 text-stone-400 cursor-not-allowed dark:bg-stone-800 dark:text-stone-600'
+          }`}
+        >
+          <Eye size={14} />
+          Preview
+        </button>
         <button
           type='button'
           onClick={onCopy}

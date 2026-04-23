@@ -98,6 +98,26 @@ export interface ToggleDebuggerMessage {
 }
 
 /**
+ * Request to cache a markdown preview snapshot.
+ */
+export interface CachePreviewMessage {
+  /** Message type. */
+  type: 'cache-preview'
+  /** Markdown content to cache. */
+  markdown: string
+}
+
+/**
+ * Request to retrieve a cached markdown preview.
+ */
+export interface GetCachedPreviewMessage {
+  /** Message type. */
+  type: 'get-cached-preview'
+  /** Cache entry identifier. */
+  id: string
+}
+
+/**
  * Current capture status response.
  */
 export interface StatusResponse {
@@ -145,6 +165,22 @@ export interface TabExportDataResponse {
   hasData: boolean
   /** Number of logs included in the export. */
   logCount: number
+}
+
+/**
+ * Response containing the cached preview identifier.
+ */
+export interface CachePreviewResponse {
+  /** Cache entry identifier. */
+  id: string
+}
+
+/**
+ * Response containing the cached markdown content.
+ */
+export interface CachedPreviewResponse {
+  /** Cached markdown content, or null if not found or expired. */
+  markdown: string | null
 }
 
 /**
@@ -299,6 +335,8 @@ export type CaptureControlMessage =
   | GetStatusMessage
   | GetTabExportDataMessage
   | ToggleDebuggerMessage
+  | CachePreviewMessage
+  | GetCachedPreviewMessage
   | PanelOpenedMessage
   | PanelClosedMessage
   | ContentRelayReadyMessage

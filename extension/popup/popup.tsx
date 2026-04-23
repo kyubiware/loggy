@@ -130,6 +130,20 @@ function Popup() {
     })
   }
 
+  const handlePreview = () => {
+    if (!hasData || !markdown) return
+    chrome.runtime.sendMessage(
+      { type: 'cache-preview', markdown },
+      (response: { id: string }) => {
+        if (response?.id) {
+          chrome.tabs.create({
+            url: chrome.runtime.getURL(`preview/preview.html?id=${response.id}`),
+          })
+        }
+      },
+    )
+  }
+
   const isLoading = loadingStatus || loadingSettings || loadingData
 
   if (isLoading) {
@@ -202,6 +216,7 @@ function Popup() {
             tokenCount={tokenCount}
             copyStatus={copyStatus}
             onCopy={copyToClipboard}
+            onPreview={handlePreview}
           />
         </>
       )}
