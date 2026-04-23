@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Loggy",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Capture and export Console & Network logs for LLM debugging",
   "devtools_page": "devtools.html",
   "background": {
