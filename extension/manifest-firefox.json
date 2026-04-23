@@ -52,7 +52,6 @@
   "host_permissions": [
     "http://localhost/*"
   ],
-  "license": "MIT",
   "browser_specific_settings": {
     "gecko": {
       "id": "loggy@devtools-extension",

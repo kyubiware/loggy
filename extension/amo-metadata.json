@@ -1,0 +1,18 @@
+{
+  "version": {
+    "license": "MIT"
+  },
+  "categories": {
+    "firefox": ["developer-tools"]
+  },
+  "summary": {
+    "en-US": "Capture and export Console & Network logs as structured Markdown for LLM debugging"
+  },
+  "homepage": {
+    "en-US": "https://github.com/kyubiware/loggy"
+  },
+  "support_email": {
+    "en-US": "kyubiware@users.noreply.github.com"
+  },
+  "requires_payment": false
+}
