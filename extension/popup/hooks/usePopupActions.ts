@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { probeServer } from '../../panel/server-probe'
 import { useDebouncedFilter } from '../../shared/hooks/useDebouncedFilter'
 import type { StatusResponse } from '../../types/messages'
 import { usePopupData } from './usePopupData'
@@ -16,6 +17,9 @@ export function usePopupActions() {
   const { settings, setSetting, loading: loadingSettings } = usePopupSettings()
   const { tokenCount, markdown, hasData, loading: loadingData } = usePopupData(tabId)
   const { copyToClipboard, copyStatus } = usePopupExport({ markdown, hasData })
+  const [serverConnected, setServerConnected] = useState(false)
+  const serverPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const lastProbedUrlRef = useRef<string | null>(null)
 
   const {
     localValue: localConsoleFilter,
@@ -30,6 +34,11 @@ export function usePopupActions() {
   } = useDebouncedFilter(settings.networkFilter || '', val =>
     setSetting('networkFilter', val),
   )
+
+  const probeConfiguredServer = useCallback(async (url: string): Promise<void> => {
+    const connected = await probeServer(url)
+    setServerConnected(connected)
+  }, [])
 
   useEffect(() => {
     setIsFirefox(typeof chrome.debugger === 'undefined')
@@ -53,6 +62,36 @@ export function usePopupActions() {
       )
     })
   }, [])
+
+  // Probe server when network export is enabled or URL changes
+  useEffect(() => {
+    if (!settings.networkExportEnabled) {
+      setServerConnected(false)
+      if (serverPollRef.current !== null) {
+        clearInterval(serverPollRef.current)
+        serverPollRef.current = null
+      }
+      return
+    }
+
+    if (lastProbedUrlRef.current !== settings.serverUrl) {
+      lastProbedUrlRef.current = settings.serverUrl
+      void probeConfiguredServer(settings.serverUrl)
+    }
+
+    if (serverPollRef.current === null) {
+      serverPollRef.current = setInterval(() => {
+        void probeConfiguredServer(settings.serverUrl)
+      }, 5000)
+    }
+
+    return () => {
+      if (serverPollRef.current !== null) {
+        clearInterval(serverPollRef.current)
+        serverPollRef.current = null
+      }
+    }
+  }, [settings.networkExportEnabled, settings.serverUrl, probeConfiguredServer])
 
   const currentHost = (() => {
     try {
@@ -133,6 +172,14 @@ export function usePopupActions() {
     )
   }
 
+  const handleRetryConnection = () => {
+    void probeConfiguredServer(settings.serverUrl)
+  }
+
+  const handleServerUrlChange = (url: string) => {
+    setSetting('serverUrl', url)
+  }
+
   const isLoading = loadingStatus || loadingSettings || loadingData
   const isEnhanced = status?.mode === 'debugger'
   const showConsentView = status?.mode === 'inactive'
@@ -152,6 +199,10 @@ export function usePopupActions() {
     handleConsoleFilterChange,
     localNetworkFilter,
     handleNetworkFilterChange,
+    // Server connection
+    serverConnected,
+    handleServerUrlChange,
+    handleRetryConnection,
     // Data
     tokenCount,
     hasData,
