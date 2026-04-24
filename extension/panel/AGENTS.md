@@ -3,7 +3,7 @@
 **Scope:** DevTools Panel UI
 
 ## OVERVIEW
-Main DevTools panel UI. Modular architecture with state management, DOM handling, data capture, and export logic.
+Main DevTools panel UI. React handles all UI; root TypeScript files are DevTools-specific business logic for capture, preview, and server checks.
 
 ## STRUCTURE
 ```
@@ -20,13 +20,9 @@ panel/
 │   └── hooks/            # React hooks
 │       ├── useCaptureData.ts   # Data capture logic
 │       └── useToast.ts         # Toast state management
-├── state.ts               # State interface (LoggyState)
 ├── capture.ts             # Console & network capture
-├── export.ts              # Clipboard & server export (via background)
 ├── preview.ts             # Preview rendering (non-React)
-├── toast.ts               # Toast notification (non-React)
-├── debounce.ts            # Debounce utility
-├── filtered-data.ts       # Filtered data interface
+├── server-probe.ts        # Server availability probe
 └── actions.ts             # Action handlers
 ```
 
@@ -41,15 +37,15 @@ panel/
 | Toast component | src/components/Toast.tsx | Notification UI |
 | Data capture hook | src/hooks/useCaptureData.ts | React hook for console/network |
 | Toast hook | src/hooks/useToast.ts | Toast state management |
-| State interface | state.ts | LoggyState with visibility flags |
+| State interface | ../types/state.ts | LoggyState with visibility flags |
 | Console capture | capture.ts | Script injection, circular buffer |
 | Network capture | capture.ts | getHAR() API wrapper |
-| Filtered data | filtered-data.ts | FilteredPanelData interface |
-| Debounce utility | debounce.ts | Generic TypeScript debounce |
-| Toast notifications | toast.ts | ToastType + rendering (non-React) |
+| Filtered data | ../utils/filtered-data.ts | FilteredPanelData interface |
+| Debounce utility | ../utils/debounce.ts | Generic TypeScript debounce |
 | Preview rendering | preview.ts | DOM updates for filtered data |
-| Clipboard export | export.ts | formatMarkdown + clipboard API & server export |
-| Server export | export.ts | POST to loggy-serve via background |
+| Clipboard export | ../shared/export.ts | formatMarkdown + clipboard API & server export |
+| Server export | ../shared/server-export.ts | pushToServer helper |
+| Server probe | server-probe.ts | Checks loggy-serve availability |
 | Action handlers | actions.ts | Button click handlers |
 | Browser APIs | ../browser-apis/index.ts | Cross-browser API abstractions |
 
@@ -59,7 +55,7 @@ panel/
 - **DOM queries**: Use `document.getElementById()` with type assertions
 - **Event handlers**: Debounce input at 300ms
 - **Async methods**: Always use try/catch
-- **Error display**: Use toast notifications, not console-only
+- **Error display**: Use React toast UI, not console-only
 - **Chrome APIs**: Wrap in Promises for async/await compatibility
 - **React patterns**: Functional components, hooks for state, no classes
 - **Message passing**: Use `chrome.runtime.sendMessage()` with typed `LoggyMessage` to communicate with background
@@ -78,8 +74,8 @@ panel/
 - Logs stored in inspected page's `window.__loggyConsoleLogs`
 - Circular buffer limits console logs to prevent memory bloat
 - Clipboard requires user gesture (button click) per browser security
-- Panel has dual architecture: React UI (src/) + vanilla JS (root)
+- Panel UI is React-only; root files are panel business logic, not an alternate UI layer
 - React components use hooks for state management and side effects
-- Toast system has both React (Toast.tsx) and non-React implementations (toast.ts)
+- Toast system is React-only (`src/components/Toast.tsx`)
 - Panel communicates with background service worker for capture coordination and server export
 - Capture data source depends on mode: content-script/debugger modes get data from background, devtools mode captures directly

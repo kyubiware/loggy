@@ -6,7 +6,7 @@ import {
   extractPersistedSettings,
   mergePersistedSettings,
   type PersistedLoggySettings,
-} from '../../panel/state'
+} from '../../types/state'
 
 type SettingValue = string | boolean
 

@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { LoggyState } from '../state'
+import type { LoggyState } from '../../types/state'
 import {
   type ActionsContextValue,
   type LogDataContextValue,

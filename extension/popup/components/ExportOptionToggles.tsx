@@ -9,7 +9,7 @@ import {
 } from 'lucide-react'
 
 import { IconButtonToggle } from '../../shared/components/IconButtonToggle'
-import type { PersistedLoggySettings } from '../../panel/state'
+import type { PersistedLoggySettings } from '../../types/state'
 
 export type ToggleSettingKey =
   | 'includeAgentContext'

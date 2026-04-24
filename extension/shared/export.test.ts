@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildExportMarkdown, triggerServerExport } from './export'
-import { getFilteredPanelData } from './filtered-data'
+import { getFilteredPanelData } from '../utils/filtered-data'
 import { pushToServer } from './server-export'
-import { createInitialState } from './state'
+import { createInitialState } from '../types/state'
 
 vi.mock('./server-export', () => ({
   pushToServer: vi.fn().mockResolvedValue(true),

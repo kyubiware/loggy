@@ -1,6 +1,6 @@
 import type React from 'react'
 import { useEffect, useRef, useState } from 'react'
-import { debounce } from '../../../debounce'
+import { debounce } from '../../utils/debounce'
 
 interface UseDebouncedFilterResult {
   localValue: string

@@ -1,8 +1,8 @@
 import { useMemo } from 'react'
+import type { LoggyState } from '../../../types/state'
+import { type FilteredPanelData, getFilteredPanelData } from '../../../utils/filtered-data'
 import { estimateTokenCount } from '../../../utils/token-estimate'
-import { type FilteredPanelData, getFilteredPanelData } from '../../filtered-data'
 import { buildPreviewText, buildStatsText } from '../../preview'
-import type { LoggyState } from '../../state'
 import { useLogData, useSettings } from '../LoggyContext'
 
 export interface FilteredDataResult {

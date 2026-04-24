@@ -2,9 +2,9 @@ import { browser } from '../browser-apis/index.js'
 import type { ExportData } from '../utils/formatter.js'
 import { formatMarkdown } from '../utils/formatter.js'
 import { pruneConsole, pruneNetwork } from '../utils/pruner.js'
-import { getFilteredPanelData } from './filtered-data.js'
+import { getFilteredPanelData } from '../utils/filtered-data.js'
 import { pushToServer } from './server-export.js'
-import type { LoggyState } from './state.js'
+import type { LoggyState } from '../types/state.js'
 
 export async function buildExportMarkdown(state: LoggyState): Promise<string> {
   const tab = await browser.tabs.query({ active: true, currentWindow: true })

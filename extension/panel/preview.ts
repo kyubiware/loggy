@@ -4,7 +4,7 @@ import {
   isLikelyFailureSignal,
   rankFailureSignals,
 } from '../utils/consolidation.js'
-import type { FilteredPanelData } from './filtered-data.js'
+import type { FilteredPanelData } from '../utils/filtered-data.js'
 
 function truncate(str: string, maxLength: number): string {
   if (str.length <= maxLength) return str

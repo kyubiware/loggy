@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import type { LoggyState } from '../state'
+import type { LoggyState } from '../../types/state'
 import { AppContent } from './AppContent'
 import { LoggyProvider } from './LoggyContext'
 

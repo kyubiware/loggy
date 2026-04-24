@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { buildExportMarkdown } from '../../panel/export'
-import { getFilteredPanelData } from '../../panel/filtered-data'
+import { buildExportMarkdown } from '../../shared/export'
+import { getFilteredPanelData } from '../../utils/filtered-data'
 import {
   LOGGY_PANEL_SETTINGS_STORAGE_KEY,
   createInitialState,
   extractPersistedSettings,
   mergePersistedSettings,
   type LoggyState,
-} from '../../panel/state'
+} from '../../types/state'
 import type { ConsoleMessage } from '../../types/console'
 import type { HAREntry } from '../../types/har'
 import type { CaptureMode } from '../../types/messages'

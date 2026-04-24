@@ -9,6 +9,8 @@ Data transformation, filtering, redaction, and token estimation utilities. Pure 
 ```
 utils/
 ├── filters.ts               # Console & network filtering logic
+├── filtered-data.ts         # FilteredPanelData helpers
+├── debounce.ts              # Generic debounce utility
 ├── formatter.ts             # Markdown export generation (main entry)
 ├── formatter-console.ts     # Console markdown formatting
 ├── formatter-network.ts     # Network markdown formatting
@@ -29,6 +31,8 @@ utils/
 |------|----------|-------|
 | Console regex filter | filters.ts | filterConsole() with fallback |
 | Network pattern filter | filters.ts | filterNetwork() with include/exclude |
+| Filtered panel data | filtered-data.ts | getFilteredPanelData(), FilteredPanelData interface |
+| Debounce utility | debounce.ts | Generic debounce helper |
 | Markdown export | formatter.ts | formatMarkdown() main entry |
 | Console formatting | formatter-console.ts | Console log → Markdown table |
 | Network formatting | formatter-network.ts | HAR entry → Markdown |
@@ -68,6 +72,10 @@ utils/
 **Filter Syntax:**
 - Console: Regex (e.g., `error|warn`) with string fallback
 - Network: Space-separated, `-` prefix for exclude (e.g., `api.v1 -*.png`)
+
+**Panel Filtering Helpers:**
+- filtered-data.ts: derives filtered panel data from capture state
+- debounce.ts: shared generic debounce helper used by panel hooks
 
 **Pruning Limits:**
 - Console: 500 chars. Bodies: 10KB. Binary: image/, video/, audio/, font/.

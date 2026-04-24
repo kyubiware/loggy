@@ -1,5 +1,5 @@
-import { buildExportMarkdown, triggerServerExport } from '../export'
-import type { LoggyState } from '../state'
+import { buildExportMarkdown, triggerServerExport } from '../../shared/export'
+import type { LoggyState } from '../../types/state'
 
 type ShowToastFn = (message: string, type: 'success' | 'error') => void
 

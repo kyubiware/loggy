@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import type { FilteredPanelData } from './filtered-data'
+import type { FilteredPanelData } from '../utils/filtered-data'
 import { buildPreviewText, buildStatsText } from './preview'
 
 describe('buildPreviewText - Preview/Export Parity', () => {

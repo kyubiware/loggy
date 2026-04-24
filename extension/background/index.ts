@@ -1,10 +1,10 @@
-import { buildExportMarkdown } from '../panel/export'
-import { getFilteredPanelData } from '../panel/filtered-data'
+import { buildExportMarkdown } from '../shared/export'
+import { getFilteredPanelData } from '../utils/filtered-data'
 import {
   LOGGY_PANEL_SETTINGS_STORAGE_KEY,
   createInitialState,
   mergePersistedSettings,
-} from '../panel/state'
+} from '../types/state'
 import {
   attachToTab,
   detachFromTab,

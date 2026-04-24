@@ -2,14 +2,14 @@ import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ConsoleMessage } from '../../../types/console'
 import type { HAREntry } from '../../../types/har'
-import { getStorage, mockChromeStorageSet, resetStorage, seedStorage } from '../../../vitest.setup'
-import * as capture from '../../capture'
-import * as serverProbe from '../../server-probe'
 import {
   createInitialState,
   LOGGY_PANEL_SETTINGS_STORAGE_KEY,
   type PersistedLoggySettings,
-} from '../../state'
+} from '../../../types/state'
+import { getStorage, mockChromeStorageSet, resetStorage, seedStorage } from '../../../vitest.setup'
+import * as capture from '../../capture'
+import * as serverProbe from '../../server-probe'
 import { reducer, useCaptureData } from './useCaptureData'
 
 // Mock the capture module

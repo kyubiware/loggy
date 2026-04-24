@@ -1,6 +1,6 @@
 import type React from 'react'
+import { useDebouncedFilter } from '../../../shared/hooks/useDebouncedFilter'
 import { useActions, useSettings } from '../LoggyContext'
-import { useDebouncedFilter } from './controls/useDebouncedFilter'
 
 export function ServerConnection(): React.JSX.Element {
   const { serverUrl, serverConnected } = useSettings()

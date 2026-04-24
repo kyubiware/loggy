@@ -1,6 +1,6 @@
 import { act, render, renderHook, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { createInitialState } from '../../state'
+import { createInitialState } from '../../../types/state'
 import { clearAction, copyAction } from '../actions'
 import { useToast } from '../hooks/useToast'
 import Toast from './Toast'

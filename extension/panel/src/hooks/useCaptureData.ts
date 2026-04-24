@@ -1,8 +1,18 @@
 // biome-ignore lint/nursery/noExcessiveLinesPerFile: limit
 import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { browser } from '../../../browser-apis/index.js'
+import { buildExportMarkdown } from '../../../shared/export'
+import { pushToServer } from '../../../shared/server-export'
 import type { ConsoleMessage } from '../../../types/console'
 import type { HAREntry } from '../../../types/har'
+import {
+  createInitialState,
+  extractPersistedSettings,
+  LOGGY_PANEL_SETTINGS_STORAGE_KEY,
+  type LoggyState,
+  mergePersistedSettings,
+  type PersistedLoggySettings,
+} from '../../../types/state'
 import {
   captureConsoleLogs,
   captureNetworkEntries,
@@ -14,17 +24,7 @@ import {
   startResponseBodyCapture,
   stopResponseBodyCapture,
 } from '../../capture'
-import { buildExportMarkdown } from '../../export'
-import { pushToServer } from '../../server-export'
 import { probeServer } from '../../server-probe'
-import {
-  createInitialState,
-  extractPersistedSettings,
-  LOGGY_PANEL_SETTINGS_STORAGE_KEY,
-  type LoggyState,
-  mergePersistedSettings,
-  type PersistedLoggySettings,
-} from '../../state'
 
 const AUTO_REFRESH_INTERVAL_MS = 2000
 const DEFAULT_SERVER_URL = 'http://localhost:8743'

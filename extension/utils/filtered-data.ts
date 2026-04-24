@@ -1,7 +1,7 @@
 import type { ConsoleMessage } from '../types/console'
 import type { HAREntry } from '../types/har'
+import type { LoggyState } from '../types/state.js'
 import { filterByRoutes, filterConsole, filterNetwork, getRouteOptions } from '../utils/filters.js'
-import type { LoggyState } from './state.js'
 
 /**
  * Filtered data ready for display in the panel.

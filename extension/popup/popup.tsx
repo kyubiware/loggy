@@ -2,7 +2,7 @@ import { Globe, Terminal } from 'lucide-react'
 import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 
-import { useDebouncedFilter } from '../panel/src/components/controls/useDebouncedFilter'
+import { useDebouncedFilter } from '../shared/hooks/useDebouncedFilter'
 import type { StatusResponse } from '../types/messages'
 import { CaptureModeDisplay } from './components/CaptureModeDisplay'
 import { ConsentView, StopLoggingButton } from './components/ConsentView'

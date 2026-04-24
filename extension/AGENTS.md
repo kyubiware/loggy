@@ -14,16 +14,14 @@ Chrome/Firefox DevTools extension capturing Console & Network logs as Markdown f
 │   └── index.ts        # 738 lines - message routing, capture coordination, chrome.storage
 ├── capture/            # Debugger-based capture logic
 │   └── debugger-capture.ts  # Chrome-only debugger protocol capture
-├── panel/              # DevTools panel UI (React + vanilla JS dual architecture)
+├── panel/              # DevTools panel UI (React UI + panel-specific business logic)
 │   ├── src/            # React components and hooks
 │   │   ├── components/     # UI components (PreviewPane, Toast, controls/)
 │   │   ├── hooks/          # React hooks (useCaptureData, useToast)
 │   │   └── main.tsx        # React entry point
-│   ├── state.ts            # LoggyState interface
 │   ├── capture.ts          # Console & network capture
-│   ├── export.ts           # Markdown + server export
-│   ├── preview.ts          # Preview rendering (non-React)
-│   └── toast.ts            # Toast notification (non-React)
+│   ├── preview.ts          # Preview rendering (panel-specific DOM logic)
+│   └── server-probe.ts     # Server availability probe used by panel UI
 ├── popup/              # Extension popup UI (React)
 │   ├── popup.tsx        # Main popup component
 │   ├── components/      # Shared + popup-specific components
@@ -31,6 +29,8 @@ Chrome/Firefox DevTools extension capturing Console & Network logs as Markdown f
 │   └── constants.ts     # Popup constants
 ├── utils/              # Pure data processing
 │   ├── filters.ts           # Console regex & network include/exclude filtering
+│   ├── filtered-data.ts     # FilteredPanelData helpers
+│   ├── debounce.ts         # Generic debounce utility
 │   ├── formatter.ts         # Markdown export generation (main entry)
 │   ├── formatter-console.ts # Console → Markdown table
 │   ├── formatter-network.ts # HAR entry → Markdown table
@@ -43,14 +43,18 @@ Chrome/Firefox DevTools extension capturing Console & Network logs as Markdown f
 ├── types/              # Shared TypeScript definitions
 │   ├── console.ts      # ConsoleMessage interface, LogLevel enum
 │   ├── har.ts          # HAREntry, Request, Response, Timings
+│   ├── state.ts        # LoggyState, PersistedLoggySettings, persistence helpers
 │   └── messages.ts     # LoggyMessage union type (all extension messages)
 ├── browser-apis/       # Cross-browser API abstractions
 │   ├── index.ts        # Build-time selection via __BROWSER__ define
 │   ├── types.ts        # BrowserAPI interface
 │   ├── chrome.ts       # chrome.* API wrappers
 │   └── firefox.ts      # browser.* API wrappers
-├── shared/             # Shared React components
-│   └── components/     # IconButtonToggle, Tooltip (used by panel/ and popup/)
+├── shared/             # Shared React components and panel/export helpers
+│   ├── components/     # IconButtonToggle, Tooltip (used by panel/ and popup/)
+│   ├── hooks/          # useDebouncedFilter shared hook
+│   ├── export.ts       # buildExportMarkdown, triggerServerExport
+│   └── server-export.ts # pushToServer helper
 ├── scripts/            # Build/release scripts (CJS)
 │   ├── release.cjs           # Full release pipeline
 │   ├── bump-version.cjs      # Version bumping
@@ -79,9 +83,14 @@ Chrome/Firefox DevTools extension capturing Console & Network logs as Markdown f
 | Content script relay | content-relay.ts | postMessage → runtime.sendMessage bridge |
 | Console bootstrap | utils/console-bootstrap.mjs | MAIN world: patches console/fetch/XHR |
 | Panel React UI | panel/src/ | Components, hooks, main.tsx entry |
-| Panel vanilla JS | panel/*.ts | capture.ts, export.ts, preview.ts, toast.ts |
+| Panel business logic | panel/*.ts | capture.ts, preview.ts, server-probe.ts |
+| Shared state/types | types/state.ts | LoggyState, PersistedLoggySettings |
+| Shared export helpers | shared/export.ts | buildExportMarkdown, triggerServerExport |
+| Shared server export | shared/server-export.ts | pushToServer |
 | Popup UI | popup/popup.tsx | Status display, debugger toggle |
 | Filter logic | utils/filters.ts | Console regex, network include/exclude |
+| Filtered panel data | utils/filtered-data.ts | FilteredPanelData helpers |
+| Debounce utility | utils/debounce.ts | Generic debounce utility |
 | Markdown formatting | utils/formatter.ts | Main entry, orchestrates sub-formatters |
 | Data pruning | utils/pruner.ts | Binary removal, body truncation |
 | Log consolidation | utils/consolidation.ts | Signal ranking, failure grouping |
@@ -102,6 +111,7 @@ Chrome/Firefox DevTools extension capturing Console & Network logs as Markdown f
 |--------|------|----------|
 | LoggyMessage | union | types/messages.ts |
 | ConsoleMessage / HAREntry | interface | types/{console,har}.ts |
+| LoggyState / Persisted settings | types/state.ts | panel state persistence helpers |
 | CaptureMode | type | background/index.ts |
 | formatMarkdown | function | utils/formatter.ts |
 
@@ -133,11 +143,11 @@ Chrome/Firefox DevTools extension capturing Console & Network logs as Markdown f
 ## NOTES
 
 - NOT DevTools-only — has background service worker, content scripts, AND popup
-- Panel: dual architecture (React src/ + vanilla JS root files)
+- Panel: React handles all UI; root `.ts` files are panel-specific business logic and data flow helpers
 - Console capture: MAIN world content script (non-standard, patches page globals)
 - Content relay: MAIN world → isolated world via `__LOGGY_RELAY__` postMessage namespace
 - background/index.ts (738 lines) — central coordinator: tabs, capture, storage, server export
-- Shared components (IconButtonToggle, Tooltip) in shared/components/
+- Shared code lives in shared/ (components, hooks, export helpers)
 - Build scripts in scripts/ are CJS for Node.js compatibility
 - Firefox builds require post-processing (manifest rewrite, content script fixup, bundle sanitization)
 - Largest test files: pruner.test.ts (1317 lines), formatter.test.ts (1222 lines)
