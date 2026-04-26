@@ -27,7 +27,8 @@
     "popup/**/*",
     "content-relay.ts",
     "*.test.ts",
-    "*.config.ts"
+    "*.config.ts",
+    "asset.d.ts"
   ],
   "exclude": [
     "node_modules",
