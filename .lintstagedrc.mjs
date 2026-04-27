@@ -1,3 +1,6 @@
 export default {
-  'extension/**/*.{ts,tsx,js,cjs}': 'biome check --write --no-errors-on-unmatched',
+  'extension/**/*.{ts,tsx,js,cjs}': [
+    'biome check --write --no-errors-on-unmatched',
+    () => 'npm run typecheck --workspace=extension',
+  ],
 }
