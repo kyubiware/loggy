@@ -222,7 +222,9 @@ export interface RequestConsentMessage {
   /** Message type. */
   type: 'request-consent'
   /** Current page URL. */
-  url: string
+  url?: string
+  /** Target tab identifier (required when sent from DevTools panel). */
+  tabId?: number
 }
 
 /**

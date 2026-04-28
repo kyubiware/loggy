@@ -16,6 +16,7 @@ let currentOptions: TUIOptions | null = null
 let transientMessage: string | null = null
 let transientTimer: NodeJS.Timeout | null = null
 let relativeTimeInterval: NodeJS.Timeout | null = null
+let lastRenderedLine: string | null = null
 
 let onExportReceived: ((state: ExportState) => void) | null = null
 let onStdinData: ((chunk: string) => void) | null = null
@@ -101,6 +102,11 @@ function renderStatusBar(): void {
   }
 
   const line = buildStatusLine(currentServer, currentOptions)
+  if (line === lastRenderedLine) {
+    return
+  }
+
+  lastRenderedLine = line
   process.stdout.write(`\x1B[2K\r${line}`)
 }
 
@@ -258,6 +264,7 @@ export function destroyTUI(): void {
   currentServer = null
   currentOptions = null
   transientMessage = null
+  lastRenderedLine = null
   onExportReceived = null
   onStdinData = null
   onSigint = null

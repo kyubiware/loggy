@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 
-import { createTUI, destroyTUI } from '../dist/tui.js'
-import { createServer, formatStartupError } from '../dist/server.js'
+import { createTUI, destroyTUI } from './tui.js'
+import { createServer, formatStartupError } from './server.js'
 
-function parseArgs(argv) {
+function parseArgs(argv: string[]) {
   const args = argv.slice(2)
   let port = 8743
-  let outputPath
+  let outputPath: string | undefined
   let quiet = false
-  let subcommand
+  let subcommand: string | undefined
 
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i]
@@ -60,7 +60,7 @@ function parseArgs(argv) {
   return { port, outputPath, quiet, subcommand }
 }
 
-async function printLatestExport(port) {
+async function printLatestExport(port: number) {
   try {
     const response = await fetch(`http://127.0.0.1:${port}/loggy/export`)
 

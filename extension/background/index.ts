@@ -653,12 +653,20 @@ async function handleControlMessage(
 
   if (message.type === 'request-consent') {
     const request: RequestConsentMessage = message
-    const tabId = sender.tab?.id
+    const tabId = request.tabId ?? sender.tab?.id
     if (typeof tabId !== 'number') {
       return { hasConsent: false, captureMode: 'none' as const, reason: 'unknown-tab' }
     }
 
-    const url = request.url || (sender.tab?.url ?? '')
+    let url = request.url || sender.tab?.url || ''
+    if (!url) {
+      try {
+        const tab = await chrome.tabs.get(tabId)
+        url = tab.url ?? ''
+      } catch {
+        // Unable to resolve URL — proceed with empty
+      }
+    }
     return evaluateConsent(tabId, url)
   }
 

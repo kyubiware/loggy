@@ -11,10 +11,9 @@
     "directory": "serve"
   },
   "bin": {
-    "loggy": "bin/loggy-serve.js"
+    "loggy": "dist/cli.js"
   },
   "files": [
-    "bin/",
     "dist/"
   ],
   "exports": {
@@ -25,8 +24,8 @@
   "scripts": {
     "build": "tsc",
     "prepublishOnly": "npm run build",
-    "start": "node bin/loggy-serve.js",
-    "dev": "tsx --watch bin/loggy-serve.js",
+    "start": "node dist/cli.js",
+    "dev": "tsx --watch src/cli.ts",
     "curl:post": "curl -s -w '\\nHTTP %{http_code}' -X POST http://127.0.0.1:8743/loggy -H 'Content-Type: text/plain' -d 'Hello Loggy!'",
     "curl:export": "curl -s -w '\\nHTTP %{http_code}' http://127.0.0.1:8743/loggy/export",
     "curl:handshake": "curl -s -w '\\nHTTP %{http_code}' http://127.0.0.1:8743/loggy/handshake",

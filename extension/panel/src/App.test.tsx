@@ -1,6 +1,15 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import App from './App'
+
+vi.mock('./hooks/useConsentCheck', () => ({
+  useConsentCheck: vi.fn(() => ({
+    consentState: 'consented',
+    host: 'localhost:3000',
+    handleStartLogging: vi.fn(),
+    handleAlwaysLog: vi.fn(),
+  })),
+}))
 
 describe('App shell', () => {
   it('renders all required data-testid elements', () => {
