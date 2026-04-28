@@ -1,0 +1,38 @@
+name: Question / Support
+description: Ask a question or get help using Loggy
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Have a question about using Loggy? We're happy to help.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: What are you asking about?
+      options:
+        - Extension (DevTools panel / popup)
+        - Server (loggy-serve)
+        - General / both
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: What would you like to know?
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: |
+        Any relevant details — what you've tried, what you expected, 
+        browser/OS, etc.
+    validations:
+      required: false

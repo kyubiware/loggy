@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: README
+    url: https://github.com/kyubiware/loggy#readme
+    about: Check the README for setup instructions and usage docs.

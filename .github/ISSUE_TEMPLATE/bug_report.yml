@@ -1,0 +1,95 @@
+name: Bug Report
+description: Report something that isn't working as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug! Please fill out the sections below to help us diagnose the issue.
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      description: Which part of Loggy is affected?
+      options:
+        - Extension (DevTools panel / popup)
+        - Server (loggy-serve)
+        - Both
+    validations:
+      required: true
+
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser (if extension)
+      description: Which browser are you using?
+      options:
+        - Chrome
+        - Firefox
+        - Other
+        - N/A (server issue)
+    validations:
+      required: true
+
+  - type: input
+    id: browser-version
+    attributes:
+      label: Browser version
+      description: "e.g. Chrome 124, Firefox 126"
+      placeholder: "Chrome 124"
+    validations:
+      required: false
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: A clear description of the bug.
+      placeholder: "When I click Copy to Clipboard, nothing is copied..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: How can we reproduce this?
+      placeholder: |
+        1. Open DevTools on https://example.com
+        2. Click the Loggy tab
+        3. Click "Refresh"
+        4. ...
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant output
+      description: |
+        Paste any relevant console output, error messages, or exported Markdown.
+        For server issues, include terminal output with `--quiet` disabled.
+      render: markdown
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Screenshots, related issues, or anything else that might help.
+    validations:
+      required: false
