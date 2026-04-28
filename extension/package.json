@@ -14,7 +14,7 @@
     "build:ts": "tsc",
     "build:copy": "cp manifest.json icons/*.png dist/ && cp devtools.html dist/ && cp devtools.mjs dist/",
     "postbuild:chrome": "cp manifest-chrome.json dist-chrome/manifest.json && mkdir -p dist-chrome/icons && cp icons/*.png dist-chrome/icons/",
-    "postbuild:firefox": "cp manifest-firefox.json dist-firefox/manifest.json && mkdir -p dist-firefox/icons && cp icons/*.png dist-firefox/icons/ && node scripts/rewrite-firefox-manifest.cjs && node scripts/sanitize-firefox-bundle.cjs && node scripts/fix-content-scripts.cjs",
+    "postbuild:firefox": "cp manifest-firefox.json dist-firefox/manifest.json && mkdir -p dist-firefox/icons && cp icons/*.png dist-firefox/icons/ && node scripts/fix-devtools-module.cjs && node scripts/rewrite-firefox-manifest.cjs && node scripts/sanitize-firefox-bundle.cjs && node scripts/fix-content-scripts.cjs",
     "clean": "rm -rf dist dist-*",
     "prebuild": "npm run clean",
     "prebuild:chrome": "rm -rf dist dist-chrome",
