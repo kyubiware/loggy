@@ -46,6 +46,16 @@ jobs:
           VERSION="${TAG#v}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
+      - name: Build Chrome extension
+        working-directory: extension
+        run: npm run build:chrome
+
+      - name: Package Chrome extension
+        working-directory: extension
+        run: |
+          rm -f loggy-chrome.zip
+          (cd dist-chrome && zip -r ../loggy-chrome.zip .)
+
       - name: Build Firefox extension
         working-directory: extension
         run: npm run build:firefox
@@ -103,6 +113,5 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            extension/web-ext-artifacts/*.xpi
             extension/loggy-firefox.xpi
-            extension/loggy-source.zip
+            extension/loggy-chrome.zip
