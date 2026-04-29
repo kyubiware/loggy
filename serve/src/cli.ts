@@ -1,7 +1,14 @@
 #!/usr/bin/env node
 
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
+import updateNotifier from 'update-notifier'
 import { createTUI, destroyTUI } from './tui.js'
 import { createServer, formatStartupError } from './server.js'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'))
 
 function parseArgs(argv: string[]) {
   const args = argv.slice(2)
@@ -82,6 +89,14 @@ async function printLatestExport(port: number) {
 }
 
 async function main() {
+  if (process.argv.includes('--version') || process.argv.includes('-v')) {
+    console.log(pkg.version)
+    process.exit(0)
+  }
+
+  const notifier = updateNotifier({ pkg })
+  notifier.notify({ defer: true })
+
   const { port, outputPath, quiet, subcommand } = parseArgs(process.argv)
 
   if (subcommand === 'print') {

@@ -35,10 +35,12 @@
   "dependencies": {
     "@fastify/cors": "^11.1.0",
     "clipboardy": "^5.3.1",
-    "fastify": "^5.6.1"
+    "fastify": "^5.6.1",
+    "update-notifier": "^7.3.1"
   },
   "devDependencies": {
     "@types/node": "^24.6.0",
+    "@types/update-notifier": "^6.0.8",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"

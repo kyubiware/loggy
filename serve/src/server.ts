@@ -1,7 +1,13 @@
 import cors from '@fastify/cors'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { writeFile } from 'node:fs/promises'
+import { readFileSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+import { dirname, join } from 'node:path'
 import { EventEmitter } from 'node:events'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'))
 
 export interface LoggyState {
   exportCount: number
@@ -28,9 +34,9 @@ export interface StartServerOptions extends ServerOptions {
 }
 
 const HANDSHAKE_PAYLOAD = {
-  version: '1.0.0',
+  version: pkg.version,
   name: 'loggy-serve',
-} as const
+}
 
 export function createServer(options: ServerOptions = {}): FastifyInstance {
   const app = Fastify({ bodyLimit: 52_428_800 })

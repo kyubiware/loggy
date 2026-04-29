@@ -1,8 +1,14 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { dirname } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { createServer } from '../src/server.js'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'))
 
 const appsToClose: Array<ReturnType<typeof createServer>> = []
 
@@ -22,7 +28,7 @@ describe('loggy-serve endpoints', () => {
 
     expect(response.statusCode).toBe(200)
     expect(response.json()).toEqual({
-      version: '1.0.0',
+      version: pkg.version,
       name: 'loggy-serve',
     })
   })
