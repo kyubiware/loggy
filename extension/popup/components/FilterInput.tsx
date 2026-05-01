@@ -36,7 +36,7 @@ export function FilterInput({
       </label>
       <div className='relative flex-1'>
         <input
-          className='w-full rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 px-2.5 py-1 pr-7 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500'
+          className='w-full rounded border border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-900 px-2.5 py-1 max-sm:py-3 pr-7 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-stone-900 dark:text-stone-100 placeholder-stone-400 dark:placeholder-stone-500'
           type='text'
           placeholder={placeholder}
           value={value}

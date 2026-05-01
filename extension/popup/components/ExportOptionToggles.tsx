@@ -39,7 +39,7 @@ export function ExportOptionToggles({
 }: ExportOptionTogglesProps): React.JSX.Element {
   return (
     <div className='flex justify-center'>
-      <div className='flex items-center gap-0.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded p-0.5'>
+      <div className='flex flex-wrap items-center gap-0.5 bg-stone-50 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 rounded p-0.5'>
         {TOGGLE_CONFIGS.map(([key, label, Icon]) => (
           <IconButtonToggle
             key={key}

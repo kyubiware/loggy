@@ -25,7 +25,7 @@ export const IconButtonToggle = React.memo(function IconButtonToggle({
       aria-pressed={pressed}
       onClick={onToggle}
       data-testid={testId}
-      className={`flex items-center justify-center w-6 h-6 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors ${
+      className={`flex items-center justify-center w-6 h-6 max-sm:w-11 max-sm:h-11 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 hover:bg-stone-200 dark:hover:bg-stone-700 transition-colors ${
         pressed
           ? 'text-blue-600 dark:text-blue-400 bg-blue-50/50 dark:bg-blue-900/30'
           : 'text-stone-500 dark:text-stone-400'

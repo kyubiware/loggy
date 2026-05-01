@@ -41,7 +41,7 @@ export default function Popup() {
 
   if (isLoading) {
     return (
-      <div className='flex justify-center items-center h-48 w-80 text-stone-500'>
+      <div className='flex justify-center items-center h-48 w-full sm:w-80 text-stone-500'>
         Loading...
       </div>
     )
@@ -49,14 +49,14 @@ export default function Popup() {
 
   if (!status) {
     return (
-      <div className='flex justify-center items-center h-48 w-80 text-stone-500'>
+      <div className='flex justify-center items-center h-48 w-full sm:w-80 text-stone-500'>
         No active tab found.
       </div>
     )
   }
 
   return (
-    <div className='p-4 flex flex-col gap-4 text-stone-800 dark:text-stone-200 bg-white dark:bg-stone-900 min-h-[200px] w-80'>
+    <div className='p-4 flex flex-col gap-4 text-stone-800 dark:text-stone-200 bg-white dark:bg-stone-900 min-h-[200px] max-sm:min-h-[100dvh] max-sm:flex-1 max-sm:overflow-y-auto w-full sm:w-80'>
       <PopupHeader connected={status.connected} />
 
       {showConsentView ? (
