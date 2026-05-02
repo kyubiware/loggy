@@ -2,10 +2,14 @@ import { Globe, Terminal } from 'lucide-react'
 
 import { ConsentView, StopLoggingButton } from './components/ConsentView'
 import { EnhancedCaptureToggle } from './components/EnhancedCaptureToggle'
-import { ExportOptionToggles } from './components/ExportOptionToggles'
+import {
+  ExportOptionCheckboxes,
+  type ToggleSettingKey,
+} from './components/ExportOptionCheckboxes'
 import { FilterInput } from './components/FilterInput'
 import { PopupHeader } from './components/PopupHeader'
 import { ServerConnection } from './components/ServerConnection'
+import { SettingsAccordion } from './components/SettingsAccordion'
 import { TokenCountAndCopy } from './components/TokenCountAndCopy'
 import { AlwaysLogHosts } from './components/AlwaysLogHosts'
 import { usePopupActions } from './hooks/usePopupActions'
@@ -67,47 +71,49 @@ export default function Popup() {
         />
       ) : (
         <>
-          <ExportOptionToggles
-            settings={settings}
-            onToggle={key => setSetting(key, !settings[key])}
-          />
-          {settings.networkExportEnabled && (
-            <ServerConnection
-              serverUrl={settings.serverUrl}
-              onServerUrlChange={handleServerUrlChange}
-              serverConnected={serverConnected}
-              onRetry={handleRetryConnection}
+          <SettingsAccordion>
+            <ExportOptionCheckboxes
+              settings={settings}
+              onToggle={(key: ToggleSettingKey) => setSetting(key, !settings[key])}
             />
-          )}
+            {settings.networkExportEnabled && (
+              <ServerConnection
+                serverUrl={settings.serverUrl}
+                onServerUrlChange={handleServerUrlChange}
+                serverConnected={serverConnected}
+                onRetry={handleRetryConnection}
+              />
+            )}
 
-          <div className='flex flex-col gap-2'>
-            <FilterInput
-              icon={<Terminal size={14} />}
-              iconTitle='Console Filter'
-              placeholder='Filter console (regex)...'
-              value={localConsoleFilter}
-              onChange={handleConsoleFilterChange}
-              visible={settings.consoleVisible}
-              onToggleVisibility={() =>
-                setSetting('consoleVisible', !settings.consoleVisible)
-              }
-              visibleLabel='Hide Console Filter'
-              hiddenLabel='Show Console Filter'
-            />
-            <FilterInput
-              icon={<Globe size={14} />}
-              iconTitle='Network Filter'
-              placeholder='Filter network (e.g. -google)...'
-              value={localNetworkFilter}
-              onChange={handleNetworkFilterChange}
-              visible={settings.networkVisible}
-              onToggleVisibility={() =>
-                setSetting('networkVisible', !settings.networkVisible)
-              }
-              visibleLabel='Hide Network Filter'
-              hiddenLabel='Show Network Filter'
-            />
-          </div>
+            <div className='flex flex-col gap-2'>
+              <FilterInput
+                icon={<Terminal size={14} />}
+                iconTitle='Console Filter'
+                placeholder='Filter console (regex)...'
+                value={localConsoleFilter}
+                onChange={handleConsoleFilterChange}
+                visible={settings.consoleVisible}
+                onToggleVisibility={() =>
+                  setSetting('consoleVisible', !settings.consoleVisible)
+                }
+                visibleLabel='Hide Console Filter'
+                hiddenLabel='Show Console Filter'
+              />
+              <FilterInput
+                icon={<Globe size={14} />}
+                iconTitle='Network Filter'
+                placeholder='Filter network (e.g. -google)...'
+                value={localNetworkFilter}
+                onChange={handleNetworkFilterChange}
+                visible={settings.networkVisible}
+                onToggleVisibility={() =>
+                  setSetting('networkVisible', !settings.networkVisible)
+                }
+                visibleLabel='Hide Network Filter'
+                hiddenLabel='Show Network Filter'
+              />
+            </div>
+          </SettingsAccordion>
           <TokenCountAndCopy
             hasData={hasData}
             tokenCount={tokenCount}
