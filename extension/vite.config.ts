@@ -45,7 +45,12 @@ export default defineConfig(({ mode, command }) => {
         input,
         output: {
           entryFileNames: '[name].js',
-          chunkFileNames: 'chunks/[name]-[hash].js',
+          chunkFileNames: (chunkInfo) => {
+            if (chunkInfo.name?.startsWith('console-bootstrap')) {
+              return 'chunks/console-bootstrap.js'
+            }
+            return 'chunks/[name]-[hash].js'
+          },
           assetFileNames: 'assets/[name]-[hash][extname]',
         },
       },

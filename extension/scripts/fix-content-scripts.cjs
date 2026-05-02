@@ -10,26 +10,23 @@
  *    loading failures in Firefox extension context)
  */
 
-const { readdirSync, readFileSync, writeFileSync } = require('node:fs');
+const { readFileSync, writeFileSync } = require('node:fs');
 const { join } = require('node:path');
 
 const distDir = join(__dirname, '..', 'dist-firefox');
 
 // --- Step 1: Fix console-bootstrap content script chunk ---
 
-const chunksDir = join(distDir, 'chunks');
-const chunkFiles = readdirSync(chunksDir);
-const bootstrapChunk = chunkFiles.find(
-  (f) => f.startsWith('console-bootstrap-') && f.endsWith('.js'),
-);
+const bootstrapChunk = 'console-bootstrap.js';
+const bootstrapPath = join(distDir, 'chunks', bootstrapChunk);
 
-if (!bootstrapChunk) {
-  console.error('ERROR: Could not find console-bootstrap chunk');
+let bootstrapSource;
+try {
+  bootstrapSource = readFileSync(bootstrapPath, 'utf8');
+} catch {
+  console.error(`ERROR: Could not find console-bootstrap chunk at chunks/${bootstrapChunk}`);
   process.exit(1);
 }
-
-const bootstrapPath = join(chunksDir, bootstrapChunk);
-let bootstrapSource = readFileSync(bootstrapPath, 'utf8');
 
 // Strip export statements (e.g., export{$ as C};)
 const strippedBootstrap = bootstrapSource.replace(/export\{[^}]*\};?/g, '');
@@ -46,7 +43,7 @@ if (strippedBootstrap !== bootstrapSource) {
 const relayPath = join(distDir, 'content-relay.js');
 let relaySource = readFileSync(relayPath, 'utf8');
 
-// Strip import statements (e.g., import{L as a}from"./chunks/messages-XXX.js";)
+// Strip import statements (e.g., import{L as a}from"./chunks/messages-XXX.js"];)
 let fixedRelay = relaySource.replace(/import\{[^}]*\}from"[^"]*";?/g, '');
 
 // Strip any remaining export statements

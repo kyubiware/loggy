@@ -49,6 +49,11 @@ import {
 import { formatMarkdown } from '../utils/formatter'
 import { isLocalPage } from '../utils/is-local-page'
 import { estimateTokenCount } from '../utils/token-estimate'
+import {
+  injectIntoTab,
+  registerContentScripts,
+  unregisterContentScripts,
+} from './content-scripts'
 
 declare const __BROWSER__: string
 
@@ -153,6 +158,13 @@ function getOrCreateTabState(tabId: number): TabCaptureState {
   const created = createDefaultTabState(tabId)
   tabStates.set(tabId, created)
   return created
+}
+
+function hasContentScriptTabs(): boolean {
+  for (const state of tabStates.values()) {
+    if (state.mode === 'content-script') return true
+  }
+  return false
 }
 
 function persistTabStates(): Promise<void> {
@@ -486,6 +498,12 @@ async function handleControlMessage(
     const consent = await evaluateConsent(tabId, url)
 
     if (consent.hasConsent) {
+      try {
+        await registerContentScripts()
+      } catch (error) {
+        console.error('[Loggy] Failed to register content scripts:', error)
+      }
+
       const current = getOrCreateTabState(tabId)
       const updated: TabCaptureState = {
         ...current,
@@ -688,6 +706,13 @@ async function handleControlMessage(
     updateIconForTab(tabId)
 
     try {
+      await registerContentScripts()
+      await injectIntoTab(tabId)
+    } catch (error) {
+      console.error('[Loggy] Failed to register/inject content scripts:', error)
+    }
+
+    try {
       await chrome.tabs.sendMessage(tabId, {
         type: 'consent-changed',
         hasConsent: true,
@@ -716,6 +741,14 @@ async function handleControlMessage(
     const updated = await setMode(tabId, 'inactive')
     updateIconForTab(tabId)
 
+    if (!hasContentScriptTabs()) {
+      try {
+        await unregisterContentScripts()
+      } catch (error) {
+        console.error('[Loggy] Failed to unregister content scripts:', error)
+      }
+    }
+
     try {
       await chrome.tabs.sendMessage(tabId, {
         type: 'consent-changed',
@@ -733,6 +766,8 @@ async function handleControlMessage(
     const addMessage: AddAlwaysLogMessage = message
     await addAlwaysLogHost(addMessage.host)
 
+    let registered = false
+
     try {
       const tabs = await chrome.tabs.query({})
       for (const tab of tabs) {
@@ -749,6 +784,21 @@ async function handleControlMessage(
               if (current.mode === 'inactive') {
                 await setMode(tab.id, 'content-script')
                 updateIconForTab(tab.id)
+
+                if (!registered) {
+                  try {
+                    await registerContentScripts()
+                    registered = true
+                  } catch (error) {
+                    console.error('[Loggy] Failed to register content scripts:', error)
+                  }
+                }
+
+                try {
+                  await injectIntoTab(tab.id)
+                } catch (error) {
+                  console.error(`[Loggy] Failed to inject into tab ${tab.id}:`, error)
+                }
 
                 try {
                   await chrome.tabs.sendMessage(tab.id, {
@@ -816,6 +866,14 @@ async function handleControlMessage(
       }
     } catch {
       // Failed to query tabs
+    }
+
+    if (!hasContentScriptTabs()) {
+      try {
+        await unregisterContentScripts()
+      } catch (error) {
+        console.error('[Loggy] Failed to unregister content scripts:', error)
+      }
     }
 
     return { ok: true }
@@ -964,6 +1022,14 @@ async function initialize(): Promise<void> {
   await restoreLogCountsFromStorage()
   await refreshActiveTabId()
 
+  if (hasContentScriptTabs()) {
+    try {
+      await registerContentScripts()
+    } catch (error) {
+      console.error('[Loggy] Failed to re-register content scripts on init:', error)
+    }
+  }
+
   if (activeTabId !== null) {
     updateIconForTab(activeTabId)
   }
@@ -1040,6 +1106,14 @@ chrome.tabs.onRemoved.addListener((tabId) => {
     await persistTabStates()
     await chrome.storage.session.remove(getStorageKeyForTab(tabId))
     await chrome.storage.session.remove(getFailedBufferStorageKeyForTab(tabId))
+
+    if (!hasContentScriptTabs()) {
+      try {
+        await unregisterContentScripts()
+      } catch (error) {
+        console.error('[Loggy] Failed to unregister content scripts:', error)
+      }
+    }
   })()
 })
 
@@ -1067,6 +1141,13 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
             consent.captureMode === 'debugger' ? 'debugger' : 'content-script'
           await setMode(tabId, captureMode)
           updateIconForTab(tabId)
+
+          try {
+            await registerContentScripts()
+            await injectIntoTab(tabId)
+          } catch (error) {
+            console.error('[Loggy] Failed to register/inject content scripts:', error)
+          }
 
           if (captureMode === 'debugger') {
             attachToTab(tabId, (error) => {
@@ -1096,6 +1177,14 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
           }
           await setMode(tabId, 'inactive')
           updateIconForTab(tabId)
+
+          if (!hasContentScriptTabs()) {
+            try {
+              await unregisterContentScripts()
+            } catch (error) {
+              console.error('[Loggy] Failed to unregister content scripts:', error)
+            }
+          }
 
           try {
             await chrome.tabs.sendMessage(tabId, {

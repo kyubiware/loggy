@@ -10,27 +10,6 @@
     ],
     "type": "module"
   },
-  "content_scripts": [
-    {
-      "matches": [
-        "<all_urls>"
-      ],
-      "js": [
-        "chunks/console-bootstrap.mjs"
-      ],
-      "run_at": "document_start",
-      "world": "MAIN"
-    },
-    {
-      "matches": [
-        "<all_urls>"
-      ],
-      "js": [
-        "content-relay.js"
-      ],
-      "run_at": "document_start"
-    }
-  ],
   "action": {
     "default_popup": "popup/popup.html",
     "default_icon": {
