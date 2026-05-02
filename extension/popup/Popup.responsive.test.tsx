@@ -1,5 +1,7 @@
-import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+// @vitest-environment jsdom
+
+import { cleanup, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import Popup from './Popup'
 
 const mockUsePopupActions = vi.hoisted(() => ({
@@ -60,9 +62,13 @@ beforeEach(() => {
   ;(globalThis as typeof globalThis & { chrome?: typeof chrome }).chrome = chromeApi
 })
 
+afterEach(() => {
+  cleanup()
+})
+
 describe('Popup responsive classes', () => {
   it('has all mobile responsive classes at 375px viewport', () => {
-    Object.defineProperty(window, 'innerWidth', {
+    Object.defineProperty(globalThis, 'innerWidth', {
       writable: true,
       configurable: true,
       value: 375,
@@ -79,18 +85,21 @@ describe('Popup responsive classes', () => {
     const popupHeader = screen.getByText('Loggy').closest('div') as HTMLElement
     expect(popupHeader.className).toContain('max-sm:sticky')
 
-    const exportTogglesContainer = container.querySelector('.flex-wrap') as HTMLElement
-    expect(exportTogglesContainer.className).toContain('flex-wrap')
+    const details = container.querySelector('details')
+    expect(details?.hasAttribute('open')).toBe(true)
 
-    const iconButtonToggle = screen.getByRole('button', { name: 'Include LLM guidance' })
-    expect(iconButtonToggle.className).toContain('max-sm:w-11')
+    const iconButtonToggle = screen.getByRole('checkbox', { name: 'Include LLM guidance' })
+    expect(iconButtonToggle.className).toContain('h-3.5')
+    expect(iconButtonToggle.className).toContain('w-3.5')
+
+    expect(screen.getAllByRole('checkbox')).toHaveLength(6)
 
     const filterInput = screen.getByPlaceholderText('Filter console (regex)...')
     expect(filterInput.className).toContain('max-sm:py-3')
   })
 
   it('has desktop responsive classes at 800px viewport and no leaking mobile classes', () => {
-    Object.defineProperty(window, 'innerWidth', {
+    Object.defineProperty(globalThis, 'innerWidth', {
       writable: true,
       configurable: true,
       value: 800,
@@ -101,9 +110,9 @@ describe('Popup responsive classes', () => {
     const mainContainer = container.firstElementChild as HTMLElement
     expect(mainContainer.className).toContain('sm:w-80')
 
-    const iconButtonToggle = screen.getByRole('button', { name: 'Include LLM guidance' })
-    expect(iconButtonToggle.className).toContain('w-6')
-    expect(iconButtonToggle.className).toContain('h-6')
+    const iconButtonToggle = screen.getByRole('checkbox', { name: 'Include LLM guidance' })
+    expect(iconButtonToggle.className).toContain('h-3.5')
+    expect(iconButtonToggle.className).toContain('w-3.5')
 
     const popupHeader = screen.getByText('Loggy').closest('div') as HTMLElement
     const headerClasses = popupHeader.className.split(' ')
