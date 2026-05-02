@@ -198,7 +198,7 @@ async function evaluateConsent(tabId: number, url: string): Promise<ConsentState
   }
 
   const current = getOrCreateTabState(tabId)
-  if (current.mode !== 'inactive' && current.connected) {
+  if (current.mode !== 'inactive') {
     return { hasConsent: true, captureMode: current.mode, reason: 'per-session' }
   }
 
