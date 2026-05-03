@@ -77,7 +77,7 @@ describe('Popup responsive classes', () => {
     const { container } = render(<Popup />)
 
     const mainContainer = container.firstElementChild as HTMLElement
-    expect(mainContainer.className).toContain('w-full')
+    expect(mainContainer.className).toContain('w-80')
     expect(mainContainer.className).toContain('max-sm:min-h-[100dvh]')
     expect(mainContainer.className).toContain('max-sm:flex-1')
     expect(mainContainer.className).toContain('max-sm:overflow-y-auto')
@@ -108,7 +108,7 @@ describe('Popup responsive classes', () => {
     const { container } = render(<Popup />)
 
     const mainContainer = container.firstElementChild as HTMLElement
-    expect(mainContainer.className).toContain('sm:w-80')
+    expect(mainContainer.className).toContain('w-80')
 
     const iconButtonToggle = screen.getByRole('checkbox', { name: 'Include LLM guidance' })
     expect(iconButtonToggle.className).toContain('h-3.5')
