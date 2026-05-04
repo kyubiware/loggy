@@ -30,7 +30,7 @@
   ],
   "host_permissions": [
     "http://localhost/*",
-    "http://*/*"
+    "*://*/*"
   ],
   "browser_specific_settings": {
     "gecko": {

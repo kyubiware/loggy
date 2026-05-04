@@ -23,6 +23,8 @@ function getLanIP(): string | null {
 interface TUIOptions {
   port: number
   host?: string
+  domain?: string
+  isHttps?: boolean
 }
 
 type ExportState = FastifyInstance['loggyState']
@@ -89,6 +91,10 @@ function formatTimeAgo(timestamp: number): string {
 }
 
 function getServerAddress(options: TUIOptions): string {
+  if (options.isHttps && options.domain) {
+    return `https://${options.domain}:${options.port}`
+  }
+
   const host = options.host ?? '0.0.0.0'
   if (host === '127.0.0.1') {
     return `localhost:${options.port}`
@@ -159,6 +165,8 @@ export function createTUI(server: FastifyInstance, options?: TUIOptions): void {
   const resolvedOptions: TUIOptions = {
     port: options?.port ?? 8743,
     host: options?.host ?? '0.0.0.0',
+    domain: options?.domain,
+    isHttps: options?.isHttps,
   }
 
   currentServer = server

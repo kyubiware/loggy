@@ -7,6 +7,8 @@ import updateNotifier from 'update-notifier'
 import { networkInterfaces } from 'node:os'
 import { createTUI, destroyTUI } from './tui.js'
 import { createServer, formatStartupError } from './server.js'
+import { getTailscaleCerts } from './tailscale.js'
+import type { TailscaleCertInfo } from './tailscale.js'
 
 function getLanIPs(): string[] {
   const interfaces = networkInterfaces()
@@ -28,12 +30,19 @@ function getLanIPs(): string[] {
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'))
 
-function parseArgs(argv: string[]) {
+function parseArgs(argv: string[]): {
+  port: number
+  outputPath?: string
+  quiet: boolean
+  subcommand?: string
+  https: boolean | undefined
+} {
   const args = argv.slice(2)
   let port = 8743
   let outputPath: string | undefined
   let quiet = false
   let subcommand: string | undefined
+  let https: boolean | undefined
 
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i]
@@ -70,6 +79,16 @@ function parseArgs(argv: string[]) {
       continue
     }
 
+    if (arg === '--https') {
+      https = true
+      continue
+    }
+
+    if (arg === '--no-https') {
+      https = false
+      continue
+    }
+
     if (!arg.startsWith('--') && !subcommand) {
       if (arg === 'print') {
         subcommand = 'print'
@@ -82,7 +101,7 @@ function parseArgs(argv: string[]) {
     throw new Error(`Unknown flag: ${arg}`)
   }
 
-  return { port, outputPath, quiet, subcommand }
+  return { port, outputPath, quiet, subcommand, https }
 }
 
 async function printLatestExport(port: number) {
@@ -115,14 +134,40 @@ async function main() {
   const notifier = updateNotifier({ pkg })
   notifier.notify({ defer: true })
 
-  const { port, outputPath, quiet, subcommand } = parseArgs(process.argv)
+  const { port, outputPath, quiet, subcommand, https } = parseArgs(process.argv)
 
   if (subcommand === 'print') {
     await printLatestExport(port)
     return
   }
 
-  const app = createServer({ outputPath })
+  let httpsConfig: TailscaleCertInfo | undefined
+  let isHttps = false
+  let tailscaleDomain: string | undefined
+
+  if (https === false) {
+    httpsConfig = undefined
+  } else if (https === true) {
+    const certs = getTailscaleCerts()
+    if (!certs) {
+      throw new Error(
+        'Tailscale HTTPS requested but Tailscale is not available. Make sure Tailscale is running and HTTPS certs are enabled for your tailnet.',
+      )
+    }
+
+    isHttps = true
+    httpsConfig = certs
+    tailscaleDomain = certs.hostname
+  } else {
+    const certs = getTailscaleCerts()
+    if (certs) {
+      isHttps = true
+      httpsConfig = certs
+      tailscaleDomain = certs.hostname
+    }
+  }
+
+  const app = createServer({ outputPath, https: httpsConfig })
 
   try {
     await app.listen({ port, host: '0.0.0.0' })
@@ -130,13 +175,17 @@ async function main() {
     const useTUI = !quiet && !!process.stdout.isTTY
 
     if (useTUI) {
-      createTUI(app, { port })
+      createTUI(app, { port, domain: tailscaleDomain, isHttps })
     } else {
       const lanIPs = getLanIPs()
-      console.log(`loggy-serve listening on http://localhost:${port}`)
+      if (isHttps && tailscaleDomain) {
+        console.log(`loggy-serve listening on https://${tailscaleDomain}:${port}`)
+      } else {
+        console.log(`loggy-serve listening on http://localhost:${port}`)
 
-      for (const ip of lanIPs) {
-        console.log(`  http://${ip}:${port}`)
+        for (const ip of lanIPs) {
+          console.log(`  http://${ip}:${port}`)
+        }
       }
     }
 

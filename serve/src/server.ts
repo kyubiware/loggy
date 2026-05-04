@@ -26,6 +26,7 @@ declare module 'fastify' {
 
 export interface ServerOptions {
   outputPath?: string
+  https?: { key: Buffer; cert: Buffer }
 }
 
 export interface StartServerOptions extends ServerOptions {
@@ -39,7 +40,10 @@ const HANDSHAKE_PAYLOAD = {
 }
 
 export function createServer(options: ServerOptions = {}): FastifyInstance {
-  const app = Fastify({ bodyLimit: 52_428_800 })
+  const app = Fastify({
+    bodyLimit: 52_428_800,
+    ...(options.https && { https: options.https }),
+  })
   let latestExport: string | null = null
   const loggyState: LoggyState = {
     exportCount: 0,

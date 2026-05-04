@@ -37,6 +37,8 @@ loggy [flags]
 | `--port <number>` | Port to listen on | `8743` |
 | `--output <path>` | Write every received export to this file | - |
 | `--quiet`, `--no-interactive` | Disable TUI and print plain logs | - |
+| `--https` | Force HTTPS with Tailscale certificates | Auto-detect |
+| `--no-https` | Disable HTTPS even if Tailscale is available | - |
 
 ## Interactive TUI
 
@@ -51,7 +53,7 @@ When running in a TTY without the `--quiet` flag, `loggy-serve` displays a live 
 
 ## API Endpoints
 
-The server listens on `0.0.0.0` (all interfaces) by default, making it accessible from other devices on your local network. CORS is enabled for all origins (`*`) and the request body limit is 52MB. All data is stored in memory and resets when the server restarts.
+The server listens on `0.0.0.0` (all interfaces) by default, making it accessible from other devices on your local network. When [Tailscale](https://tailscale.com) is running and HTTPS certificates are enabled for your tailnet, the server automatically provisions a TLS certificate and starts in HTTPS mode. CORS is enabled for all origins (`*`) and the request body limit is 52MB. All data is stored in memory and resets when the server restarts.
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -72,6 +74,30 @@ curl -X POST http://127.0.0.1:8743/loggy \
 ```bash
 curl http://127.0.0.1:8743/loggy/export
 ```
+
+## Tailscale HTTPS
+
+When Tailscale is running on your machine and [HTTPS certificates are enabled](https://login.tailscale.com/admin/dns) for your tailnet, `loggy-serve` automatically:
+
+1. Detects the Tailscale hostname (e.g. `my-machine.tail1234.ts.net`)
+2. Provisions a TLS certificate via `tailscale cert`
+3. Starts an HTTPS server on the Tailscale domain
+
+This allows the Loggy browser extension to export logs securely over HTTPS — required by Firefox's HTTPS-Only Mode and increasingly by Chrome.
+
+### Setup
+
+1. Install and run [Tailscale](https://tailscale.com)
+2. Enable HTTPS certificates at [login.tailscale.com/admin/dns](https://login.tailscale.com/admin/dns)
+3. Start `loggy` — it will automatically detect Tailscale and use HTTPS
+4. In the browser extension, set the server URL to `https://your-machine.tail1234.ts.net:8743`
+
+### Flags
+
+- `--https` — Force HTTPS. Errors if Tailscale is not available.
+- `--no-https` — Disable HTTPS. Always uses HTTP regardless of Tailscale status.
+
+If neither flag is passed, the server auto-detects Tailscale and falls back to HTTP if unavailable.
 
 ## Programmatic Usage
 
@@ -97,6 +123,7 @@ const server = await startServer({
 ```typescript
 interface ServerOptions {
   outputPath?: string
+  https?: { key: Buffer; cert: Buffer }
 }
 
 interface StartServerOptions extends ServerOptions {
