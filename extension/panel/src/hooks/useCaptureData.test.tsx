@@ -263,6 +263,7 @@ describe('useCaptureData', () => {
         networkExportEnabled: defaults.networkExportEnabled,
         autoServerSync: defaults.autoServerSync,
         serverUrl: defaults.serverUrl,
+        settingsAccordionOpen: defaults.settingsAccordionOpen,
       },
     })
   })
@@ -668,6 +669,7 @@ describe('reducer HYDRATE_SETTINGS', () => {
         networkExportEnabled: true,
         autoServerSync: false,
         serverUrl: 'http://custom:1234',
+        settingsAccordionOpen: true,
       },
     })
 

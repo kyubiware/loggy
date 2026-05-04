@@ -33,6 +33,7 @@ export function useFilteredData(): FilteredDataResult {
       networkExportEnabled: settings.networkExportEnabled,
       autoServerSync: settings.autoServerSync,
       serverSyncError: settings.serverSyncError,
+      settingsAccordionOpen: true,
       serverUrl: '',
       serverConnected: false,
     }

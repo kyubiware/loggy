@@ -647,6 +647,7 @@ async function handleControlMessage(
         networkExportEnabled: defaults.networkExportEnabled,
         autoServerSync: defaults.autoServerSync,
         serverUrl: defaults.serverUrl,
+        settingsAccordionOpen: defaults.settingsAccordionOpen,
       }
     )
 

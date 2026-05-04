@@ -8,3 +8,4 @@ node_modules
 *.xpi
 server.log
 test-run.js
+screenshots/

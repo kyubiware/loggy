@@ -73,6 +73,7 @@ export function reducer(state: LoggyState, action: Action): LoggyState {
         networkExportEnabled: state.networkExportEnabled,
         autoServerSync: state.autoServerSync,
         serverUrl: state.serverUrl,
+        settingsAccordionOpen: state.settingsAccordionOpen,
       })
 
       return {
@@ -249,6 +250,7 @@ export function useCaptureData(): {
           networkExportEnabled: defaults.networkExportEnabled,
           autoServerSync: defaults.autoServerSync,
           serverUrl: defaults.serverUrl,
+          settingsAccordionOpen: defaults.settingsAccordionOpen,
         })
 
         if (result[LOGGY_PANEL_SETTINGS_STORAGE_KEY] !== undefined) {

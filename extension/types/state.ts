@@ -34,6 +34,8 @@ export interface LoggyState {
   serverSyncError: boolean
   /** The server URL for the agent connection */
   serverUrl: string
+  /** Whether the settings accordion is expanded in the popup */
+  settingsAccordionOpen: boolean
   /** Whether the panel is currently connected to the server */
   serverConnected: boolean
   /** Captured console log entries */
@@ -58,6 +60,7 @@ export type PersistedLoggySettings = Pick<
   | 'networkExportEnabled'
   | 'autoServerSync'
   | 'serverUrl'
+  | 'settingsAccordionOpen'
 >
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -83,6 +86,7 @@ export function createInitialState(): LoggyState {
     autoServerSync: false,
     serverSyncError: false,
     serverUrl: 'http://localhost:8743',
+    settingsAccordionOpen: true,
     serverConnected: false,
     consoleLogs: [],
     networkEntries: [],
@@ -105,6 +109,7 @@ export function extractPersistedSettings(state: LoggyState): PersistedLoggySetti
     networkExportEnabled: state.networkExportEnabled,
     autoServerSync: state.autoServerSync,
     serverUrl: state.serverUrl,
+    settingsAccordionOpen: state.settingsAccordionOpen,
   }
 }
 
@@ -151,5 +156,9 @@ export function mergePersistedSettings(
     autoServerSync:
       typeof stored.autoServerSync === 'boolean' ? stored.autoServerSync : defaults.autoServerSync,
     serverUrl: typeof stored.serverUrl === 'string' ? stored.serverUrl : defaults.serverUrl,
+    settingsAccordionOpen:
+      typeof stored.settingsAccordionOpen === 'boolean'
+        ? stored.settingsAccordionOpen
+        : defaults.settingsAccordionOpen,
   }
 }

@@ -29,6 +29,7 @@
     "source-zip": "node scripts/prepare-source-zip.cjs",
     "sign:firefox": "dotenv -- web-ext sign --source-dir dist-firefox --channel listed --amo-metadata amo-metadata.json",
     "lint:firefox": "web-ext lint --source-dir dist-firefox",
+    "screenshot": "node scripts/screenshot-firefox.cjs",
     "release": "node scripts/release.cjs"
   },
   "keywords": [],
@@ -47,10 +48,11 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.4",
     "@vitest/ui": "^4.0.18",
+    "concurrently": "^9.1.2",
     "jsdom": "^28.1.0",
+    "playwright": "^1.59.1",
     "vite": "^7.3.1",
     "vitest": "^4.0.18",
-    "concurrently": "^9.1.2",
     "vitest-chrome": "^0.1.0",
     "web-ext": "^8.3.0"
   },

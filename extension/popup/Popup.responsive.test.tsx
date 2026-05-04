@@ -23,6 +23,7 @@ const mockUsePopupActions = vi.hoisted(() => ({
     consoleFilter: '',
     networkFilter: '',
     serverUrl: 'http://localhost:8743',
+    settingsAccordionOpen: true,
   },
   setSetting: vi.fn(),
   localConsoleFilter: '',

@@ -19,6 +19,7 @@ const PERSISTED_KEYS: Array<keyof PersistedLoggySettings> = [
   'networkExportEnabled',
   'autoServerSync',
   'serverUrl',
+  'settingsAccordionOpen',
 ]
 
 function createPersistedDefaults(): PersistedLoggySettings {
@@ -76,6 +77,7 @@ describe('extractPersistedSettings', () => {
       networkExportEnabled: false,
       autoServerSync: false,
       serverUrl: 'http://custom:1234',
+      settingsAccordionOpen: true,
     })
   })
 })
@@ -95,6 +97,7 @@ describe('mergePersistedSettings', () => {
       networkExportEnabled: false,
       autoServerSync: true,
       serverUrl: 'http://custom:1234',
+      settingsAccordionOpen: true,
     }
 
     expect(mergePersistedSettings(stored, defaults)).toEqual(stored)

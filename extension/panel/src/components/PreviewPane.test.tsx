@@ -90,6 +90,7 @@ function makeState(
     networkExportEnabled: overrides.networkExportEnabled ?? true,
     autoServerSync: overrides.autoServerSync ?? false,
     serverSyncError: overrides.serverSyncError ?? false,
+    settingsAccordionOpen: overrides.settingsAccordionOpen ?? true,
   }
 }
 

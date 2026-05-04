@@ -71,7 +71,10 @@ export default function Popup() {
         />
       ) : (
         <>
-          <SettingsAccordion>
+          <SettingsAccordion
+            defaultOpen={settings.settingsAccordionOpen}
+            onToggle={() => setSetting('settingsAccordionOpen', !settings.settingsAccordionOpen)}
+          >
             <ExportOptionCheckboxes
               settings={settings}
               onToggle={(key: ToggleSettingKey) => setSetting(key, !settings[key])}
