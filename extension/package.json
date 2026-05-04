@@ -5,8 +5,9 @@
   "main": "devtools.mjs",
   "scripts": {
     "build": "npm run build:chrome && npm run package:firefox",
-    "dev": "vite --mode chrome",
-    "dev:firefox": "npm run prebuild:firefox && concurrently --kill-others \"vite build --mode firefox --watch\" \"web-ext run --source-dir dist-firefox\"",
+    "dev": "concurrently --kill-others \"npm run dev:chrome\" \"npm run dev:firefox\"",
+    "dev:chrome": "vite --mode chrome",
+    "dev:firefox": "npm run build:firefox && concurrently --kill-others \"vite build --mode firefox --watch\" \"web-ext run --source-dir dist-firefox\"",
     "build:chrome": "vite build --mode chrome",
     "build:firefox": "vite build --mode firefox",
     "package:firefox": "npm run build:firefox && rm -f loggy-firefox.xpi && (cd dist-firefox && zip -r ../loggy-firefox.xpi .)",

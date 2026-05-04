@@ -29,7 +29,8 @@
     "scripting"
   ],
   "host_permissions": [
-    "http://localhost/*"
+    "http://localhost/*",
+    "http://*/*"
   ],
   "browser_specific_settings": {
     "gecko": {

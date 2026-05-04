@@ -104,7 +104,7 @@ export function createServer(options: ServerOptions = {}): FastifyInstance {
 export async function startServer(options: StartServerOptions = {}): Promise<FastifyInstance> {
   const app = createServer(options)
   const port = options.port ?? 8743
-  const host = options.host ?? '127.0.0.1'
+  const host = options.host ?? '0.0.0.0'
 
   try {
     await app.listen({ port, host })

@@ -51,7 +51,7 @@ When running in a TTY without the `--quiet` flag, `loggy-serve` displays a live 
 
 ## API Endpoints
 
-The server listens on `127.0.0.1` by default. CORS is enabled for all origins (`*`) and the request body limit is 52MB. All data is stored in memory and resets when the server restarts.
+The server listens on `0.0.0.0` (all interfaces) by default, making it accessible from other devices on your local network. CORS is enabled for all origins (`*`) and the request body limit is 52MB. All data is stored in memory and resets when the server restarts.
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -88,7 +88,6 @@ const app = createServer({
 // 2. Start server directly
 const server = await startServer({
   port: 8743,
-  host: '127.0.0.1',
   outputPath: './debug.md'
 })
 ```

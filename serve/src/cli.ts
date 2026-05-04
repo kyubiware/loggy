@@ -4,8 +4,26 @@ import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import updateNotifier from 'update-notifier'
+import { networkInterfaces } from 'node:os'
 import { createTUI, destroyTUI } from './tui.js'
 import { createServer, formatStartupError } from './server.js'
+
+function getLanIPs(): string[] {
+  const interfaces = networkInterfaces()
+  const ips: string[] = []
+
+  for (const entries of Object.values(interfaces)) {
+    if (!entries) continue
+
+    for (const entry of entries) {
+      if (entry.family === 'IPv4' && !entry.internal) {
+        ips.push(entry.address)
+      }
+    }
+  }
+
+  return ips
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf8'))
@@ -114,7 +132,12 @@ async function main() {
     if (useTUI) {
       createTUI(app, { port })
     } else {
+      const lanIPs = getLanIPs()
       console.log(`loggy-serve listening on http://localhost:${port}`)
+
+      for (const ip of lanIPs) {
+        console.log(`  http://${ip}:${port}`)
+      }
     }
 
     const shutdown = async () => {

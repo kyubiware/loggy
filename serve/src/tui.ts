@@ -1,7 +1,24 @@
 import type { FastifyInstance } from 'fastify'
+import { networkInterfaces } from 'node:os'
 import readline from 'node:readline'
 
 import { copyToClipboard } from './clipboard.js'
+
+function getLanIP(): string | null {
+  const interfaces = networkInterfaces()
+
+  for (const entries of Object.values(interfaces)) {
+    if (!entries) continue
+
+    for (const entry of entries) {
+      if (entry.family === 'IPv4' && !entry.internal) {
+        return entry.address
+      }
+    }
+  }
+
+  return null
+}
 
 interface TUIOptions {
   port: number
@@ -72,9 +89,14 @@ function formatTimeAgo(timestamp: number): string {
 }
 
 function getServerAddress(options: TUIOptions): string {
-  const host = options.host ?? 'localhost'
-  if (host === '127.0.0.1' || host === '0.0.0.0') {
+  const host = options.host ?? '0.0.0.0'
+  if (host === '127.0.0.1') {
     return `localhost:${options.port}`
+  }
+
+  if (host === '0.0.0.0') {
+    const lanIP = getLanIP()
+    return lanIP ? `localhost:${options.port} (${lanIP}:${options.port})` : `localhost:${options.port}`
   }
 
   return `${host}:${options.port}`
@@ -136,7 +158,7 @@ export function createTUI(server: FastifyInstance, options?: TUIOptions): void {
 
   const resolvedOptions: TUIOptions = {
     port: options?.port ?? 8743,
-    host: options?.host,
+    host: options?.host ?? '0.0.0.0',
   }
 
   currentServer = server
