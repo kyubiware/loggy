@@ -96,6 +96,7 @@ export function LoggyProvider({ children }: { children: ReactNode }): ReactNode 
       filtersVisible,
       toastState,
       maxTokenLimit: state.maxTokenLimit,
+      preserveLogs: state.preserveLogs,
     }),
     [state, filtersVisible, toastState]
   )

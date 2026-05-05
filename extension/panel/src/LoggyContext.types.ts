@@ -32,6 +32,7 @@ export interface SettingsContextValue {
     visible: boolean
   }
   maxTokenLimit: number
+  preserveLogs: boolean
 }
 
 export interface ActionsContextValue {
@@ -54,4 +55,5 @@ export interface ActionsContextValue {
   clearAll: () => Promise<void>
   copy: () => Promise<void>
   setMaxTokenLimit: (value: number) => void
+  togglePreserveLogs: () => void
 }

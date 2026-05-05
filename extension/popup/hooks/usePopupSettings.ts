@@ -42,6 +42,7 @@ export function usePopupSettings(): {
       serverUrl: defaults.serverUrl,
       settingsAccordionOpen: defaults.settingsAccordionOpen,
       maxTokenLimit: defaults.maxTokenLimit,
+      preserveLogs: defaults.preserveLogs,
     }
   }
 

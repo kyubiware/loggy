@@ -44,6 +44,8 @@ export interface LoggyState {
   networkEntries: HAREntry[]
   /** Maximum estimated token count per tab before oldest entries are purged (0 = disabled) */
   maxTokenLimit: number
+  /** Whether to preserve captured logs across page navigations */
+  preserveLogs: boolean
 }
 
 /**
@@ -64,6 +66,7 @@ export type PersistedLoggySettings = Pick<
   | 'serverUrl'
   | 'settingsAccordionOpen'
   | 'maxTokenLimit'
+  | 'preserveLogs'
 >
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -94,6 +97,7 @@ export function createInitialState(): LoggyState {
     consoleLogs: [],
     networkEntries: [],
     maxTokenLimit: 50000,
+    preserveLogs: false,
   }
 }
 
@@ -115,6 +119,7 @@ export function extractPersistedSettings(state: LoggyState): PersistedLoggySetti
     serverUrl: state.serverUrl,
     settingsAccordionOpen: state.settingsAccordionOpen,
     maxTokenLimit: state.maxTokenLimit,
+    preserveLogs: state.preserveLogs,
   }
 }
 
@@ -167,5 +172,7 @@ export function mergePersistedSettings(
         : defaults.settingsAccordionOpen,
     maxTokenLimit:
       typeof stored.maxTokenLimit === 'number' ? stored.maxTokenLimit : defaults.maxTokenLimit,
+    preserveLogs:
+      typeof stored.preserveLogs === 'boolean' ? stored.preserveLogs : defaults.preserveLogs,
   }
 }

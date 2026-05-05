@@ -46,6 +46,7 @@ export type Action =
   | { type: 'SET_SERVER_URL'; value: string }
   | { type: 'SET_SERVER_CONNECTED'; value: boolean }
   | { type: 'SET_MAX_TOKEN_LIMIT'; value: number }
+  | { type: 'TOGGLE_PRESERVE_LOGS' }
 
 export function reducer(state: LoggyState, action: Action): LoggyState {
   switch (action.type) {
@@ -76,6 +77,7 @@ export function reducer(state: LoggyState, action: Action): LoggyState {
         serverUrl: state.serverUrl,
         settingsAccordionOpen: state.settingsAccordionOpen,
         maxTokenLimit: state.maxTokenLimit,
+        preserveLogs: state.preserveLogs,
       })
 
       return {
@@ -143,6 +145,11 @@ export function reducer(state: LoggyState, action: Action): LoggyState {
         ...state,
         maxTokenLimit: action.value,
       }
+    case 'TOGGLE_PRESERVE_LOGS':
+      return {
+        ...state,
+        preserveLogs: !state.preserveLogs,
+      }
     default:
       return state
   }
@@ -164,6 +171,7 @@ export function useCaptureData(): {
   const autoSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastProbedUrlRef = useRef<string | null>(null)
   const latestStateRef = useRef(state)
+  const preservedConsoleLogsRef = useRef<ConsoleMessage[]>([])
 
   const probeConfiguredServer = useCallback(async (configuredServerUrl: string): Promise<void> => {
     const configuredConnected = await probeServer(configuredServerUrl)
@@ -204,7 +212,14 @@ export function useCaptureData(): {
     try {
       const rawEntries = await captureNetworkEntries()
       const networkEntries = enrichWithResponseBodies(filterNetworkEntriesAfterClear(rawEntries))
-      const consoleLogs = await captureConsoleLogs()
+      let consoleLogs = await captureConsoleLogs()
+
+      // Merge preserved console logs from before navigation
+      if (preservedConsoleLogsRef.current.length > 0) {
+        consoleLogs = [...preservedConsoleLogsRef.current, ...consoleLogs]
+        preservedConsoleLogsRef.current = []
+      }
+
       dispatch({ type: 'SET_DATA', consoleLogs, networkEntries })
     } catch (error) {
       console.error('Error capturing data:', error)
@@ -259,6 +274,7 @@ export function useCaptureData(): {
           serverUrl: defaults.serverUrl,
           settingsAccordionOpen: defaults.settingsAccordionOpen,
           maxTokenLimit: defaults.maxTokenLimit,
+          preserveLogs: defaults.preserveLogs,
         })
 
         if (result[LOGGY_PANEL_SETTINGS_STORAGE_KEY] !== undefined) {
@@ -460,6 +476,15 @@ export function useCaptureData(): {
 
     // Navigation reset listener
     const handleNavigated = (): void => {
+      if (latestStateRef.current.preserveLogs) {
+        // Save console logs before the page reloads, so they can be merged
+        // with new captures after navigation. Network entries are preserved
+        // by DevTools (getHAR returns entries across navigations).
+        preservedConsoleLogsRef.current = latestStateRef.current.consoleLogs
+        networkClearCutoffMs.current = null
+        return
+      }
+
       dispatch({ type: 'RESET_DATA' })
       networkClearCutoffMs.current = null
       clearResponseBodies()

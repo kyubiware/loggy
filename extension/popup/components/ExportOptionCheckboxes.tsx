@@ -8,6 +8,7 @@ export type ToggleSettingKey =
   | 'redactSensitiveInfo'
   | 'networkExportEnabled'
   | 'autoServerSync'
+  | 'preserveLogs'
 
 export interface ExportOptionCheckboxesProps {
   settings: PersistedLoggySettings
@@ -22,6 +23,7 @@ const TOGGLE_CONFIGS: Array<[ToggleSettingKey, string]> = [
   ['redactSensitiveInfo', 'Redact sensitive info'],
   ['networkExportEnabled', 'Network export to server'],
   ['autoServerSync', 'Auto sync to server'],
+  ['preserveLogs', 'Preserve logs on reload'],
 ]
 
 export function ExportOptionCheckboxes({

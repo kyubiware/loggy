@@ -88,6 +88,10 @@ export function useLoggyActions({
     [dispatch]
   )
 
+  const togglePreserveLogs = useCallback(() => {
+    dispatch({ type: 'TOGGLE_PRESERVE_LOGS' })
+  }, [dispatch])
+
   const toggleRoute = useCallback(
     (route: string) => {
       setSelectedRoutes((previous) =>
@@ -171,6 +175,7 @@ export function useLoggyActions({
       clearAll,
       copy,
       setMaxTokenLimit,
+      togglePreserveLogs,
     }),
     [
       setConsoleFilter,
@@ -192,6 +197,7 @@ export function useLoggyActions({
       clearAll,
       copy,
       setMaxTokenLimit,
+      togglePreserveLogs,
     ]
   )
 }

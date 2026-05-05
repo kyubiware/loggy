@@ -24,6 +24,8 @@ const mockUsePopupActions = vi.hoisted(() => ({
     networkFilter: '',
     serverUrl: 'http://localhost:8743',
     settingsAccordionOpen: true,
+    maxTokenLimit: 0,
+    preserveLogs: false,
   },
   setSetting: vi.fn(),
   localConsoleFilter: '',
@@ -93,7 +95,7 @@ describe('Popup responsive classes', () => {
     expect(iconButtonToggle.className).toContain('h-3.5')
     expect(iconButtonToggle.className).toContain('w-3.5')
 
-    expect(screen.getAllByRole('checkbox')).toHaveLength(6)
+    expect(screen.getAllByRole('checkbox')).toHaveLength(7)
 
     const filterInput = screen.getByPlaceholderText('Filter console (regex)...')
     expect(filterInput.className).toContain('max-sm:py-3')

@@ -28,6 +28,7 @@ const baseState: LoggyState = {
   settingsAccordionOpen: true,
   serverConnected: false,
   maxTokenLimit: 50000,
+  preserveLogs: false,
   consoleLogs: [],
   networkEntries: [],
 }
@@ -50,6 +51,7 @@ const mocks = vi.hoisted(() => ({
     settingsAccordionOpen: true,
     serverConnected: false,
     maxTokenLimit: 50000,
+    preserveLogs: false,
     consoleLogs: [],
     networkEntries: [],
   } as LoggyState,

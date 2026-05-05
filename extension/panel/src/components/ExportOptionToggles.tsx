@@ -1,4 +1,4 @@
-import { Brain, FileText, RefreshCw, Scissors, Shield, Upload } from 'lucide-react'
+import { Archive, Brain, FileText, RefreshCw, Scissors, Shield, Upload } from 'lucide-react'
 import type React from 'react'
 import { IconButtonToggle } from '../../../shared/components/IconButtonToggle'
 import { useActions, useSettings } from '../LoggyContext'
@@ -32,6 +32,7 @@ export function ExportOptionToggles(): React.JSX.Element {
     autoServerSync,
     serverSyncError,
     maxTokenLimit,
+    preserveLogs,
   } = useSettings()
 
   const {
@@ -42,6 +43,7 @@ export function ExportOptionToggles(): React.JSX.Element {
     toggleNetworkExport,
     toggleAutoServerSync,
     setMaxTokenLimit,
+    togglePreserveLogs,
   } = useActions()
 
   const toggles: ToggleConfig[] = [
@@ -81,6 +83,12 @@ export function ExportOptionToggles(): React.JSX.Element {
       onToggle: toggleAutoServerSync,
       error: serverSyncError,
       icon: <RefreshCw size={16} />,
+    },
+    {
+      label: 'Preserve logs on reload',
+      pressed: preserveLogs,
+      onToggle: togglePreserveLogs,
+      icon: <Archive size={16} />,
     },
   ]
 

@@ -37,6 +37,7 @@ export function useFilteredData(): FilteredDataResult {
       serverUrl: '',
       serverConnected: false,
       maxTokenLimit: settings.maxTokenLimit,
+      preserveLogs: settings.preserveLogs,
     }
 
     const filteredData = getFilteredPanelData(pseudoState)
@@ -66,5 +67,6 @@ export function useFilteredData(): FilteredDataResult {
     settings.autoServerSync,
     settings.serverSyncError,
     settings.maxTokenLimit,
+    settings.preserveLogs,
   ])
 }
