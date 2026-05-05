@@ -29,6 +29,11 @@ Endpoints:
 | `GET` | `/loggy/export` | Retrieve the latest export |
 | `GET` | `/loggy/handshake` | Server version info |
 
+## Links
+
+- **Firefox Add-on**: [addons.mozilla.org](https://addons.mozilla.org/en-US/firefox/addon/5dcdd43f5fa642e69f21/)
+- **npm (loggy-serve)**: [npmjs.com](https://www.npmjs.com/package/loggy-serve)
+
 ## Installation
 
 ### Chrome
@@ -47,7 +52,9 @@ Endpoints:
 
 ### Firefox
 
-A pre-built `.xpi` is included at the repo root (`loggy-firefox.xpi`). To build from source:
+Install from [addons.mozilla.org](https://addons.mozilla.org/en-US/firefox/addon/5dcdd43f5fa642e69f21/).
+
+To build from source:
 
 ```bash
 npm run package:firefox

@@ -27,6 +27,7 @@ const baseState: LoggyState = {
   serverUrl: 'http://localhost:8743',
   settingsAccordionOpen: true,
   serverConnected: false,
+  maxTokenLimit: 50000,
   consoleLogs: [],
   networkEntries: [],
 }
@@ -48,6 +49,7 @@ const mocks = vi.hoisted(() => ({
     serverUrl: 'http://localhost:8743',
     settingsAccordionOpen: true,
     serverConnected: false,
+    maxTokenLimit: 50000,
     consoleLogs: [],
     networkEntries: [],
   } as LoggyState,

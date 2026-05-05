@@ -78,6 +78,7 @@ export default function Popup() {
             <ExportOptionCheckboxes
               settings={settings}
               onToggle={(key: ToggleSettingKey) => setSetting(key, !settings[key])}
+              onSetTokenLimit={(value) => setSetting('maxTokenLimit', value)}
             />
             {settings.networkExportEnabled && (
               <ServerConnection

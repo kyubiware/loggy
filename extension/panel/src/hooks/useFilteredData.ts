@@ -36,6 +36,7 @@ export function useFilteredData(): FilteredDataResult {
       settingsAccordionOpen: true,
       serverUrl: '',
       serverConnected: false,
+      maxTokenLimit: settings.maxTokenLimit,
     }
 
     const filteredData = getFilteredPanelData(pseudoState)
@@ -64,5 +65,6 @@ export function useFilteredData(): FilteredDataResult {
     settings.networkExportEnabled,
     settings.autoServerSync,
     settings.serverSyncError,
+    settings.maxTokenLimit,
   ])
 }

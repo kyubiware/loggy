@@ -8,7 +8,7 @@ import {
   type PersistedLoggySettings,
 } from '../../types/state'
 
-type SettingValue = string | boolean
+type SettingValue = string | boolean | number
 
 /**
  * Reads and syncs persisted Loggy settings for the popup UI.
@@ -41,6 +41,7 @@ export function usePopupSettings(): {
       autoServerSync: defaults.autoServerSync,
       serverUrl: defaults.serverUrl,
       settingsAccordionOpen: defaults.settingsAccordionOpen,
+      maxTokenLimit: defaults.maxTokenLimit,
     }
   }
 

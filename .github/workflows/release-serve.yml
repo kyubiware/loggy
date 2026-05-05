@@ -48,11 +48,10 @@ jobs:
         id: bump
         working-directory: serve
         run: |
-          npm version ${{ github.event.inputs.bump_type }} -m "release(serve): %s"
+          npm version ${{ github.event.inputs.bump_type }} --tag-version-prefix=serve-v -m "release(serve): %s"
           NEW_VERSION=$(node -p "require('./package.json').version")
           echo "version=$NEW_VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=serve-v${NEW_VERSION}" >> "$GITHUB_OUTPUT"
-          git tag "serve-v${NEW_VERSION}"
 
       - name: Push commit and tag
         run: |

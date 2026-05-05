@@ -45,6 +45,7 @@ export type Action =
   | { type: 'SET_SERVER_SYNC_ERROR'; value: boolean }
   | { type: 'SET_SERVER_URL'; value: string }
   | { type: 'SET_SERVER_CONNECTED'; value: boolean }
+  | { type: 'SET_MAX_TOKEN_LIMIT'; value: number }
 
 export function reducer(state: LoggyState, action: Action): LoggyState {
   switch (action.type) {
@@ -74,6 +75,7 @@ export function reducer(state: LoggyState, action: Action): LoggyState {
         autoServerSync: state.autoServerSync,
         serverUrl: state.serverUrl,
         settingsAccordionOpen: state.settingsAccordionOpen,
+        maxTokenLimit: state.maxTokenLimit,
       })
 
       return {
@@ -135,6 +137,11 @@ export function reducer(state: LoggyState, action: Action): LoggyState {
       return {
         ...state,
         serverConnected: action.value,
+      }
+    case 'SET_MAX_TOKEN_LIMIT':
+      return {
+        ...state,
+        maxTokenLimit: action.value,
       }
     default:
       return state
@@ -251,6 +258,7 @@ export function useCaptureData(): {
           autoServerSync: defaults.autoServerSync,
           serverUrl: defaults.serverUrl,
           settingsAccordionOpen: defaults.settingsAccordionOpen,
+          maxTokenLimit: defaults.maxTokenLimit,
         })
 
         if (result[LOGGY_PANEL_SETTINGS_STORAGE_KEY] !== undefined) {

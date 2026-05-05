@@ -8,14 +8,15 @@ loggy/
 ├── serve/              # Fastify companion server workspace (CLI, TUI, HTTP API)
 ├── .github/            # CI workflows and repository automation
 ├── .husky/             # Git hooks
-├── screenshots/        # Reference images and captured output
 ├── ARCHITECTURE.md     # Architecture overview
 ├── STRUCTURE.md        # Repository structure guide
 ├── README.md           # Repo overview and usage guide
 ├── package.json        # Workspace scripts and dependencies
 ├── package-lock.json   # Locked workspace dependency graph
-├── loggy_icon*.png     # Repo-level icon assets
-└── test-*.cjs/js       # Local verification scripts
+├── loggy_icon.png      # Repo-level icon asset
+├── loggy_icon_base.png # Repo-level icon asset
+├── test-jwt.cjs        # Local verification script
+└── test-run.js         # Local verification script
 ```
 
 ## Directory Purposes
@@ -23,7 +24,7 @@ loggy/
 **`extension/`:**
 - Purpose: Hold the browser extension implementation.
 - Contains: Background logic, capture code, React panel UI, popup UI, shared utilities, browser API adapters, scripts, manifests, tests, and build outputs.
-- Key files: `extension/background/index.ts`, `extension/panel/src/main.tsx`, `extension/popup/main.tsx`, `extension/utils/formatter.ts`, `extension/manifest.json`, `extension/package.json`
+- Key files: `extension/background/index.ts`, `extension/content-relay.ts`, `extension/panel/src/main.tsx`, `extension/popup/main.tsx`, `extension/utils/formatter.ts`, `extension/manifest.json`, `extension/package.json`
 
 **`serve/`:**
 - Purpose: Hold the companion Fastify server.
@@ -48,13 +49,13 @@ loggy/
 **Repository root files:**
 - Purpose: Keep workspace-level docs, scripts, and shared configuration.
 - Contains: Workspace manifests, documentation, icon assets, and local helper scripts.
-- Key files: `README.md`, `package.json`, `ARCHITECTURE.md`, `STRUCTURE.md`, `test-jwt.cjs`, `test-run.js`
+- Key files: `README.md`, `package.json`, `ARCHITECTURE.md`, `STRUCTURE.md`, `test-jwt.cjs`, `test-run.js`, `loggy_icon.png`, `loggy_icon_base.png`
 
 ## Key File Locations
 
 **Entry Points:** `extension/background/index.ts`, `extension/panel/src/main.tsx`, `extension/popup/main.tsx`, `serve/src/cli.ts` — start capture, render the extension UIs, and launch the server CLI.
 **Configuration:** `package.json`, `extension/package.json`, `serve/package.json`, `extension/manifest.json`, `extension/manifest-chrome.json`, `extension/manifest-firefox.json`, `extension/vite.config.ts` — define workspace scripts, package metadata, and build behavior.
-**Core Logic:** `extension/utils/`, `extension/background/`, `extension/shared/`, `extension/browser-apis/`, `serve/src/server.ts`, `serve/src/tailscale.ts` — implement filtering, formatting, message routing, export sync, browser abstraction, HTTP handling, and HTTPS setup.
+**Core Logic:** `extension/utils/`, `extension/background/`, `extension/shared/`, `extension/browser-apis/`, `extension/content-relay.ts`, `serve/src/server.ts`, `serve/src/tailscale.ts` — implement filtering, formatting, message routing, export sync, browser abstraction, content relay, HTTP handling, and HTTPS setup.
 **Tests:** `extension/**/*.test.ts`, `extension/**/*.test.tsx`, `serve/tests/server.test.ts` — keep tests near the code they verify.
 
 ## Naming Conventions

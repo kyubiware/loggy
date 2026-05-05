@@ -20,22 +20,22 @@
 
 **Panel UI:**
 - Purpose: Render the DevTools panel and manage capture controls, filters, and export actions.
-- Location: `extension/panel/src/main.tsx`, `extension/panel/src/App.tsx`, `extension/panel/src/LoggyContext.tsx`, `extension/panel/src/AppContent.tsx`
+- Location: `extension/panel/src/main.tsx`, `extension/panel/src/App.tsx`, `extension/panel/src/LoggyContext.tsx`, `extension/panel/src/components/`, `extension/panel/src/hooks/`
 - Contains: React root, context providers, hooks, action handlers, and panel components.
 - Depends on: `extension/types/`, `extension/utils/`, `extension/shared/`
 - Used by: DevTools panel entry point.
 
 **Popup UI:**
 - Purpose: Render the browser-action popup and provide a compact control surface.
-- Location: `extension/popup/main.tsx`, `extension/popup/Popup.tsx`, `extension/popup/constants.ts`
+- Location: `extension/popup/main.tsx`, `extension/popup/components/`, `extension/popup/hooks/`, `extension/popup/constants.ts`
 - Contains: React root, popup view, and popup-specific helpers.
 - Depends on: `extension/shared/`, `extension/utils/`, `extension/types/`
 - Used by: Browser popup entry point.
 
 **Shared export pipeline:**
 - Purpose: Convert captured state into Markdown and optionally push it to the server.
-- Location: `extension/shared/export.ts`, `extension/utils/formatter.ts`, `extension/utils/filtered-data.ts`, `extension/utils/pruner.ts`
-- Contains: Data filtering, redaction, pruning, Markdown formatting, and fire-and-forget server export.
+- Location: `extension/shared/export.ts`, `extension/shared/server-export.ts`, `extension/utils/formatter.ts`, `extension/utils/filtered-data.ts`, `extension/utils/pruner.ts`
+- Contains: Data filtering, redaction, pruning, Markdown formatting, and server push helpers.
 - Depends on: `extension/browser-apis/`, `extension/types/`, `extension/utils/`
 - Used by: Background runtime and panel actions.
 
@@ -50,7 +50,7 @@
 - Purpose: Define package boundaries, scripts, and shared project rules.
 - Location: `package.json`, `extension/package.json`, `serve/package.json`, `extension/manifest.json`
 - Contains: npm workspaces, build/test/lint scripts, package metadata, and extension packaging inputs.
-- Depends on: Workspace package managers and Node.js 24+.
+- Depends on: npm workspaces and Node.js 24+.
 - Used by: Development commands and release pipelines.
 
 ## Data Flow
@@ -59,8 +59,8 @@
 
 1. Browser events enter the background service worker through runtime messages and capture callbacks — `extension/background/index.ts`
 2. The background worker persists tab state, stores captured entries in session storage, and syncs consent/state to the extension UI — `extension/background/index.ts`, `extension/background/storage.ts`
-3. The shared export pipeline filters, prunes, and formats console/network data into Markdown — `extension/shared/export.ts`, `extension/utils/filtered-data.ts`, `extension/utils/pruner.ts`, `extension/utils/formatter.ts`
-4. The panel and popup render the current state, filters, and export actions from shared contexts and hooks — `extension/panel/src/main.tsx`, `extension/panel/src/LoggyContext.tsx`, `extension/popup/main.tsx`, `extension/popup/Popup.tsx`
+3. The shared export pipeline filters, prunes, and formats console/network data into Markdown — `extension/shared/export.ts`, `extension/shared/server-export.ts`, `extension/utils/filtered-data.ts`, `extension/utils/pruner.ts`, `extension/utils/formatter.ts`
+4. The panel and popup render the current state, filters, and export actions from shared contexts and hooks — `extension/panel/src/main.tsx`, `extension/panel/src/LoggyContext.tsx`, `extension/popup/main.tsx`, `extension/popup/components/`
 
 **Server export pipeline:**
 

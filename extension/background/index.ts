@@ -48,7 +48,7 @@ import {
 } from '../types/messages'
 import { formatMarkdown } from '../utils/formatter'
 import { isLocalPage } from '../utils/is-local-page'
-import { estimateTokenCount } from '../utils/token-estimate'
+import { estimateEntryTokenCount, estimateTokenCount } from '../utils/token-estimate'
 import {
   injectIntoTab,
   registerContentScripts,
@@ -284,11 +284,31 @@ async function storeCapturedData(tabId: number, data: CaptureMessage): Promise<n
       ? { kind: 'console', entry: data.payload as CapturedConsoleEntry }
       : { kind: 'network', entry: data.payload as CapturedNetworkEntry }
 
-  const next = [...entries, nextEntry]
-  const bounded = next.length > MAX_ENTRIES_PER_TAB ? next.slice(-MAX_ENTRIES_PER_TAB) : next
+  let next = [...entries, nextEntry]
 
-  await writeStoredEntries(tabId, bounded)
-  return bounded.length
+  // Apply entry count cap
+  if (next.length > MAX_ENTRIES_PER_TAB) {
+    next = next.slice(-MAX_ENTRIES_PER_TAB)
+  }
+
+  // Apply token limit purge
+  const tokenLimit = await getTokenLimit()
+  if (tokenLimit > 0) {
+    let totalTokens = 0
+    for (const entry of next) {
+      totalTokens += estimateEntryTokenCount(entry)
+    }
+
+    while (totalTokens > tokenLimit && next.length > 0) {
+      const removed = next.shift()
+      if (removed) {
+        totalTokens -= estimateEntryTokenCount(removed)
+      }
+    }
+  }
+
+  await writeStoredEntries(tabId, next)
+  return next.length
 }
 
 async function getServerUrl(): Promise<string> {
@@ -303,6 +323,20 @@ async function getServerUrl(): Promise<string> {
   }
 
   return DEFAULT_SERVER_URL
+}
+
+async function getTokenLimit(): Promise<number> {
+  const result = (await chrome.storage.local.get(LOGGY_PANEL_SETTINGS_STORAGE_KEY)) as Record<
+    string,
+    unknown
+  >
+  const settings = result[LOGGY_PANEL_SETTINGS_STORAGE_KEY] as { maxTokenLimit?: unknown } | undefined
+
+  if (typeof settings?.maxTokenLimit === 'number' && settings.maxTokenLimit > 0) {
+    return settings.maxTokenLimit
+  }
+
+  return 0
 }
 
 async function getTabUrl(tabId: number): Promise<string> {
@@ -648,6 +682,7 @@ async function handleControlMessage(
         autoServerSync: defaults.autoServerSync,
         serverUrl: defaults.serverUrl,
         settingsAccordionOpen: defaults.settingsAccordionOpen,
+        maxTokenLimit: defaults.maxTokenLimit,
       }
     )
 

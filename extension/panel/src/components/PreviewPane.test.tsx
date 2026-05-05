@@ -91,6 +91,7 @@ function makeState(
     autoServerSync: overrides.autoServerSync ?? false,
     serverSyncError: overrides.serverSyncError ?? false,
     settingsAccordionOpen: overrides.settingsAccordionOpen ?? true,
+    maxTokenLimit: overrides.maxTokenLimit ?? 50000,
   }
 }
 

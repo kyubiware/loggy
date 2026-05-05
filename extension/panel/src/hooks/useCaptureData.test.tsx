@@ -264,6 +264,7 @@ describe('useCaptureData', () => {
         autoServerSync: defaults.autoServerSync,
         serverUrl: defaults.serverUrl,
         settingsAccordionOpen: defaults.settingsAccordionOpen,
+        maxTokenLimit: defaults.maxTokenLimit,
       },
     })
   })
@@ -670,6 +671,7 @@ describe('reducer HYDRATE_SETTINGS', () => {
         autoServerSync: false,
         serverUrl: 'http://custom:1234',
         settingsAccordionOpen: true,
+        maxTokenLimit: 42000,
       },
     })
 

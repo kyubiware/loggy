@@ -8,6 +8,11 @@ Fastify companion server for Loggy markdown exports.
 
 `loggy-serve` is an optional companion server that receives Loggy markdown exports over HTTP. It provides an alternative to the system clipboard, making it easier to pipe browser logs directly into local files or automated development workflows.
 
+## Links
+
+- **npm**: [npmjs.com/package/loggy-serve](https://www.npmjs.com/package/loggy-serve)
+- **Firefox Add-on**: [addons.mozilla.org](https://addons.mozilla.org/en-US/firefox/addon/5dcdd43f5fa642e69f21/)
+
 ## Install
 
 Install globally or as a dependency:

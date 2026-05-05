@@ -20,6 +20,7 @@ const PERSISTED_KEYS: Array<keyof PersistedLoggySettings> = [
   'autoServerSync',
   'serverUrl',
   'settingsAccordionOpen',
+  'maxTokenLimit',
 ]
 
 function createPersistedDefaults(): PersistedLoggySettings {
@@ -78,6 +79,7 @@ describe('extractPersistedSettings', () => {
       autoServerSync: false,
       serverUrl: 'http://custom:1234',
       settingsAccordionOpen: true,
+      maxTokenLimit: 50000,
     })
   })
 })
@@ -98,6 +100,7 @@ describe('mergePersistedSettings', () => {
       autoServerSync: true,
       serverUrl: 'http://custom:1234',
       settingsAccordionOpen: true,
+      maxTokenLimit: 50000,
     }
 
     expect(mergePersistedSettings(stored, defaults)).toEqual(stored)

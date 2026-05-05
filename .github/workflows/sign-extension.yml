@@ -60,6 +60,16 @@ jobs:
         working-directory: extension
         run: npm run build:firefox
 
+      - name: Install Playwright Firefox
+        working-directory: extension
+        run: |
+          sudo apt-mark hold firefox
+          npx playwright install --with-deps firefox
+
+      - name: Generate screenshots
+        working-directory: extension
+        run: npm run screenshot
+
       - name: Lint with web-ext
         working-directory: extension
         run: npx web-ext lint --source-dir dist-firefox
@@ -124,3 +134,4 @@ jobs:
           files: |
             extension/loggy-firefox.xpi
             extension/loggy-chrome.zip
+            screenshots/*.png

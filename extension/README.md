@@ -1,6 +1,8 @@
 # Loggy
 
-A Chrome DevTools extension for capturing, filtering, and exporting Console & Network logs in a format optimized for LLM debugging workflows.
+A Chrome/Firefox DevTools extension for capturing, filtering, and exporting Console & Network logs in a format optimized for LLM debugging workflows.
+
+**Install on Firefox**: [addons.mozilla.org](https://addons.mozilla.org/en-US/firefox/addon/5dcdd43f5fa642e69f21/)
 
 ## Features
 
