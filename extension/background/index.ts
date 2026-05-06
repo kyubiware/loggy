@@ -77,6 +77,7 @@ const tabStates = new Map<number, TabCaptureState>()
 const previousModeByTab = new Map<number, CaptureMode>()
 const debuggerResumeTimersByTab = new Map<number, ReturnType<typeof setTimeout>>()
 const previewCache = new Map<string, { markdown: string; createdAt: number }>()
+const lastExportFingerprintByTab = new Map<number, string>()
 const PREVIEW_CACHE_TTL_MS = 5 * 60 * 1000
 let activeTabId: number | null = null
 
@@ -424,11 +425,21 @@ async function pushToServer(url: string, markdown: string): Promise<boolean> {
 }
 
 async function exportTabToServer(tabId: number): Promise<boolean> {
+  const entries = await readStoredEntries(tabId)
+
+  // Build a content fingerprint from stored entries (excludes timestamp)
+  const fingerprint = JSON.stringify(entries)
+
+  if (fingerprint === lastExportFingerprintByTab.get(tabId)) {
+    return true
+  }
+
   const markdown = await buildTabMarkdown(tabId)
   const serverUrl = await getServerUrl()
   const success = await pushToServer(serverUrl, markdown)
 
   if (success) {
+    lastExportFingerprintByTab.set(tabId, fingerprint)
     await clearFailedExportBuffer(tabId)
     return true
   }
@@ -1135,6 +1146,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
 
   previousModeByTab.delete(tabId)
   tabStates.delete(tabId)
+  lastExportFingerprintByTab.delete(tabId)
   if (activeTabId === tabId) {
     activeTabId = null
   }

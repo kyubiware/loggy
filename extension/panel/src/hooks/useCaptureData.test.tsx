@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import * as serverExport from '../../../shared/server-export'
 import type { ConsoleMessage } from '../../../types/console'
 import type { HAREntry } from '../../../types/har'
 import {
@@ -27,10 +28,15 @@ vi.mock('../../server-probe', () => ({
   probeServer: vi.fn(),
 }))
 
+vi.mock('../../../shared/server-export', () => ({
+  pushToServer: vi.fn().mockResolvedValue(true),
+}))
+
 const mockCaptureNetwork = vi.mocked(capture.captureNetworkEntries)
 const mockCaptureConsole = vi.mocked(capture.captureConsoleLogs)
 const mockClearCapturedConsoleLogs = vi.mocked(capture.clearCapturedConsoleLogs)
 const mockProbeServer = vi.mocked(serverProbe.probeServer)
+const mockPushToServer = vi.mocked(serverExport.pushToServer)
 
 // Store navigation listener so we can call it manually
 let navigationListener: (() => void) | null = null
@@ -104,6 +110,7 @@ describe('useCaptureData', () => {
     mockCaptureConsole.mockReset()
     mockClearCapturedConsoleLogs.mockReset()
     mockProbeServer.mockReset()
+    mockPushToServer.mockReset().mockResolvedValue(true)
     mockOnNavigated.addListener.mockClear()
   })
 
@@ -645,6 +652,142 @@ describe('useCaptureData', () => {
     })
 
     expect(result.current.state.networkEntries).toEqual([afterBoundaryEntry])
+  })
+
+  describe('auto-sync dedup', () => {
+    it('skips pushToServer when content has not changed', async () => {
+      seedStorage({
+        loggyPanelSettings: {
+          autoServerSync: true,
+          serverUrl: 'http://localhost:8743',
+        },
+      })
+      mockProbeServer.mockResolvedValue(true)
+
+      const { result } = renderHook(() => useCaptureData())
+      await flushMicrotasks()
+
+      // After hydration, server should be connected and auto-sync enabled
+      expect(result.current.state.serverConnected).toBe(true)
+      expect(result.current.state.autoServerSync).toBe(true)
+
+      // Flush startup capture so data is loaded
+      await flushMicrotasks()
+
+      // First auto-sync fires after 2500ms debounce
+      mockPushToServer.mockClear()
+      await act(async () => {
+        vi.advanceTimersByTime(2500)
+      })
+      await flushMicrotasks()
+
+      // pushToServer should have been called once for the initial data
+      expect(mockPushToServer).toHaveBeenCalledTimes(1)
+
+      // Now trigger a re-capture that returns the SAME data
+      mockPushToServer.mockClear()
+      await act(async () => {
+        vi.advanceTimersByTime(2000) // auto-refresh interval
+      })
+      await flushMicrotasks()
+
+      // Advance past the auto-sync debounce again
+      await act(async () => {
+        vi.advanceTimersByTime(2500)
+      })
+      await flushMicrotasks()
+
+      // pushToServer should NOT be called again — content is identical
+      expect(mockPushToServer).not.toHaveBeenCalled()
+    })
+
+    it('calls pushToServer when content changes', async () => {
+      seedStorage({
+        loggyPanelSettings: {
+          autoServerSync: true,
+          serverUrl: 'http://localhost:8743',
+        },
+      })
+      mockProbeServer.mockResolvedValue(true)
+
+      const { result } = renderHook(() => useCaptureData())
+      await flushMicrotasks()
+
+      expect(result.current.state.serverConnected).toBe(true)
+      await flushMicrotasks()
+
+      // First auto-sync
+      await act(async () => {
+        vi.advanceTimersByTime(2500)
+      })
+      await flushMicrotasks()
+
+      expect(mockPushToServer).toHaveBeenCalledTimes(1)
+
+      // Now change the captured data
+      const newLog: ConsoleMessage = {
+        timestamp: '2024-01-01T00:01:00.000Z',
+        level: 'error',
+        message: 'new error message',
+      }
+      mockCaptureConsole.mockResolvedValueOnce([sampleConsoleLog, newLog])
+      mockCaptureNetwork.mockResolvedValueOnce([sampleNetworkEntry])
+
+      mockPushToServer.mockClear()
+
+      // Trigger re-capture with new data
+      await act(async () => {
+        vi.advanceTimersByTime(2000) // auto-refresh
+      })
+      await flushMicrotasks()
+
+      // Advance past debounce
+      await act(async () => {
+        vi.advanceTimersByTime(2500)
+      })
+      await flushMicrotasks()
+
+      // pushToServer SHOULD be called because content changed
+      expect(mockPushToServer).toHaveBeenCalledTimes(1)
+    })
+
+    it('exports when export option changes but skips if data stays the same across auto-refresh', async () => {
+      seedStorage({
+        loggyPanelSettings: {
+          autoServerSync: true,
+          serverUrl: 'http://localhost:8743',
+        },
+      })
+      mockProbeServer.mockResolvedValue(true)
+
+      renderHook(() => useCaptureData())
+      await flushMicrotasks()
+      await flushMicrotasks()
+
+      // First auto-sync
+      await act(async () => {
+        vi.advanceTimersByTime(2500)
+      })
+      await flushMicrotasks()
+
+      expect(mockPushToServer).toHaveBeenCalledTimes(1)
+
+      // Trigger a re-capture that returns the SAME data — should skip
+      mockPushToServer.mockClear()
+
+      await act(async () => {
+        vi.advanceTimersByTime(2000) // auto-refresh
+      })
+      await flushMicrotasks()
+
+      await act(async () => {
+        vi.advanceTimersByTime(2500) // debounce
+      })
+      await flushMicrotasks()
+
+      // Same data → same fingerprint → no export
+      expect(mockPushToServer).not.toHaveBeenCalled()
+    })
   })
 })
 

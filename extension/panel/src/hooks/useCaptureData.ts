@@ -30,6 +30,25 @@ const AUTO_REFRESH_INTERVAL_MS = 2000
 const DEFAULT_SERVER_URL = 'http://localhost:8743'
 const SERVER_POLL_INTERVAL_MS = 5000
 
+/**
+ * Build a content fingerprint from the export-relevant state fields.
+ * Excludes timestamp so the fingerprint is stable across identical data.
+ */
+function buildExportFingerprint(s: LoggyState): string {
+  return JSON.stringify({
+    c: s.consoleLogs,
+    n: s.networkEntries,
+    ac: s.includeAgentContext,
+    rb: s.includeResponseBodies,
+    tc: s.truncateConsoleLogs,
+    ri: s.redactSensitiveInfo,
+    ne: s.networkExportEnabled,
+    cf: s.consoleFilter,
+    nf: s.networkFilter,
+    sr: s.selectedRoutes,
+  })
+}
+
 export type Action =
   | { type: 'SET_DATA'; consoleLogs: ConsoleMessage[]; networkEntries: HAREntry[] }
   | { type: 'RESET_DATA' }
@@ -171,6 +190,7 @@ export function useCaptureData(): {
   const autoSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastProbedUrlRef = useRef<string | null>(null)
   const latestStateRef = useRef(state)
+  const lastExportFingerprintRef = useRef<string | null>(null)
   const preservedConsoleLogsRef = useRef<ConsoleMessage[]>([])
 
   const probeConfiguredServer = useCallback(async (configuredServerUrl: string): Promise<void> => {
@@ -387,6 +407,13 @@ export function useCaptureData(): {
         }
 
         const markdown = await buildExportMarkdown(latestState)
+
+        const fingerprint = buildExportFingerprint(latestState)
+        if (fingerprint === lastExportFingerprintRef.current) {
+          return
+        }
+
+        lastExportFingerprintRef.current = fingerprint
         const success = await pushToServer(latestState.serverUrl, markdown)
 
         dispatch({ type: 'SET_SERVER_SYNC_ERROR', value: !success })
@@ -402,7 +429,7 @@ export function useCaptureData(): {
   }, [state.autoServerSync, state.serverConnected, state.consoleLogs, state.networkEntries])
 
   // Trigger server sync when export options or filters change (if auto-sync is enabled and content exists)
-  // biome-ignore lint: dependencies are intentionally specified to trigger re-export when options/filters change
+  // biome-ignore lint/correctness/useExhaustiveDependencies: dependencies are intentionally specified to trigger re-export when options/filters change
   useEffect(() => {
     if (!state.autoServerSync || !state.serverConnected) {
       return
@@ -420,6 +447,13 @@ export function useCaptureData(): {
     autoSyncTimeoutRef.current = setTimeout(() => {
       void (async () => {
         const latestState = latestStateRef.current
+        const fingerprint = buildExportFingerprint(latestState)
+
+        if (fingerprint === lastExportFingerprintRef.current) {
+          return
+        }
+
+        lastExportFingerprintRef.current = fingerprint
         const markdown = await buildExportMarkdown(latestState)
         const success = await pushToServer(latestState.serverUrl, markdown)
         dispatch({ type: 'SET_SERVER_SYNC_ERROR', value: !success })
