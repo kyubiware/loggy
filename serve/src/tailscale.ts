@@ -1,11 +1,23 @@
 import { execSync } from 'node:child_process'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 
 export interface TailscaleCertInfo {
   hostname: string
   cert: Buffer
   key: Buffer
+}
+
+export interface TailscaleDetectResult {
+  /** Certs were successfully provisioned. */
+  certs: TailscaleCertInfo | null
+  /**
+   * Tailscale is running and has cert domains, but cert generation failed.
+   * Contains the domain detected and the error message from `tailscale cert`.
+   */
+  certError?: {
+    domain: string
+    hostname: string
+    message: string
+  }
 }
 
 interface TailscaleStatus {
@@ -16,34 +28,44 @@ interface TailscaleStatus {
   }
 }
 
-export function getTailscaleCerts(): TailscaleCertInfo | null {
+/**
+ * Detect Tailscale status and attempt to provision certs.
+ * Returns a rich result so callers can distinguish "not installed/running"
+ * from "detected but cert generation failed".
+ */
+export function detectTailscale(): TailscaleDetectResult {
+  let status: TailscaleStatus
+
   try {
     const statusOutput = execSync('tailscale status --json', {
       timeout: 5000,
       encoding: 'utf8',
     })
+    status = JSON.parse(statusOutput)
+  } catch {
+    return { certs: null }
+  }
 
-    const status: TailscaleStatus = JSON.parse(statusOutput)
+  if (status.BackendState !== 'Running') {
+    return { certs: null }
+  }
 
-    if (status.BackendState !== 'Running') {
-      return null
-    }
+  if (!status.CertDomains || status.CertDomains.length === 0) {
+    return { certs: null }
+  }
 
-    if (!status.CertDomains || status.CertDomains.length === 0) {
-      return null
-    }
+  const rawHostname = status.Self?.DNSName
+  if (!rawHostname) {
+    return { certs: null }
+  }
 
-    const rawHostname = status.Self?.DNSName
-    if (!rawHostname) {
-      return null
-    }
+  const hostname = rawHostname.endsWith('.')
+    ? rawHostname.slice(0, -1)
+    : rawHostname
 
-    const hostname = rawHostname.endsWith('.')
-      ? rawHostname.slice(0, -1)
-      : rawHostname
+  const domain = status.CertDomains[0]
 
-    const domain = status.CertDomains[0]
-
+  try {
     // Use stdout mode to avoid snap filesystem confinement issues.
     // Output contains: leaf cert + intermediate cert + private key.
     const combined = execSync(
@@ -65,15 +87,33 @@ export function getTailscaleCerts(): TailscaleCertInfo | null {
     // Extract private key
     const keyMatch = pem.match(/-----BEGIN (?:EC )?PRIVATE KEY-----[\s\S]*?-----END (?:EC )?PRIVATE KEY-----/)
     if (certBlocks.length === 0 || !keyMatch) {
-      return null
+      return { certs: null }
     }
 
     return {
-      hostname,
-      cert: Buffer.from(certBlocks.join('\n')),
-      key: Buffer.from(keyMatch[0]),
+      certs: {
+        hostname,
+        cert: Buffer.from(certBlocks.join('\n')),
+        key: Buffer.from(keyMatch[0]),
+      },
     }
-  } catch {
-    return null
+  } catch (error) {
+    const message =
+      error instanceof Error && error.message
+        ? error.message.split('\n')[0]
+        : String(error)
+
+    return {
+      certs: null,
+      certError: { domain, hostname, message },
+    }
   }
+}
+
+/**
+ * Convenience wrapper that returns certs only (null if unavailable).
+ * Preserves backward compatibility for callers that don't need detection details.
+ */
+export function getTailscaleCerts(): TailscaleCertInfo | null {
+  return detectTailscale().certs
 }

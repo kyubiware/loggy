@@ -5,9 +5,10 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import updateNotifier from 'update-notifier'
 import { networkInterfaces } from 'node:os'
+import readline from 'node:readline'
 import { createTUI, destroyTUI } from './tui.js'
 import { createServer, formatStartupError } from './server.js'
-import { getTailscaleCerts } from './tailscale.js'
+import { detectTailscale, getTailscaleCerts } from './tailscale.js'
 import type { TailscaleCertInfo } from './tailscale.js'
 
 function getLanIPs(): string[] {
@@ -125,6 +126,33 @@ async function printLatestExport(port: number) {
   }
 }
 
+function promptYesNo(question: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    })
+
+    rl.question(`${question} (y/N) `, (answer) => {
+      rl.close()
+      const normalized = answer.trim().toLowerCase()
+      resolve(normalized === 'y' || normalized === 'yes')
+    })
+  })
+}
+
+function printTailscaleCertHelp(hostname: string): void {
+  console.log('')
+  console.log('  Tailscale detected but HTTPS cert generation failed.')
+  console.log('  To allow loggy to generate a cert, run:')
+  console.log('')
+  console.log(`    sudo tailscale set --operator=$USER`)
+  console.log('')
+  console.log('  This grants your user access to Tailscale certs without root.')
+  console.log(`  After that, loggy will use https://${hostname} automatically.`)
+  console.log('')
+}
+
 async function main() {
   if (process.argv.includes('--version') || process.argv.includes('-v')) {
     console.log(pkg.version)
@@ -159,11 +187,25 @@ async function main() {
     httpsConfig = certs
     tailscaleDomain = certs.hostname
   } else {
-    const certs = getTailscaleCerts()
-    if (certs) {
+    const detection = detectTailscale()
+
+    if (detection.certs) {
       isHttps = true
-      httpsConfig = certs
-      tailscaleDomain = certs.hostname
+      httpsConfig = detection.certs
+      tailscaleDomain = detection.certs.hostname
+    } else if (detection.certError && process.stdout.isTTY) {
+      const { hostname, message } = detection.certError
+
+      printTailscaleCertHelp(hostname)
+      console.log(`  Error: ${message}`)
+      console.log('')
+
+      const proceed = await promptYesNo('  Start without HTTPS for now?')
+      if (!proceed) {
+        process.exit(0)
+      }
+
+      console.log('')
     }
   }
 
