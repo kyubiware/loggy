@@ -91,6 +91,9 @@ const mockEval = vi.fn(
     }
   }
 )
+
+const mockScriptingExecuteScript = vi.fn(() => Promise.resolve([]))
+
 const mockTab = {
   id: 1,
   url: 'http://localhost:3000',
@@ -149,6 +152,9 @@ globalThis.chrome = {
       set: mockStorageSet,
     },
   },
+  scripting: {
+    executeScript: mockScriptingExecuteScript,
+  } as unknown as typeof chrome.scripting,
 } as unknown as typeof chrome
 
 // Export mock functions for use in tests
@@ -162,6 +168,7 @@ export const mockChromeOnRequestFinishedRemove = extensionApi.devtools.network.o
 export const mockChromeTabsQuery = extensionApi.tabs.query as ReturnType<typeof vi.fn>
 export const mockChromeStorageGet = extensionApi.storage.local.get as ReturnType<typeof vi.fn>
 export const mockChromeStorageSet = extensionApi.storage.local.set as ReturnType<typeof vi.fn>
+export const mockScriptingExecute = mockScriptingExecuteScript
 
 // Helper functions for deterministic capture testing
 export function mockBootstrapInstall(logs: unknown[] = []) {
@@ -191,5 +198,6 @@ beforeEach(() => {
   mockChromeTabsQuery.mockClear()
   mockChromeStorageGet.mockClear()
   mockChromeStorageSet.mockClear()
+  mockScriptingExecuteScript.mockClear()
   resetStorage()
 })

@@ -218,40 +218,51 @@ function handleMessage(event: MessageEvent): void {
   handleRelayMessage(relayMessage)
 }
 
-window.addEventListener('message', handleMessage)
-
-chrome.runtime.onMessage.addListener((message: unknown) => {
-  const consentMessage = message as ConsentChangedMessage
-  if (consentMessage.type !== 'consent-changed') {
-    return
+if ((window as unknown as Record<string, unknown>).__loggyRelayInitialized) {
+  // Already initialized — re-send ready message in case background restarted,
+  // but skip listener registration to avoid duplicate message processing.
+  const readyMessage: ContentRelayReadyMessage = {
+    type: 'content-relay-ready',
+    url: location.href,
   }
+  enqueueMessage(readyMessage)
+} else {
+  ;(window as unknown as Record<string, unknown>).__loggyRelayInitialized = true
+  window.addEventListener('message', handleMessage)
 
-  handleConsentResponse({
-    hasConsent: consentMessage.hasConsent ?? false,
-    captureMode: consentMessage.captureMode ?? 'none',
-  })
-})
-
-const requestConsentMessage: RequestConsentMessage = {
-  type: 'request-consent',
-  url: location.href,
-}
-
-try {
-  chrome.runtime.sendMessage(requestConsentMessage, (response: unknown) => {
-    if (chrome.runtime.lastError) {
+  chrome.runtime.onMessage.addListener((message: unknown) => {
+    const consentMessage = message as ConsentChangedMessage
+    if (consentMessage.type !== 'consent-changed') {
       return
     }
 
-    handleConsentResponse(response)
+    handleConsentResponse({
+      hasConsent: consentMessage.hasConsent ?? false,
+      captureMode: consentMessage.captureMode ?? 'none',
+    })
   })
-} catch {
-  // Ignore send failures. Queue/buffer handling keeps retries safe.
-}
 
-const readyMessage: ContentRelayReadyMessage = {
-  type: 'content-relay-ready',
-  url: location.href,
-}
+  const requestConsentMessage: RequestConsentMessage = {
+    type: 'request-consent',
+    url: location.href,
+  }
 
-enqueueMessage(readyMessage)
+  try {
+    chrome.runtime.sendMessage(requestConsentMessage, (response: unknown) => {
+      if (chrome.runtime.lastError) {
+        return
+      }
+
+      handleConsentResponse(response)
+    })
+  } catch {
+    // Ignore send failures. Queue/buffer handling keeps retries safe.
+  }
+
+  const readyMessage: ContentRelayReadyMessage = {
+    type: 'content-relay-ready',
+    url: location.href,
+  }
+
+  enqueueMessage(readyMessage)
+}
