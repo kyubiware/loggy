@@ -14,7 +14,7 @@ This is the workflow Loggy was built for:
 4. **Copy Loggy's compiled output** and paste it back into the AI chat
 5. **Let the AI fix it** with full context of exactly what happened
 
-This loop is incredibly effective because the AI gets structured, filtered, token-efficient logs instead of raw noise.
+This loop is incredibly effective because the AI gets structured, filtered, token-efficient logs instead than raw noise.
 
 **Features**
 

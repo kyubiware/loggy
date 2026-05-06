@@ -112,17 +112,12 @@ async function run() {
   const version = readRequiredEnv('VERSION');
   const changelog = readRequiredEnv('CHANGELOG');
 
-  const getResponse = await fetchWithAuth(AMO_BASE_URL, { method: 'GET' }, token);
-  if (!getResponse.ok) {
-    const body = await readResponseBody(getResponse);
-    console.error(`AMO GET failed (${getResponse.status}): ${body}`);
-    process.exit(1);
-  }
-
-  const getJson = await getResponse.json();
-  const currentDescription =
-    (getJson && getJson.description && getJson.description['en-US']) || '';
-  const updatedDescription = appendChangelog(currentDescription, version, changelog);
+  // Build description from the repo's source of truth instead of reading
+  // from AMO. The AMO API returns cleaned HTML on GET, so a read-modify-write
+  // cycle causes double-encoding (HTML → Markdown append → re-sanitize).
+  const baseDescriptionPath = path.resolve(__dirname, 'amo-description.md');
+  const baseDescription = fs.readFileSync(baseDescriptionPath, 'utf8').trim();
+  const updatedDescription = appendChangelog(baseDescription, version, changelog);
 
   await patchDescription(token, updatedDescription);
   console.log(`Updated AMO description for v${version}`);
