@@ -29,6 +29,7 @@
     "format": "biome format --write .",
     "source-zip": "node scripts/prepare-source-zip.cjs",
     "sign:firefox": "dotenv -- web-ext sign --source-dir dist-firefox --channel listed --amo-metadata amo-metadata.json",
+    "update-amo": "dotenv -- REPLACE_DESCRIPTION=scripts/amo-description.md node scripts/update-amo-description.cjs",
     "lint:firefox": "web-ext lint --source-dir dist-firefox",
     "screenshot": "node scripts/screenshot-firefox.cjs",
     "release": "node scripts/release.cjs"

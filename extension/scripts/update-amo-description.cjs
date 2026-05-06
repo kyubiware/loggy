@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 
+const fs = require('node:fs');
+const path = require('node:path');
+
 const crypto = require('node:crypto');
 
 const AMO_BASE_URL =
@@ -30,14 +33,19 @@ function createJwt(issuer, secret) {
 function appendChangelog(currentDescription, version, changelog) {
   const base = (currentDescription || '').trim();
   const trimmedChangelog = (changelog || '').trim();
-  const separator = base ? `\n\n---\n\n` : '';
-  return `${base}${separator}## v${version}\n\n${trimmedChangelog}`.trim();
+  const separator = base ? '\n\n' : '';
+  return `${base}${separator}**v${version}**\n\n${trimmedChangelog}`.trim();
 }
 
-function readRequiredEnv(key) {
-  const value = process.env[key];
+function readEnv(key, fallback) {
+  return process.env[key] || (fallback ? process.env[fallback] : undefined);
+}
+
+function readRequiredEnv(key, fallback) {
+  const value = readEnv(key, fallback);
   if (!value) {
-    console.error(`Missing required env var: ${key}`);
+    const label = fallback ? `${key} or ${fallback}` : key;
+    console.error(`Missing required env var: ${label}`);
     process.exit(1);
   }
   return value;
@@ -62,13 +70,47 @@ async function fetchWithAuth(url, options, token) {
   });
 }
 
+async function patchDescription(token, description) {
+  const patchResponse = await fetchWithAuth(
+    AMO_BASE_URL,
+    {
+      method: 'PATCH',
+      body: JSON.stringify({
+        description: {
+          'en-US': description,
+        },
+      }),
+    },
+    token
+  );
+
+  if (!patchResponse.ok) {
+    const body = await readResponseBody(patchResponse);
+    console.error(`AMO PATCH failed (${patchResponse.status}): ${body}`);
+    process.exit(1);
+  }
+
+  return patchResponse;
+}
+
 async function run() {
-  const issuer = readRequiredEnv('AMO_API_KEY');
-  const secret = readRequiredEnv('AMO_API_SECRET');
-  const version = readRequiredEnv('VERSION');
-  const changelog = readRequiredEnv('CHANGELOG');
+  const issuer = readRequiredEnv('AMO_API_KEY', 'WEB_EXT_API_KEY');
+  const secret = readRequiredEnv('AMO_API_SECRET', 'WEB_EXT_API_SECRET');
+
+  const replaceFile = readEnv('REPLACE_DESCRIPTION');
 
   const token = createJwt(issuer, secret);
+
+  if (replaceFile) {
+    const resolvedPath = path.resolve(replaceFile);
+    const description = fs.readFileSync(resolvedPath, 'utf8').trim();
+    await patchDescription(token, description);
+    console.log(`Replaced AMO description from ${resolvedPath}`);
+    process.exit(0);
+  }
+
+  const version = readRequiredEnv('VERSION');
+  const changelog = readRequiredEnv('CHANGELOG');
 
   const getResponse = await fetchWithAuth(AMO_BASE_URL, { method: 'GET' }, token);
   if (!getResponse.ok) {
@@ -82,25 +124,7 @@ async function run() {
     (getJson && getJson.description && getJson.description['en-US']) || '';
   const updatedDescription = appendChangelog(currentDescription, version, changelog);
 
-  const patchResponse = await fetchWithAuth(
-    AMO_BASE_URL,
-    {
-      method: 'PATCH',
-      body: JSON.stringify({
-        description: {
-          'en-US': updatedDescription,
-        },
-      }),
-    },
-    token
-  );
-
-  if (!patchResponse.ok) {
-    const body = await readResponseBody(patchResponse);
-    console.error(`AMO PATCH failed (${patchResponse.status}): ${body}`);
-    process.exit(1);
-  }
-
+  await patchDescription(token, updatedDescription);
   console.log(`Updated AMO description for v${version}`);
   process.exit(0);
 }
@@ -108,6 +132,7 @@ async function run() {
 module.exports = {
   createJwt,
   appendChangelog,
+  patchDescription,
   run,
 };
 
