@@ -64,6 +64,26 @@ async function fetchWithAuth(url, options, token) {
   });
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchWithRetry(url, options, getToken, retries = 5) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const token = typeof getToken === 'function' ? getToken() : getToken;
+    const response = await fetchWithAuth(url, options, token);
+    if (response.status === 429 && attempt < retries) {
+      const body = await readResponseBody(response);
+      const waitMatch = body.match(/(\d+)\s*second/i);
+      const waitSec = waitMatch ? Number(waitMatch[1]) + 1 : 2 ** (attempt + 1);
+      console.log(`  Rate limited, retrying in ${waitSec}s (attempt ${attempt + 1}/${retries})...`);
+      await sleep(waitSec * 1000);
+      continue;
+    }
+    return response;
+  }
+}
+
 async function fetchAddonDetails(token) {
   const response = await fetchWithAuth(AMO_BASE_URL, { method: 'GET' }, token);
   if (!response.ok) {
@@ -74,9 +94,9 @@ async function fetchAddonDetails(token) {
   return response.json();
 }
 
-async function deletePreview(token, previewId) {
+async function deletePreview(getToken, previewId) {
   const url = `${AMO_BASE_URL}previews/${previewId}/`;
-  const response = await fetchWithAuth(url, { method: 'DELETE' }, token);
+  const response = await fetchWithRetry(url, { method: 'DELETE' }, getToken);
   if (!response.ok) {
     const body = await readResponseBody(response);
     console.error(`Failed to delete preview ${previewId} (${response.status}): ${body}`);
@@ -84,7 +104,7 @@ async function deletePreview(token, previewId) {
   }
 }
 
-async function uploadPreview(token, filePath, position) {
+async function uploadPreview(getToken, filePath, position) {
   const url = `${AMO_BASE_URL}previews/`;
   const formData = new FormData();
   const fileBuffer = fs.readFileSync(filePath);
@@ -92,13 +112,13 @@ async function uploadPreview(token, filePath, position) {
   formData.append('image', blob, path.basename(filePath));
   formData.append('position', String(position));
 
-  const response = await fetchWithAuth(
+  const response = await fetchWithRetry(
     url,
     {
       method: 'POST',
       body: formData,
     },
-    token
+    getToken
   );
 
   if (!response.ok) {
@@ -111,15 +131,15 @@ async function uploadPreview(token, filePath, position) {
 async function run() {
   const issuer = readRequiredEnv('AMO_API_KEY', 'WEB_EXT_API_KEY');
   const secret = readRequiredEnv('AMO_API_SECRET', 'WEB_EXT_API_SECRET');
-  const token = createJwt(issuer, secret);
+  const getToken = () => createJwt(issuer, secret);
 
-  const addonDetails = await fetchAddonDetails(token);
+  const addonDetails = await fetchAddonDetails(getToken());
   const previews = addonDetails.previews || [];
 
   if (previews.length > 0) {
     console.log(`Deleting ${previews.length} existing preview(s)...`);
     for (const preview of previews) {
-      await deletePreview(token, preview.id);
+      await deletePreview(getToken, preview.id);
       console.log(`  Deleted preview ${preview.id}`);
     }
   }
@@ -142,7 +162,7 @@ async function run() {
   console.log(`Uploading ${files.length} screenshot(s)...`);
   for (let i = 0; i < files.length; i++) {
     const filePath = path.join(SCREENSHOTS_DIR, files[i]);
-    await uploadPreview(token, filePath, i);
+    await uploadPreview(getToken, filePath, i);
     console.log(`  Uploaded ${files[i]} (position ${i})`);
   }
 
