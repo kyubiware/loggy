@@ -37,6 +37,7 @@ import {
   type ConsentState,
   type GetCachedPreviewMessage,
   type GetAlwaysLogHostsMessage,
+  type GetTabStatusMessage,
   type LoggyMessage,
   type RemoveAlwaysLogMessage,
   type RequestConsentMessage,
@@ -488,6 +489,14 @@ async function handleControlMessage(
 > {
   if (message.type === 'get-status') {
     return getActiveTabStatus()
+  }
+
+  if (message.type === 'get-tab-status') {
+    const tabId = sender.tab?.id
+    if (typeof tabId !== 'number') {
+      return { mode: 'inactive' as const, tabId: -1, logCount: 0, connected: false }
+    }
+    return getOrCreateTabState(tabId)
   }
 
   if (message.type === 'toggle-debugger') {
@@ -942,6 +951,7 @@ function isControlMessage(message: unknown): message is CaptureControlMessage {
   const type = (message as { type?: unknown }).type
   return (
     type === 'get-status' ||
+    type === 'get-tab-status' ||
     type === 'toggle-debugger' ||
     type === 'content-relay-ready' ||
     type === 'panel-opened' ||

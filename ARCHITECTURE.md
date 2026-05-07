@@ -46,10 +46,17 @@
 - Depends on: `fastify`, `@fastify/cors`, `clipboardy`, `update-notifier`, and the `tailscale` CLI for HTTPS mode.
 - Used by: `loggy` CLI, browser extension server sync, direct API clients, and local automation.
 
+**Release automation:**
+- Purpose: Build, package, sign, and publish Firefox extension artifacts.
+- Location: `extension/scripts/release.cjs`, `extension/scripts/bump-version.cjs`, `extension/scripts/prepare-source-zip.cjs`, `extension/scripts/fix-devtools-module.cjs`, `extension/scripts/rewrite-firefox-manifest.cjs`, `extension/scripts/sanitize-firefox-bundle.cjs`, `extension/scripts/fix-content-scripts.cjs`, `extension/scripts/update-amo-description.cjs`, `extension/scripts/upload-amo-screenshots.cjs`, `.github/workflows/release-extension.yml`, `.github/workflows/sign-extension.yml`, `.github/workflows/bump-version.yml`
+- Contains: Release orchestration, Firefox bundle post-processing, AMO description updates, screenshot upload, and version bump automation.
+- Depends on: `web-ext`, `dotenv-cli`, GitHub Actions, and Firefox build outputs.
+- Used by: Firefox release, signing, AMO publishing, and versioning workflows.
+
 **Workspace configuration:**
 - Purpose: Define package boundaries, scripts, and shared project rules.
-- Location: `package.json`, `extension/package.json`, `serve/package.json`, `extension/manifest.json`
-- Contains: npm workspaces, build/test/lint scripts, package metadata, and extension packaging inputs.
+- Location: `package.json`, `extension/package.json`, `serve/package.json`, `extension/manifest.json`, `extension/scripts/`
+- Contains: npm workspaces, build/test/lint scripts, package metadata, extension packaging inputs, and release helper scripts.
 - Depends on: npm workspaces and Node.js 24+.
 - Used by: Development commands and release pipelines.
 

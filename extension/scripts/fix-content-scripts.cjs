@@ -6,6 +6,7 @@
  *
  * 1. Strips `export{...}` from the console-bootstrap content script chunk
  * 2. Strips any remaining `import`/`export` from content-relay.js
+ * 2.5. Strips any remaining `import`/`export` from fab-ui.js
  * 3. Removes `crossorigin` attributes from HTML files (can cause module
  *    loading failures in Firefox extension context)
  */
@@ -54,6 +55,31 @@ if (fixedRelay !== relaySource) {
   console.log('Stripped import/export from content-relay.js');
 } else {
   console.log('content-relay.js already clean');
+}
+
+// --- Step 2.5: Fix fab-ui.js ---
+
+const fabPath = join(distDir, 'fab-ui.js');
+
+let fabSource;
+try {
+  fabSource = readFileSync(fabPath, 'utf8');
+} catch {
+  console.log('fab-ui.js not found (may not be built for this target)');
+}
+
+if (fabSource) {
+  let fixedFab = fabSource.replace(/import\{[^}]*\}from"[^"]*";?/g, '');
+  fixedFab = fixedFab.replace(/export\{[^}]*\};?/g, '');
+  // Also strip bare dynamic imports like import("./chunk.js")
+  fixedFab = fixedFab.replace(/import\("[^"]*"\)/g, 'void 0');
+
+  if (fixedFab !== fabSource) {
+    writeFileSync(fabPath, fixedFab);
+    console.log('Stripped import/export from fab-ui.js');
+  } else {
+    console.log('fab-ui.js already clean');
+  }
 }
 
 // --- Step 3: Remove crossorigin from HTML files ---

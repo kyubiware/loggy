@@ -88,6 +88,28 @@ export interface GetTabExportDataMessage {
 }
 
 /**
+ * Request capture status for a specific tab.
+ * Used by content scripts that need their own tab's state
+ * (unlike get-status which returns the globally active tab).
+ */
+export interface GetTabStatusMessage {
+  /** Message type. */
+  type: 'get-tab-status'
+}
+
+/**
+ * Broadcast sent to content scripts when consent or capture state changes.
+ */
+export interface ConsentChangedMessage {
+  /** Message type. */
+  type: 'consent-changed'
+  /** Whether consent has been granted. */
+  hasConsent?: boolean
+  /** Current capture mode. */
+  captureMode?: CaptureMode | 'none'
+}
+
+/**
  * Request to enable or disable debugger capture for a tab.
  */
 export interface ToggleDebuggerMessage {
@@ -336,6 +358,7 @@ export type CaptureMessage = ConsoleCaptureMessage | NetworkCaptureMessage
 export type CaptureControlMessage =
   | GetStatusMessage
   | GetTabExportDataMessage
+  | GetTabStatusMessage
   | ToggleDebuggerMessage
   | CachePreviewMessage
   | GetCachedPreviewMessage
@@ -350,6 +373,7 @@ export type CaptureControlMessage =
   | RemoveAlwaysLogMessage
   | GetAlwaysLogHostsMessage
   | AlwaysLogHostsResponse
+  | ConsentChangedMessage
 
 /**
  * Background status message payloads.

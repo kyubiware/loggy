@@ -24,6 +24,7 @@ export default defineConfig(({ mode, command }) => {
     devtools: 'devtools.html',
     'background/index': 'background/index.ts',
     'content-relay': 'content-relay.ts',
+    'fab-ui': 'fab-ui.tsx',
     'popup/popup': 'popup/popup.html',
     'preview/preview': 'preview/preview.html',
   }

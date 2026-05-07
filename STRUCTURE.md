@@ -6,7 +6,7 @@
 loggy/
 ├── extension/          # Browser extension workspace (Manifest V3, background worker, panel, popup)
 ├── serve/              # Fastify companion server workspace (CLI, TUI, HTTP API)
-├── .github/            # CI workflows and repository automation
+├── .github/            # CI workflows and repository automation (CI, signing, release, version bumps)
 ├── .husky/             # Git hooks
 ├── ARCHITECTURE.md     # Architecture overview
 ├── STRUCTURE.md        # Repository structure guide
@@ -33,8 +33,13 @@ loggy/
 
 **`.github/`:**
 - Purpose: Store repository automation.
-- Contains: Workflows and issue templates.
+- Contains: CI, signing, release, and version-bump workflows plus issue templates.
 - Key files: `.github/workflows/`
+
+**`extension/scripts/`:**
+- Purpose: Hold build, packaging, AMO metadata, and Firefox release automation.
+- Contains: Release orchestration, manifest rewrite helpers, Firefox bundle sanitizers, AMO description updates, and screenshot upload scripts.
+- Key files: `extension/scripts/release.cjs`, `extension/scripts/update-amo-description.cjs`, `extension/scripts/upload-amo-screenshots.cjs`, `extension/scripts/amo-description.md`
 
 **`.husky/`:**
 - Purpose: Store Git hooks.
@@ -56,6 +61,7 @@ loggy/
 **Entry Points:** `extension/background/index.ts`, `extension/panel/src/main.tsx`, `extension/popup/main.tsx`, `serve/src/cli.ts` — start capture, render the extension UIs, and launch the server CLI.
 **Configuration:** `package.json`, `extension/package.json`, `serve/package.json`, `extension/manifest.json`, `extension/manifest-chrome.json`, `extension/manifest-firefox.json`, `extension/vite.config.ts` — define workspace scripts, package metadata, and build behavior.
 **Core Logic:** `extension/utils/`, `extension/background/`, `extension/shared/`, `extension/browser-apis/`, `extension/content-relay.ts`, `serve/src/server.ts`, `serve/src/tailscale.ts` — implement filtering, formatting, message routing, export sync, browser abstraction, content relay, HTTP handling, and HTTPS setup.
+**Release Automation:** `extension/scripts/` — keep release orchestration, Firefox post-processing, AMO description updates, screenshot upload, and packaging helpers together.
 **Tests:** `extension/**/*.test.ts`, `extension/**/*.test.tsx`, `serve/tests/server.test.ts` — keep tests near the code they verify.
 
 ## Naming Conventions
@@ -71,4 +77,5 @@ loggy/
 **New shared utility:** `extension/utils/` or `extension/shared/` — keep pure formatting and reusable helpers here.
 **New browser API wrapper:** `extension/browser-apis/` — keep browser-specific abstractions behind build-time selection.
 **New server route or helper:** `serve/src/` — keep Fastify handlers, CLI behavior, Tailscale HTTPS setup, and clipboard support together.
+**New release or AMO automation:** `extension/scripts/` — keep packaging helpers, description generation, screenshot upload, and Firefox release tasks together.
 **Tests:** colocate with source as `*.test.ts` or `*.test.tsx`.
