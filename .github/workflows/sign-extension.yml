@@ -121,6 +121,13 @@ jobs:
           CHANGELOG: ${{ steps.changelog.outputs.body }}
         run: node scripts/update-amo-description.cjs
 
+      - name: Upload screenshots to AMO
+        working-directory: extension
+        env:
+          AMO_API_KEY: ${{ secrets.AMO_API_KEY }}
+          AMO_API_SECRET: ${{ secrets.AMO_API_SECRET }}
+        run: node scripts/upload-amo-screenshots.cjs
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
