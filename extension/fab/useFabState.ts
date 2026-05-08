@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { writeClipboard } from '../utils/clipboard'
+
 import type {
   ConsentChangedMessage,
   GetTabExportDataMessage,
@@ -165,7 +167,7 @@ export function useFabState(): { state: FabState; actions: FabActions } {
         setCopyStatus('error')
         return
       }
-      await navigator.clipboard.writeText(response.markdown)
+      await writeClipboard(response.markdown)
       setLogCount(response.logCount ?? logCount)
       setCopyStatus('copied')
     } catch {

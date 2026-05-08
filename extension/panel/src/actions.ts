@@ -1,5 +1,6 @@
 import { buildExportMarkdown, triggerServerExport } from '../../shared/export'
 import type { LoggyState } from '../../types/state'
+import { writeClipboard } from '../../utils/clipboard'
 
 type ShowToastFn = (message: string, type: 'success' | 'error') => void
 
@@ -11,7 +12,7 @@ export async function copyAction(state: LoggyState, showToast: ShowToastFn): Pro
   try {
     const markdown = await buildExportMarkdown(state)
     triggerServerExport(state, markdown, showToast)
-    await navigator.clipboard.writeText(markdown)
+    await writeClipboard(markdown)
     showToast('Copied to clipboard!', 'success')
   } catch {
     showToast('Failed to copy to clipboard', 'error')

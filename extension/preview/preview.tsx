@@ -2,6 +2,7 @@ import { StrictMode, useCallback, useEffect, useRef, useState } from 'react'
 import Markdown from 'react-markdown'
 import { createRoot } from 'react-dom/client'
 import remarkGfm from 'remark-gfm'
+import { writeClipboard } from '../utils/clipboard'
 import './index.css'
 
 function Preview() {
@@ -44,7 +45,7 @@ function Preview() {
     }
 
     try {
-      await navigator.clipboard.writeText(markdown)
+      await writeClipboard(markdown)
       setCopied(true)
       if (timeoutRef.current !== null) {
         window.clearTimeout(timeoutRef.current)

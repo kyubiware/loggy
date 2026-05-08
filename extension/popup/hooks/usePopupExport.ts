@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { writeClipboard } from '../../utils/clipboard'
 
 type CopyStatus = 'idle' | 'success' | 'error' | 'no-data'
 
@@ -35,7 +36,7 @@ export function usePopupExport({
     }
 
     try {
-      await navigator.clipboard.writeText(markdown)
+      await writeClipboard(markdown)
       setStatus('success')
     } catch {
       setStatus('error')
