@@ -18,7 +18,7 @@ export default defineConfig(({ mode, command }) => {
   // Including them in rollupOptions.input leaks them into CRXJS's internal
   // Rollup build (which only has crx:* plugins — no TypeScript transform),
   // causing PARSE_ERROR on `import type` syntax.
-  const crxManagedEntries = ['background/index', 'content-relay', 'popup/popup']
+  const crxManagedEntries = ['background/index', 'content-relay', 'popup/popup', 'fab-ui']
   const allInput = {
     panel: 'panel/index.html',
     devtools: 'devtools.html',
