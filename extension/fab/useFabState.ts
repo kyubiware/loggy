@@ -63,28 +63,10 @@ export function useFabState(): { state: FabState; actions: FabActions } {
     [],
   )
 
-  const queryActiveTabId = useCallback(
-    () =>
-      new Promise<number | null>(resolve => {
-        chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-          resolve(tabs[0]?.id ?? null)
-        })
-      }),
-    [],
-  )
-
-  const resolveTabId = useCallback(async (): Promise<number | null> => {
-    if (tabId !== null) return tabId
-    try {
-      const resolvedId = await queryActiveTabId()
-      if (resolvedId !== null) {
-        setTabId(resolvedId)
-      }
-      return resolvedId
-    } catch {
-      return null
-    }
-  }, [queryActiveTabId, tabId])
+  /** Returns the tab ID resolved from get-tab-status (via sender.tab). */
+  const resolveTabId = useCallback((): number | null => {
+    return tabId
+  }, [tabId])
 
   const fetchInitialStatus = useCallback(async (): Promise<void> => {
     const message: GetTabStatusMessage = { type: 'get-tab-status' }
@@ -145,7 +127,7 @@ export function useFabState(): { state: FabState; actions: FabActions } {
     if (isLogging) return
     setIsLogging(true)
     try {
-      const resolvedTabId = await resolveTabId()
+      const resolvedTabId = resolveTabId()
       if (resolvedTabId === null) return
       if (captureMode === 'inactive') {
         const message: StartLoggingMessage = { type: 'start-logging', tabId: resolvedTabId }
@@ -169,7 +151,7 @@ export function useFabState(): { state: FabState; actions: FabActions } {
     }
     setCopyStatus('idle')
     try {
-      const resolvedTabId = await resolveTabId()
+      const resolvedTabId = resolveTabId()
       if (resolvedTabId === null) {
         setCopyStatus('error')
         return
