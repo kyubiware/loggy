@@ -10,6 +10,9 @@ const AMO_BASE_URL =
 
 const SCREENSHOTS_DIR = path.resolve(__dirname, '..', '..', 'screenshots');
 
+const MAX_RETRY_WAIT = 120; // Cap retry wait at 2 minutes (AMO can suggest 2880s+)
+const INTER_REQUEST_DELAY_MS = 2000; // 2s delay between write operations to avoid rate limits
+
 function base64UrlEncode(value) {
   return Buffer.from(value).toString('base64url');
 }
@@ -68,6 +71,25 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function hashBuffer(buffer) {
+  return crypto.createHash('sha256').update(buffer).digest('hex');
+}
+
+function hashFile(filePath) {
+  return hashBuffer(fs.readFileSync(filePath));
+}
+
+async function downloadHash(imageUrl) {
+  try {
+    const response = await fetch(imageUrl);
+    if (!response.ok) return null;
+    const buffer = Buffer.from(await response.arrayBuffer());
+    return hashBuffer(buffer);
+  } catch {
+    return null;
+  }
+}
+
 async function fetchWithRetry(url, options, getToken, retries = 5) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     const token = typeof getToken === 'function' ? getToken() : getToken;
@@ -75,7 +97,8 @@ async function fetchWithRetry(url, options, getToken, retries = 5) {
     if (response.status === 429 && attempt < retries) {
       const body = await readResponseBody(response);
       const waitMatch = body.match(/(\d+)\s*second/i);
-      const waitSec = waitMatch ? Number(waitMatch[1]) + 1 : 2 ** (attempt + 1);
+      const suggestedWait = waitMatch ? Number(waitMatch[1]) + 1 : 2 ** (attempt + 1);
+      const waitSec = Math.min(suggestedWait, MAX_RETRY_WAIT);
       console.log(`  Rate limited, retrying in ${waitSec}s (attempt ${attempt + 1}/${retries})...`);
       await sleep(waitSec * 1000);
       continue;
@@ -128,21 +151,36 @@ async function uploadPreview(getToken, filePath, position) {
   }
 }
 
+async function previewsMatchExisting(previews, localFiles) {
+  if (previews.length !== localFiles.length) return false;
+
+  for (let i = 0; i < previews.length; i++) {
+    const imageUrl = previews[i].image_url;
+    if (!imageUrl) return false;
+
+    console.log(`  Comparing ${localFiles[i]}...`);
+    const remoteHash = await downloadHash(imageUrl);
+    if (!remoteHash) {
+      console.log(`    Could not download remote preview — treating as changed.`);
+      return false;
+    }
+
+    const localHash = hashFile(path.join(SCREENSHOTS_DIR, localFiles[i]));
+    if (remoteHash !== localHash) {
+      console.log(`    Content differs (local: ${localHash.slice(0, 8)}..., remote: ${remoteHash.slice(0, 8)}...).`);
+      return false;
+    }
+    console.log(`    Match.`);
+  }
+
+  return true;
+}
+
 async function run() {
+  const force = process.argv.includes('--force');
   const issuer = readRequiredEnv('AMO_API_KEY', 'WEB_EXT_API_KEY');
   const secret = readRequiredEnv('AMO_API_SECRET', 'WEB_EXT_API_SECRET');
   const getToken = () => createJwt(issuer, secret);
-
-  const addonDetails = await fetchAddonDetails(getToken());
-  const previews = addonDetails.previews || [];
-
-  if (previews.length > 0) {
-    console.log(`Deleting ${previews.length} existing preview(s)...`);
-    for (const preview of previews) {
-      await deletePreview(getToken, preview.id);
-      console.log(`  Deleted preview ${preview.id}`);
-    }
-  }
 
   if (!fs.existsSync(SCREENSHOTS_DIR)) {
     console.error(`Screenshots directory not found: ${SCREENSHOTS_DIR}`);
@@ -159,11 +197,38 @@ async function run() {
     process.exit(1);
   }
 
+  const addonDetails = await fetchAddonDetails(getToken());
+  const previews = addonDetails.previews || [];
+
+  if (!force && previews.length > 0) {
+    console.log(`Comparing ${files.length} local screenshot(s) against ${previews.length} AMO preview(s)...`);
+    const match = await previewsMatchExisting(previews, files);
+    if (match) {
+      console.log('\n✓ Screenshots unchanged — skipping upload.');
+      process.exit(0);
+    }
+    console.log('Screenshots differ — proceeding with upload.\n');
+  } else if (force) {
+    console.log('--force flag set — skipping comparison.\n');
+  }
+
+  if (previews.length > 0) {
+    console.log(`Deleting ${previews.length} existing preview(s)...`);
+    for (const preview of previews) {
+      await deletePreview(getToken, preview.id);
+      console.log(`  Deleted preview ${preview.id}`);
+      await sleep(INTER_REQUEST_DELAY_MS);
+    }
+  }
+
   console.log(`Uploading ${files.length} screenshot(s)...`);
   for (let i = 0; i < files.length; i++) {
     const filePath = path.join(SCREENSHOTS_DIR, files[i]);
     await uploadPreview(getToken, filePath, i);
     console.log(`  Uploaded ${files[i]} (position ${i})`);
+    if (i < files.length - 1) {
+      await sleep(INTER_REQUEST_DELAY_MS);
+    }
   }
 
   console.log(`\nDone. Uploaded ${files.length} screenshot(s) to AMO.`);
