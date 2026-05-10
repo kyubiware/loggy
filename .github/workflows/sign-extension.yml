@@ -61,6 +61,7 @@ jobs:
         run: npm run build:firefox
 
       - name: Install Playwright Firefox
+        timeout-minutes: 5
         working-directory: extension
         run: |
           sudo apt-mark hold firefox
