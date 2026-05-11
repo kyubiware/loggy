@@ -621,6 +621,8 @@ async function handleControlMessage(
       debuggerResumeTimersByTab.delete(message.tabId)
     }
 
+    const fallbackMode: CaptureMode = current.connected ? 'content-script' : 'inactive'
+
     if (previousMode === 'debugger') {
       const resumeTimer = setTimeout(() => {
         const latest = getOrCreateTabState(message.tabId)
@@ -642,20 +644,32 @@ async function handleControlMessage(
       }, 2000)
 
       debuggerResumeTimersByTab.set(message.tabId, resumeTimer)
-
-      const updated: TabCaptureState = {
-        ...current,
-        mode: current.connected ? 'content-script' : 'inactive',
-      }
-      await setTabState(updated)
-      return updated
     }
 
     const updated: TabCaptureState = {
       ...current,
-      mode: current.connected ? 'content-script' : 'inactive',
+      mode: fallbackMode,
     }
     await setTabState(updated)
+
+    if (fallbackMode === 'content-script') {
+      try {
+        await injectIntoTab(message.tabId)
+      } catch (error) {
+        console.error('[Loggy] Failed to inject content scripts on panel close:', error)
+      }
+
+      try {
+        await chrome.tabs.sendMessage(message.tabId, {
+          type: 'consent-changed',
+          hasConsent: true,
+          captureMode: 'content-script',
+        })
+      } catch {
+        // Content script may not be loaded yet
+      }
+    }
+
     return updated
   }
 
@@ -1151,9 +1165,12 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
       const consent = await evaluateConsent(tabId, url)
 
       if (consent.hasConsent) {
-        // Host changed to a consented host — start capture if not already active
+        // Host changed to a consented host — start capture if not already active,
+        // or re-inject content scripts after navigation (content scripts are lost on page reload)
         const current = getOrCreateTabState(tabId)
-        if (current.mode === 'inactive') {
+        const needsInjection =
+          current.mode === 'inactive' || current.mode === 'content-script'
+        if (needsInjection && current.mode !== 'devtools' && current.mode !== 'debugger') {
           const captureMode =
             consent.captureMode === 'debugger' ? 'debugger' : 'content-script'
           await setMode(tabId, captureMode)

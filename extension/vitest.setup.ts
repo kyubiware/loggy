@@ -31,7 +31,7 @@ export function resetStorage() {
 const mockStorageGet = vi.fn(
   (
     keys: string | string[] | Partial<Record<'loggyPanelSettings', unknown>> | null | undefined,
-    callback: (items: Partial<Record<'loggyPanelSettings', unknown>>) => void
+    callback?: (items: Partial<Record<'loggyPanelSettings', unknown>>) => void
   ) => {
     const result: Partial<Record<'loggyPanelSettings', unknown>> = {}
 
@@ -39,7 +39,9 @@ const mockStorageGet = vi.fn(
       if ('loggyPanelSettings' in mockStorageState) {
         result.loggyPanelSettings = mockStorageState.loggyPanelSettings
       }
-      Promise.resolve().then(() => callback(result))
+      if (typeof callback === 'function') {
+        Promise.resolve().then(() => callback(result))
+      }
       return
     }
 
@@ -47,7 +49,9 @@ const mockStorageGet = vi.fn(
       if (keys === 'loggyPanelSettings' && 'loggyPanelSettings' in mockStorageState) {
         result.loggyPanelSettings = mockStorageState.loggyPanelSettings
       }
-      Promise.resolve().then(() => callback(result))
+      if (typeof callback === 'function') {
+        Promise.resolve().then(() => callback(result))
+      }
       return
     }
 
@@ -55,7 +59,9 @@ const mockStorageGet = vi.fn(
       if (keys.includes('loggyPanelSettings') && 'loggyPanelSettings' in mockStorageState) {
         result.loggyPanelSettings = mockStorageState.loggyPanelSettings
       }
-      Promise.resolve().then(() => callback(result))
+      if (typeof callback === 'function') {
+        Promise.resolve().then(() => callback(result))
+      }
       return
     }
 
@@ -67,7 +73,9 @@ const mockStorageGet = vi.fn(
       }
     }
 
-    Promise.resolve().then(() => callback(result))
+    if (typeof callback === 'function') {
+      Promise.resolve().then(() => callback(result))
+    }
   }
 )
 
