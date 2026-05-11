@@ -1,31 +1,25 @@
-const HANDSHAKE_PATH = '/loggy/handshake'
-const PROBE_TIMEOUT_MS = 1000
-
-interface HandshakeResponse {
-  name?: unknown
-}
-
-function createHandshakeUrl(url: string): string {
-  const normalizedBaseUrl = url.replace(/\/+$/, '')
-  return `${normalizedBaseUrl}${HANDSHAKE_PATH}`
-}
-
 /**
- * Probes a loggy-serve endpoint by calling its handshake route.
+ * Probes a loggy-serve endpoint by delegating to the background service worker.
  * Returns true only when the endpoint responds with JSON containing name: 'loggy-serve'.
+ *
+ * The actual fetch() runs in the background context to avoid CORS issues in
+ * Firefox DevTools panel pages (moz-extension:// origin).
  */
 export async function probeServer(url: string): Promise<boolean> {
   try {
-    const response = await fetch(createHandshakeUrl(url), {
-      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
+    return await new Promise<boolean>((resolve) => {
+      chrome.runtime.sendMessage(
+        { type: 'probe-server', url },
+        (response: { connected: boolean } | undefined) => {
+          if (chrome.runtime.lastError) {
+            console.error('[Loggy] Server probe failed:', chrome.runtime.lastError.message)
+            resolve(false)
+            return
+          }
+          resolve(response?.connected ?? false)
+        }
+      )
     })
-
-    if (!response.ok) {
-      return false
-    }
-
-    const data = (await response.json()) as HandshakeResponse
-    return data.name === 'loggy-serve'
   } catch {
     return false
   }

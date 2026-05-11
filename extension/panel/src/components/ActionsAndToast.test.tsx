@@ -139,14 +139,18 @@ describe('Copy action', () => {
 
   it('still copies to clipboard when server export is unreachable', async () => {
     const mockWriteText = vi.fn().mockResolvedValue(undefined)
-    // Mock fetch to reject after a short delay (simulating network failure)
-    const mockFetch = vi.fn().mockImplementation(() => {
-      return new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('server down')), 10)
+    const mockSendMessage = vi
+      .fn()
+      .mockImplementation((_msg: unknown, callback: (response: { success: boolean }) => void) => {
+        setTimeout(() => callback({ success: false }), 10)
       })
-    })
     vi.stubGlobal('navigator', { clipboard: { writeText: mockWriteText } })
-    vi.stubGlobal('fetch', mockFetch)
+    vi.stubGlobal('chrome', {
+      ...chrome,
+      runtime: {
+        sendMessage: mockSendMessage,
+      },
+    })
 
     const { result } = renderHook(() => useToast())
     const state = createInitialState()

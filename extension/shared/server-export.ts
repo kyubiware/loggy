@@ -1,39 +1,27 @@
-const EXPORT_PATH = '/loggy'
-
-function createExportUrl(baseUrl: string): string {
-  const normalizedBaseUrl = baseUrl.replace(/\/+$/, '')
-  return `${normalizedBaseUrl}${EXPORT_PATH}`
-}
-
 /**
- * POST exported markdown to a configured server endpoint.
- * Returns true on successful (2xx) response, false on timeout/network/error.
+ * POST exported markdown to a configured server endpoint by delegating to
+ * the background service worker.
+ *
+ * The actual fetch() runs in the background context to avoid CORS issues in
+ * Firefox DevTools panel pages (moz-extension:// origin).
  */
 export async function pushToServer(url: string, markdown: string): Promise<boolean> {
   try {
-    const response = await fetch(createExportUrl(url), {
-      method: 'POST',
-      body: markdown,
-      headers: {
-        'Content-Type': 'text/plain',
-      },
-      signal: AbortSignal.timeout(3000),
+    return await new Promise<boolean>((resolve) => {
+      chrome.runtime.sendMessage(
+        { type: 'push-to-server', url, markdown },
+        (response: { success: boolean } | undefined) => {
+          if (chrome.runtime.lastError) {
+            console.error('[Loggy] Server export failed:', chrome.runtime.lastError.message)
+            resolve(false)
+            return
+          }
+          resolve(response?.success ?? false)
+        },
+      )
     })
-
-    if (!response.ok) {
-      console.error(`[Loggy] Server export failed: HTTP ${response.status} ${response.statusText}`)
-      return false
-    }
-
-    return true
   } catch (error) {
-    if (error instanceof DOMException && error.name === 'TimeoutError') {
-      console.error('[Loggy] Server export failed: Request timed out after 3s')
-    } else if (error instanceof TypeError) {
-      console.error(`[Loggy] Server export failed: Network error - ${error.message}`)
-    } else {
-      console.error('[Loggy] Server export failed:', error)
-    }
+    console.error('[Loggy] Server export failed:', error)
     return false
   }
 }

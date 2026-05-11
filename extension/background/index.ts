@@ -39,6 +39,10 @@ import {
   type GetAlwaysLogHostsMessage,
   type GetTabStatusMessage,
   type LoggyMessage,
+  type ProbeServerMessage,
+  type ProbeServerResponse,
+  type PushToServerMessage,
+  type PushToServerResponse,
   type RemoveAlwaysLogMessage,
   type RequestConsentMessage,
   type StartLoggingMessage,
@@ -56,6 +60,7 @@ declare const __BROWSER__: string
 
 const DEFAULT_SERVER_URL = 'http://localhost:8743'
 const EXPORT_PATH = '/loggy'
+const HANDSHAKE_PATH = '/loggy/handshake'
 const STORAGE_KEY_PREFIX = 'loggy_capture_'
 const FAILED_EXPORT_BUFFER_KEY_PREFIX = 'loggy_failed_export_'
 const TAB_STATES_STORAGE_KEY = 'loggy_tab_capture_states'
@@ -414,6 +419,24 @@ async function pushToServer(url: string, markdown: string): Promise<boolean> {
   }
 }
 
+async function probeServerFromBackground(url: string): Promise<boolean> {
+  try {
+    const handshakeUrl = `${normalizeBaseUrl(url)}${HANDSHAKE_PATH}`
+    const response = await fetch(handshakeUrl, {
+      signal: AbortSignal.timeout(1000),
+    })
+
+    if (!response.ok) {
+      return false
+    }
+
+    const data = (await response.json()) as { name?: unknown }
+    return data.name === 'loggy-serve'
+  } catch {
+    return false
+  }
+}
+
 async function exportTabToServer(tabId: number): Promise<boolean> {
   const entries = await readStoredEntries(tabId)
 
@@ -485,6 +508,8 @@ async function handleControlMessage(
   | ConsentState
   | ConsentResponseMessage
   | AlwaysLogHostsResponse
+  | ProbeServerResponse
+  | PushToServerResponse
   | { ok: boolean }
 > {
   if (message.type === 'get-status') {
@@ -945,6 +970,18 @@ async function handleControlMessage(
     return { markdown: entry.markdown } as CachedPreviewResponse
   }
 
+  if (message.type === 'probe-server') {
+    const probeMessage = message as ProbeServerMessage
+    const connected = await probeServerFromBackground(probeMessage.url)
+    return { connected } as ProbeServerResponse
+  }
+
+  if (message.type === 'push-to-server') {
+    const pushMessage = message as PushToServerMessage
+    const success = await pushToServer(pushMessage.url, pushMessage.markdown)
+    return { success } as PushToServerResponse
+  }
+
   return { ok: false }
 }
 
@@ -980,7 +1017,9 @@ function isControlMessage(message: unknown): message is CaptureControlMessage {
     type === 'cache-preview' ||
     type === 'get-cached-preview' ||
     type === 'get-always-log-hosts' ||
-    type === 'always-log-hosts-response'
+    type === 'always-log-hosts-response' ||
+    type === 'probe-server' ||
+    type === 'push-to-server'
   )
 }
 

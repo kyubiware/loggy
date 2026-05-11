@@ -91,6 +91,20 @@ export interface TabCaptureState {
 }
 
 /**
+ * Server probe response.
+ */
+export interface ProbeServerResponse {
+  connected: boolean
+}
+
+/**
+ * Server push response.
+ */
+export interface PushToServerResponse {
+  success: boolean
+}
+
+/**
  * Background status message payloads.
  */
 export type CaptureStatusMessage = StatusResponse | TabCaptureState

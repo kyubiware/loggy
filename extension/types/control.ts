@@ -178,6 +178,28 @@ export interface GetAlwaysLogHostsMessage {
 }
 
 /**
+ * Request to probe a loggy-serve endpoint for availability.
+ */
+export interface ProbeServerMessage {
+  /** Message type. */
+  type: 'probe-server'
+  /** Server URL to probe. */
+  url: string
+}
+
+/**
+ * Request to push markdown export to a loggy-serve endpoint.
+ */
+export interface PushToServerMessage {
+  /** Message type. */
+  type: 'push-to-server'
+  /** Server URL. */
+  url: string
+  /** Markdown content to export. */
+  markdown: string
+}
+
+/**
  * Control message sent to the background capture pipeline.
  */
 export type CaptureControlMessage =
@@ -199,3 +221,5 @@ export type CaptureControlMessage =
   | GetAlwaysLogHostsMessage
   | AlwaysLogHostsResponse
   | ConsentChangedMessage
+  | ProbeServerMessage
+  | PushToServerMessage

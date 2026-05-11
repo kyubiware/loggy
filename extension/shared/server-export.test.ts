@@ -1,52 +1,89 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { pushToServer } from './server-export'
 
-describe('pushToServer', () => {
-  afterEach(() => {
-    vi.unstubAllGlobals()
-  })
+const mockSendMessage = vi.fn()
 
-  it('returns true when server responds with success', async () => {
-    const mockFetch = vi.fn().mockResolvedValue({ ok: true })
-    vi.stubGlobal('fetch', mockFetch)
+beforeEach(() => {
+  mockSendMessage.mockReset()
+  vi.stubGlobal('chrome', {
+    runtime: {
+      sendMessage: mockSendMessage,
+      lastError: undefined as Error | undefined,
+    },
+  })
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
+
+describe('pushToServer', () => {
+  it('returns true when background reports success', async () => {
+    mockSendMessage.mockImplementation(
+      (_msg: unknown, callback: (response: { success: boolean }) => void) => {
+        callback({ success: true })
+      },
+    )
 
     const result = await pushToServer('https://example.com', '# markdown')
 
     expect(result).toBe(true)
-    expect(mockFetch).toHaveBeenCalledWith('https://example.com/loggy', {
-      method: 'POST',
-      body: '# markdown',
-      headers: {
-        'Content-Type': 'text/plain',
+    expect(mockSendMessage).toHaveBeenCalledWith(
+      { type: 'push-to-server', url: 'https://example.com', markdown: '# markdown' },
+      expect.any(Function),
+    )
+  })
+
+  it('returns false when background reports failure', async () => {
+    mockSendMessage.mockImplementation(
+      (_msg: unknown, callback: (response: { success: boolean }) => void) => {
+        callback({ success: false })
       },
-      signal: expect.any(AbortSignal),
+    )
+
+    const result = await pushToServer('https://example.com', '# markdown')
+
+    expect(result).toBe(false)
+  })
+
+  it('returns false when chrome.runtime.lastError is set', async () => {
+    mockSendMessage.mockImplementation(
+      (_msg: unknown, callback: (response: undefined) => void) => {
+        vi.stubGlobal('chrome', {
+          runtime: {
+            sendMessage: mockSendMessage,
+            lastError: new Error('Extension context invalidated'),
+          },
+        })
+        callback(undefined)
+      },
+    )
+
+    const result = await pushToServer('https://example.com', '# markdown')
+
+    expect(result).toBe(false)
+  })
+
+  it('returns false when response is undefined', async () => {
+    mockSendMessage.mockImplementation(
+      (_msg: unknown, callback: (response: undefined) => void) => {
+        callback(undefined)
+      },
+    )
+
+    const result = await pushToServer('https://example.com', '# markdown')
+
+    expect(result).toBe(false)
+  })
+
+  it('returns false on unexpected errors', async () => {
+    mockSendMessage.mockImplementation(() => {
+      throw new Error('unexpected')
     })
-  })
-
-  it('returns false when server responds with non-2xx', async () => {
-    const mockFetch = vi.fn().mockResolvedValue({ ok: false })
-    vi.stubGlobal('fetch', mockFetch)
 
     const result = await pushToServer('https://example.com', '# markdown')
 
     expect(result).toBe(false)
-  })
-
-  it('returns false when fetch throws', async () => {
-    const mockFetch = vi.fn().mockRejectedValue(new Error('network down'))
-    vi.stubGlobal('fetch', mockFetch)
-
-    const result = await pushToServer('https://example.com', '# markdown')
-
-    expect(result).toBe(false)
-  })
-
-  it('appends /loggy path and strips trailing slash', async () => {
-    const mockFetch = vi.fn().mockResolvedValue({ ok: true })
-    vi.stubGlobal('fetch', mockFetch)
-
-    await pushToServer('http://localhost:8743/', '# markdown')
-
-    expect(mockFetch).toHaveBeenCalledWith('http://localhost:8743/loggy', expect.anything())
   })
 })

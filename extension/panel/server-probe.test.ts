@@ -1,65 +1,74 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { probeServer } from './server-probe'
 
-describe('probeServer', () => {
-  afterEach(() => {
-    vi.restoreAllMocks()
-  })
+const mockSendMessage = vi.fn()
 
-  it('returns true for valid loggy-serve handshake response', async () => {
-    const fetchSpy = vi.fn().mockResolvedValue({
-      ok: true,
-      json: vi.fn().mockResolvedValue({ name: 'loggy-serve' }),
-    })
-    vi.stubGlobal('fetch', fetchSpy)
+beforeEach(() => {
+  mockSendMessage.mockReset()
+  vi.stubGlobal('chrome', {
+    runtime: {
+      sendMessage: mockSendMessage,
+      lastError: undefined as Error | undefined,
+    },
+  })
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
+
+describe('probeServer', () => {
+  it('returns true when background reports server connected', async () => {
+    mockSendMessage.mockImplementation(
+      (_msg: unknown, callback: (response: { connected: boolean }) => void) => {
+        callback({ connected: true })
+      }
+    )
 
     await expect(probeServer('http://localhost:8743')).resolves.toBe(true)
-    expect(fetchSpy).toHaveBeenCalledWith(
-      'http://localhost:8743/loggy/handshake',
-      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    expect(mockSendMessage).toHaveBeenCalledWith(
+      { type: 'probe-server', url: 'http://localhost:8743' },
+      expect.any(Function)
     )
   })
 
-  it('normalizes trailing slash in base URL', async () => {
-    const fetchSpy = vi.fn().mockResolvedValue({
-      ok: true,
-      json: vi.fn().mockResolvedValue({ name: 'loggy-serve' }),
+  it('returns false when background reports server not connected', async () => {
+    mockSendMessage.mockImplementation(
+      (_msg: unknown, callback: (response: { connected: boolean }) => void) => {
+        callback({ connected: false })
+      }
+    )
+
+    await expect(probeServer('http://localhost:8743')).resolves.toBe(false)
+  })
+
+  it('returns false when chrome.runtime.lastError is set', async () => {
+    mockSendMessage.mockImplementation((_msg: unknown, callback: (response: undefined) => void) => {
+      vi.stubGlobal('chrome', {
+        runtime: {
+          sendMessage: mockSendMessage,
+          lastError: new Error('Extension context invalidated'),
+        },
+      })
+      callback(undefined)
     })
-    vi.stubGlobal('fetch', fetchSpy)
-
-    await expect(probeServer('http://localhost:8743/')).resolves.toBe(true)
-    expect(fetchSpy).toHaveBeenCalledWith(
-      'http://localhost:8743/loggy/handshake',
-      expect.any(Object)
-    )
-  })
-
-  it('returns false when HTTP response is not ok', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: false,
-        json: vi.fn(),
-      })
-    )
 
     await expect(probeServer('http://localhost:8743')).resolves.toBe(false)
   })
 
-  it('returns false when handshake JSON does not match expected name', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: vi.fn().mockResolvedValue({ name: 'other-server' }),
-      })
-    )
+  it('returns false when response is undefined', async () => {
+    mockSendMessage.mockImplementation((_msg: unknown, callback: (response: undefined) => void) => {
+      callback(undefined)
+    })
 
     await expect(probeServer('http://localhost:8743')).resolves.toBe(false)
   })
 
-  it('returns false on network or parsing failures', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network unavailable')))
+  it('returns false on unexpected errors', async () => {
+    mockSendMessage.mockImplementation(() => {
+      throw new Error('unexpected')
+    })
 
     await expect(probeServer('http://localhost:8743')).resolves.toBe(false)
   })
