@@ -422,17 +422,22 @@ async function pushToServer(url: string, markdown: string): Promise<boolean> {
 async function probeServerFromBackground(url: string): Promise<boolean> {
   try {
     const handshakeUrl = `${normalizeBaseUrl(url)}${HANDSHAKE_PATH}`
+    console.log('[Loggy:bg] probeServerFromBackground fetching:', handshakeUrl)
     const response = await fetch(handshakeUrl, {
       signal: AbortSignal.timeout(1000),
     })
 
     if (!response.ok) {
+      console.log('[Loggy:bg] probeServerFromBackground got non-ok status:', response.status)
       return false
     }
 
     const data = (await response.json()) as { name?: unknown }
-    return data.name === 'loggy-serve'
-  } catch {
+    const result = data.name === 'loggy-serve'
+    console.log('[Loggy:bg] probeServerFromBackground result:', result, 'data:', data)
+    return result
+  } catch (error) {
+    console.error('[Loggy:bg] probeServerFromBackground error:', error)
     return false
   }
 }
@@ -972,13 +977,17 @@ async function handleControlMessage(
 
   if (message.type === 'probe-server') {
     const probeMessage = message as ProbeServerMessage
+    console.log('[Loggy:bg] received probe-server message, url:', probeMessage.url)
     const connected = await probeServerFromBackground(probeMessage.url)
+    console.log('[Loggy:bg] probe-server responding with connected:', connected)
     return { connected } as ProbeServerResponse
   }
 
   if (message.type === 'push-to-server') {
     const pushMessage = message as PushToServerMessage
+    console.log('[Loggy:bg] received push-to-server message, url:', pushMessage.url, 'markdown length:', pushMessage.markdown.length)
     const success = await pushToServer(pushMessage.url, pushMessage.markdown)
+    console.log('[Loggy:bg] push-to-server responding with success:', success)
     return { success } as PushToServerResponse
   }
 
@@ -1115,6 +1124,8 @@ async function initialize(): Promise<void> {
 
 chrome.runtime.onMessage.addListener((rawMessage, sender, sendResponse) => {
   const message = rawMessage as LoggyMessage
+  const msgType = typeof message === 'object' && message !== null && 'type' in message ? (message as { type?: unknown }).type : 'unknown'
+  console.log('[Loggy:bg] onMessage received, type:', msgType, 'sender.tab?.id:', sender.tab?.id)
 
   void (async () => {
     try {

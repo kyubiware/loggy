@@ -9,6 +9,16 @@ type ShowToastFn = (message: string, type: 'success' | 'error') => void
  * Shows a success or error toast based on the result.
  */
 export async function copyAction(state: LoggyState, showToast: ShowToastFn): Promise<void> {
+  console.log(
+    '[Loggy:panel] copyAction called! serverConnected:',
+    state.serverConnected,
+    'serverUrl:',
+    state.serverUrl,
+    'consoleLogs:',
+    state.consoleLogs.length,
+    'networkEntries:',
+    state.networkEntries.length
+  )
   try {
     const markdown = await buildExportMarkdown(state)
     triggerServerExport(state, markdown, showToast)

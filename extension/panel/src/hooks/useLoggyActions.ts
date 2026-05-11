@@ -142,6 +142,12 @@ export function useLoggyActions({
   }, [clearData, showToastRef])
 
   const copy = useCallback(() => {
+    console.log(
+      '[Loggy:panel] COPY BUTTON CLICKED! stateRef:',
+      stateRef.current ? 'exists' : 'null',
+      'selectedRoutesRef:',
+      selectedRoutesRef.current ? 'exists' : 'null'
+    )
     const showToast = showToastRef.current
     if (!showToast) return Promise.resolve()
     const currentState = stateRef.current
@@ -151,6 +157,10 @@ export function useLoggyActions({
       ...currentState,
       selectedRoutes: currentRoutes,
     }
+    console.log(
+      '[Loggy:panel] COPY: about to call copyAction, serverConnected:',
+      currentContextState.serverConnected
+    )
     return copyAction(currentContextState, showToast)
   }, [selectedRoutesRef, showToastRef, stateRef])
 

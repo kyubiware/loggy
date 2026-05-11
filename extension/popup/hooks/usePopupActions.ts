@@ -16,10 +16,10 @@ export function usePopupActions() {
 
   const { settings, setSetting, loading: loadingSettings } = usePopupSettings()
   const { tokenCount, markdown, hasData, loading: loadingData } = usePopupData(tabId)
-  const { copyToClipboard, copyStatus } = usePopupExport({ markdown, hasData })
   const [serverConnected, setServerConnected] = useState(false)
   const serverPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastProbedUrlRef = useRef<string | null>(null)
+  const { copyToClipboard, copyStatus } = usePopupExport({ markdown, hasData, serverConnected, serverUrl: settings.serverUrl })
 
   const {
     localValue: localConsoleFilter,

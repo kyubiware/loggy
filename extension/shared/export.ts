@@ -40,11 +40,14 @@ export function triggerServerExport(
   markdown: string,
   showToast?: ShowToastFn
 ): void {
+  console.log('[Loggy:panel] triggerServerExport called, serverConnected:', state.serverConnected, 'serverUrl:', state.serverUrl, 'markdown length:', markdown.length)
   if (!state.serverConnected) {
+    console.log('[Loggy:panel] triggerServerExport: SKIPPED - serverConnected is false')
     return
   }
 
   if (!state.serverUrl) {
+    console.log('[Loggy:panel] triggerServerExport: SKIPPED - serverUrl is empty')
     return
   }
 
