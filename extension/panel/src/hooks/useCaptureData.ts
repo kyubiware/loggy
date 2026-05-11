@@ -380,36 +380,17 @@ export function useCaptureData(): {
     }
 
     if (!state.autoServerSync || !state.serverConnected) {
-      console.log(
-        '[Loggy:panel] auto-sync SKIPPED: autoServerSync:',
-        state.autoServerSync,
-        'serverConnected:',
-        state.serverConnected,
-        'consoleLogs:',
-        state.consoleLogs.length,
-        'networkEntries:',
-        state.networkEntries.length
-      )
       return
     }
 
-    console.log(
-      '[Loggy:panel] auto-sync SCHEDULING: consoleLogs:',
-      state.consoleLogs.length,
-      'networkEntries:',
-      state.networkEntries.length
-    )
-
     autoSyncTimeoutRef.current = setTimeout(() => {
       void (async () => {
-        console.log('[Loggy:panel] auto-sync-1 TIMEOUT FIRED')
         const latestState = latestStateRef.current
 
         if (
           latestState.consoleLogs !== scheduledConsoleLogs ||
           latestState.networkEntries !== scheduledNetworkEntries
         ) {
-          console.log('[Loggy:panel] auto-sync-1: state changed since schedule, skipping')
           return
         }
 
@@ -417,14 +398,8 @@ export function useCaptureData(): {
 
         const fingerprint = buildExportFingerprint(latestState)
         if (fingerprint === lastExportFingerprintRef.current) {
-          console.log('[Loggy:panel] auto-sync-1: fingerprint unchanged, skipping')
           return
         }
-
-        console.log(
-          '[Loggy:panel] auto-sync-1: calling pushToServer, markdown length:',
-          markdown.length
-        )
         lastExportFingerprintRef.current = fingerprint
         const success = await pushToServer(latestState.serverUrl, markdown)
 
@@ -449,16 +424,8 @@ export function useCaptureData(): {
 
     // Only sync if there's actual data to export
     if (state.consoleLogs.length === 0 && state.networkEntries.length === 0) {
-      console.log('[Loggy:panel] auto-sync-2 SKIPPED: no data')
       return
     }
-
-    console.log(
-      '[Loggy:panel] auto-sync-2 SCHEDULING: consoleLogs:',
-      state.consoleLogs.length,
-      'networkEntries:',
-      state.networkEntries.length
-    )
 
     if (autoSyncTimeoutRef.current) {
       clearTimeout(autoSyncTimeoutRef.current)

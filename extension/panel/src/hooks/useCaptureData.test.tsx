@@ -130,21 +130,21 @@ describe('useCaptureData', () => {
     expect(result.current.state.serverConnected).toBe(true)
   })
 
-  it('falls back to localhost when persisted server URL is not reachable', async () => {
+  it('sets serverConnected false when persisted server URL is not reachable', async () => {
     seedStorage({
       loggyPanelSettings: {
         serverUrl: 'http://custom:9999',
       },
     })
-    mockProbeServer.mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+    mockProbeServer.mockResolvedValue(false)
 
     const { result } = renderHook(() => useCaptureData())
 
     await flushMicrotasks()
 
-    expect(mockProbeServer).toHaveBeenNthCalledWith(1, 'http://custom:9999')
-    expect(mockProbeServer).toHaveBeenNthCalledWith(2, 'http://localhost:8743')
-    expect(result.current.state.serverConnected).toBe(true)
+    expect(mockProbeServer).toHaveBeenCalledTimes(1)
+    expect(mockProbeServer).toHaveBeenCalledWith('http://custom:9999')
+    expect(result.current.state.serverConnected).toBe(false)
   })
 
   it('keeps serverConnected false silently when probes fail', async () => {
@@ -161,7 +161,7 @@ describe('useCaptureData', () => {
     await flushMicrotasks()
 
     expect(result.current.state.serverConnected).toBe(false)
-    expect(mockProbeServer).toHaveBeenCalledTimes(2)
+    expect(mockProbeServer).toHaveBeenCalledTimes(1)
     expect(consoleErrorSpy).not.toHaveBeenCalledWith(
       expect.stringContaining('server'),
       expect.anything()
