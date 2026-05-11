@@ -12,6 +12,7 @@ import { createServer, formatStartupError } from './server.js'
 import type { FastifyInstance } from 'fastify'
 import { detectTailscale, getTailscaleCerts } from './tailscale.js'
 import type { TailscaleCertInfo } from './tailscale.js'
+import { EventEmitter } from 'node:events'
 
 async function resolveTailscaleIP(): Promise<string | null> {
   try {
@@ -224,6 +225,7 @@ async function main() {
 
   // When HTTPS is active, also start a plain HTTP listener on localhost
   // so local clients (curl, scripts) can still connect without TLS.
+  // Both servers share the same state and emitter.
   let localhostApp: FastifyInstance | undefined
 
   try {
@@ -233,9 +235,12 @@ async function main() {
       const tailscaleIP = await resolveTailscaleIP()
       await app.listen({ port, host: tailscaleIP ?? '0.0.0.0' })
 
-      localhostApp = createServer({ outputPath })
-      localhostApp.loggyState = app.loggyState
-      localhostApp.loggyEmitter = app.loggyEmitter
+      // Share state and emitter between both servers
+      localhostApp = createServer({
+        outputPath,
+        sharedState: app.loggyState,
+        sharedEmitter: app.loggyEmitter,
+      })
       await localhostApp.listen({ port, host: '127.0.0.1' })
     } else {
       await app.listen({ port, host: '0.0.0.0' })

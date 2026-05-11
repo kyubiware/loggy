@@ -27,7 +27,6 @@ import {
 import { probeServer } from '../../server-probe'
 
 const AUTO_REFRESH_INTERVAL_MS = 2000
-const DEFAULT_SERVER_URL = 'http://localhost:8743'
 const SERVER_POLL_INTERVAL_MS = 5000
 
 /**
@@ -194,19 +193,8 @@ export function useCaptureData(): {
   const preservedConsoleLogsRef = useRef<ConsoleMessage[]>([])
 
   const probeConfiguredServer = useCallback(async (configuredServerUrl: string): Promise<void> => {
-    const configuredConnected = await probeServer(configuredServerUrl)
-    if (configuredConnected) {
-      dispatch({ type: 'SET_SERVER_CONNECTED', value: true })
-      return
-    }
-
-    if (configuredServerUrl !== DEFAULT_SERVER_URL) {
-      const fallbackConnected = await probeServer(DEFAULT_SERVER_URL)
-      dispatch({ type: 'SET_SERVER_CONNECTED', value: fallbackConnected })
-      return
-    }
-
-    dispatch({ type: 'SET_SERVER_CONNECTED', value: false })
+    const connected = await probeServer(configuredServerUrl)
+    dispatch({ type: 'SET_SERVER_CONNECTED', value: connected })
   }, [])
 
   const filterNetworkEntriesAfterClear = useCallback((entries: HAREntry[]): HAREntry[] => {

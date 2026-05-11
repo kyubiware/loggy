@@ -27,6 +27,10 @@ declare module 'fastify' {
 export interface ServerOptions {
   outputPath?: string
   https?: { key: Buffer; cert: Buffer }
+  /** Shared state object — when provided, both servers update the same export. */
+  sharedState?: LoggyState
+  /** Shared emitter — when provided, both servers emit events to the same bus. */
+  sharedEmitter?: EventEmitter
 }
 
 export interface StartServerOptions extends ServerOptions {
@@ -44,15 +48,16 @@ export function createServer(options: ServerOptions = {}): FastifyInstance {
     bodyLimit: 52_428_800,
     ...(options.https && { https: options.https }),
   })
-  let latestExport: string | null = null
-  const loggyState: LoggyState = {
+
+  // Use shared state when provided (for multi-server setups like HTTPS + localhost)
+  const loggyState: LoggyState = options.sharedState ?? {
     exportCount: 0,
     lastExportTime: null,
     lastExportSize: 0,
     hasExport: false,
     latestExport: null,
   }
-  const loggyEmitter = new EventEmitter()
+  const loggyEmitter = options.sharedEmitter ?? new EventEmitter()
 
   app.decorate('loggyState', loggyState)
   app.decorate('loggyEmitter', loggyEmitter)
@@ -70,7 +75,6 @@ export function createServer(options: ServerOptions = {}): FastifyInstance {
       return { error: 'Request body must be text/plain' }
     }
 
-    latestExport = body
     loggyState.exportCount += 1
     loggyState.lastExportTime = Date.now()
     loggyState.lastExportSize = body.length
@@ -93,13 +97,13 @@ export function createServer(options: ServerOptions = {}): FastifyInstance {
   app.get('/loggy/export', async (request, reply) => {
     void request
 
-    if (latestExport === null) {
+    if (loggyState.latestExport === null) {
       reply.code(404)
       return { error: 'No export available' }
     }
 
     reply.type('text/plain; charset=utf-8')
-    return latestExport
+    return loggyState.latestExport
   })
 
   return app
