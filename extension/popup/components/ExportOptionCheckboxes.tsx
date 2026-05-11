@@ -53,8 +53,9 @@ export function ExportOptionCheckboxes({
           value={settings.maxTokenLimit === 0 ? '' : settings.maxTokenLimit}
           placeholder='Off'
           onChange={(event) => {
-            const value = Number.parseInt(event.target.value, 10)
-            onSetTokenLimit(Number.isNaN(value) ? 0 : Math.max(0, value))
+            const raw = Number.parseInt(event.target.value, 10)
+            const value = Number.isNaN(raw) ? 0 : Math.max(0, Math.round(raw / 1000) * 1000)
+            onSetTokenLimit(value)
           }}
           className='flex-1 px-2 py-1 text-xs text-stone-800 dark:text-stone-200 bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 rounded'
           title='Maximum estimated tokens per tab (0 = no limit)'

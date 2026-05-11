@@ -92,7 +92,7 @@ function formatTimeAgo(timestamp: number): string {
 
 function getServerAddress(options: TUIOptions): string {
   if (options.isHttps && options.domain) {
-    return `https://${options.domain}:${options.port}`
+    return `https://${options.domain}:${options.port} · localhost:${options.port}`
   }
 
   const host = options.host ?? '0.0.0.0'

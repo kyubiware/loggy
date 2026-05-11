@@ -5,11 +5,22 @@ import { fileURLToPath } from 'node:url'
 import { dirname, join } from 'node:path'
 import updateNotifier from 'update-notifier'
 import { networkInterfaces } from 'node:os'
+import { execSync } from 'node:child_process'
 import readline from 'node:readline'
 import { createTUI, destroyTUI } from './tui.js'
 import { createServer, formatStartupError } from './server.js'
+import type { FastifyInstance } from 'fastify'
 import { detectTailscale, getTailscaleCerts } from './tailscale.js'
 import type { TailscaleCertInfo } from './tailscale.js'
+
+async function resolveTailscaleIP(): Promise<string | null> {
+  try {
+    const ip = execSync('tailscale ip -4', { timeout: 3000, encoding: 'utf8' }).trim()
+    return ip || null
+  } catch {
+    return null
+  }
+}
 
 function getLanIPs(): string[] {
   const interfaces = networkInterfaces()
@@ -211,8 +222,24 @@ async function main() {
 
   const app = createServer({ outputPath, https: httpsConfig })
 
+  // When HTTPS is active, also start a plain HTTP listener on localhost
+  // so local clients (curl, scripts) can still connect without TLS.
+  let localhostApp: FastifyInstance | undefined
+
   try {
-    await app.listen({ port, host: '0.0.0.0' })
+    if (isHttps) {
+      // Bind HTTPS to the Tailscale interface so 127.0.0.1 stays free
+      // for the plain HTTP localhost listener.
+      const tailscaleIP = await resolveTailscaleIP()
+      await app.listen({ port, host: tailscaleIP ?? '0.0.0.0' })
+
+      localhostApp = createServer({ outputPath })
+      localhostApp.loggyState = app.loggyState
+      localhostApp.loggyEmitter = app.loggyEmitter
+      await localhostApp.listen({ port, host: '127.0.0.1' })
+    } else {
+      await app.listen({ port, host: '0.0.0.0' })
+    }
 
     const useTUI = !quiet && !!process.stdout.isTTY
 
@@ -222,6 +249,7 @@ async function main() {
       const lanIPs = getLanIPs()
       if (isHttps && tailscaleDomain) {
         console.log(`loggy-serve listening on https://${tailscaleDomain}:${port}`)
+        console.log(`  http://localhost:${port}`)
       } else {
         console.log(`loggy-serve listening on http://localhost:${port}`)
 
@@ -233,6 +261,7 @@ async function main() {
 
     const shutdown = async () => {
       destroyTUI()
+      await localhostApp?.close()
       await app.close()
       process.exit(0)
     }
