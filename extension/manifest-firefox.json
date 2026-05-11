@@ -27,11 +27,11 @@
     "storage",
     "activeTab",
     "scripting",
-    "platform_info",
-    "*://*/*"
+    "platform_info"
   ],
   "host_permissions": [
-    "http://localhost/*"
+    "http://localhost:*/",
+    "*://*/*"
   ],
   "browser_specific_settings": {
     "gecko": {
