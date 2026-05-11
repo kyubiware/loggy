@@ -72,7 +72,8 @@ jobs:
 
       - name: Push commit and tag
         run: |
-          git push origin HEAD:${{ github.ref_name }}
+          git pull --rebase origin "${{ github.ref_name }}"
+          git push origin HEAD:"${{ github.ref_name }}"
           git push origin "${{ steps.bump.outputs.tag }}"
 
       - name: Generate changelog
