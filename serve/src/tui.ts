@@ -34,7 +34,6 @@ let currentServer: FastifyInstance | null = null
 let currentOptions: TUIOptions | null = null
 let transientMessage: string | null = null
 let transientTimer: NodeJS.Timeout | null = null
-let relativeTimeInterval: NodeJS.Timeout | null = null
 let lastRenderedLine: string | null = null
 
 let onExportReceived: ((state: ExportState) => void) | null = null
@@ -236,9 +235,7 @@ export function createTUI(server: FastifyInstance, options?: TUIOptions): void {
   process.on('uncaughtException', onUncaughtException)
   process.on('exit', onExit)
 
-  relativeTimeInterval = setInterval(() => {
-    renderStatusBar()
-  }, 1000)
+
 }
 
 export function destroyTUI(): void {
@@ -251,11 +248,6 @@ export function destroyTUI(): void {
   if (transientTimer !== null) {
     clearTimeout(transientTimer)
     transientTimer = null
-  }
-
-  if (relativeTimeInterval !== null) {
-    clearInterval(relativeTimeInterval)
-    relativeTimeInterval = null
   }
 
   const server = currentServer

@@ -17,6 +17,14 @@
     "enabled": true,
     "rules": {
       "recommended": true,
+      "suspicious": {
+        "noConsole": {
+          "level": "error",
+          "options": {
+            "allow": ["error", "warn", "info", "debug"]
+          }
+        }
+      },
       "nursery": {
         "noExcessiveLinesPerFile": "error"
       }
