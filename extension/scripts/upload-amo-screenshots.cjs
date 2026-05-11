@@ -11,7 +11,7 @@ const AMO_BASE_URL =
 const SCREENSHOTS_DIR = path.resolve(__dirname, '..', '..', 'screenshots');
 
 const MAX_RETRY_WAIT = 120; // Cap retry wait at 2 minutes (AMO can suggest 2880s+)
-const INTER_REQUEST_DELAY_MS = 2000; // 2s delay between write operations to avoid rate limits
+const INTER_REQUEST_DELAY_MS = 3500; // 3.5s delay between write operations to avoid rate limits
 
 function base64UrlEncode(value) {
   return Buffer.from(value).toString('base64url');
@@ -151,29 +151,67 @@ async function uploadPreview(getToken, filePath, position) {
   }
 }
 
-async function previewsMatchExisting(previews, localFiles) {
-  if (previews.length !== localFiles.length) return false;
+/**
+ * Diff local screenshots against existing AMO previews by position.
+ * Returns { unchanged, changed, added } where:
+ *  - unchanged: positions that match (skip)
+ *  - changed: { position, previewId, file } — need delete + reupload
+ *  - added: positions beyond existing previews — need upload only
+ */
+function diffScreenshots(previews, localFiles) {
+  const unchanged = [];
+  const changed = [];
+  const added = [];
 
-  for (let i = 0; i < previews.length; i++) {
-    const imageUrl = previews[i].image_url;
-    if (!imageUrl) return false;
-
-    console.log(`  Comparing ${localFiles[i]}...`);
-    const remoteHash = await downloadHash(imageUrl);
-    if (!remoteHash) {
-      console.log(`    Could not download remote preview — treating as changed.`);
-      return false;
+  for (let i = 0; i < localFiles.length; i++) {
+    const preview = previews[i];
+    if (!preview) {
+      added.push({ position: i, file: localFiles[i] });
+      continue;
     }
-
-    const localHash = hashFile(path.join(SCREENSHOTS_DIR, localFiles[i]));
-    if (remoteHash !== localHash) {
-      console.log(`    Content differs (local: ${localHash.slice(0, 8)}..., remote: ${remoteHash.slice(0, 8)}...).`);
-      return false;
-    }
-    console.log(`    Match.`);
+    unchanged.push({ position: i, file: localFiles[i], previewId: preview.id });
   }
 
-  return true;
+  return { unchanged, changed, added, previews };
+}
+
+/**
+ * Check which positions actually differ by comparing content hashes.
+ * Mutates the diff result, moving items from unchanged → changed as needed.
+ */
+async function identifyChangedScreenshots(diff) {
+  const { unchanged } = diff;
+
+  for (let i = unchanged.length - 1; i >= 0; i--) {
+    const entry = unchanged[i];
+    const preview = diff.previews[entry.position];
+    const imageUrl = preview?.image_url;
+    if (!imageUrl) {
+      // Can't compare — treat as changed
+      unchanged.splice(i, 1);
+      diff.changed.push({ position: entry.position, previewId: entry.previewId, file: entry.file });
+      console.log(`  ${entry.file}: no remote image URL — will re-upload.`);
+      continue;
+    }
+
+    console.log(`  Comparing ${entry.file}...`);
+    const remoteHash = await downloadHash(imageUrl);
+    if (!remoteHash) {
+      unchanged.splice(i, 1);
+      diff.changed.push({ position: entry.position, previewId: entry.previewId, file: entry.file });
+      console.log(`    Could not download remote preview — will re-upload.`);
+      continue;
+    }
+
+    const localHash = hashFile(path.join(SCREENSHOTS_DIR, entry.file));
+    if (remoteHash !== localHash) {
+      unchanged.splice(i, 1);
+      diff.changed.push({ position: entry.position, previewId: entry.previewId, file: entry.file });
+      console.log(`    Content differs (local: ${localHash.slice(0, 8)}..., remote: ${remoteHash.slice(0, 8)}...).`);
+    } else {
+      console.log(`    Match.`);
+    }
+  }
 }
 
 async function run() {
@@ -200,16 +238,53 @@ async function run() {
   const addonDetails = await fetchAddonDetails(getToken());
   const previews = addonDetails.previews || [];
 
-  if (!force && previews.length > 0) {
+  // Handle count mismatch: if we have more or fewer screenshots than AMO,
+  // fall back to full replace (delete all + upload all)
+  if (!force && previews.length > 0 && previews.length === files.length) {
     console.log(`Comparing ${files.length} local screenshot(s) against ${previews.length} AMO preview(s)...`);
-    const match = await previewsMatchExisting(previews, files);
-    if (match) {
+
+    const diff = diffScreenshots(previews, files);
+    await identifyChangedScreenshots(diff);
+
+    if (diff.changed.length === 0 && diff.added.length === 0) {
       console.log('\n✓ Screenshots unchanged — skipping upload.');
       process.exit(0);
     }
-    console.log('Screenshots differ — proceeding with upload.\n');
-  } else if (force) {
+
+    if (diff.changed.length > 0) {
+      console.log(`\n${diff.changed.length} screenshot(s) changed — updating individually.`);
+      for (const entry of diff.changed) {
+        await deletePreview(getToken, entry.previewId);
+        console.log(`  Deleted preview ${entry.previewId}`);
+        await sleep(INTER_REQUEST_DELAY_MS);
+      }
+      for (const entry of diff.changed) {
+        const filePath = path.join(SCREENSHOTS_DIR, entry.file);
+        await uploadPreview(getToken, filePath, entry.position);
+        console.log(`  Uploaded ${entry.file} (position ${entry.position})`);
+        await sleep(INTER_REQUEST_DELAY_MS);
+      }
+    }
+
+    if (diff.added.length > 0) {
+      for (const entry of diff.added) {
+        const filePath = path.join(SCREENSHOTS_DIR, entry.file);
+        await uploadPreview(getToken, filePath, entry.position);
+        console.log(`  Uploaded ${entry.file} (position ${entry.position})`);
+        await sleep(INTER_REQUEST_DELAY_MS);
+      }
+    }
+
+    const totalOps = diff.changed.length * 2 + diff.added.length;
+    console.log(`\nDone. ${diff.changed.length + diff.added.length} screenshot(s) updated (${totalOps} API calls).`);
+    process.exit(0);
+  }
+
+  // Force mode or count mismatch: full replace
+  if (force) {
     console.log('--force flag set — skipping comparison.\n');
+  } else if (previews.length !== files.length) {
+    console.log(`Count mismatch (local: ${files.length}, AMO: ${previews.length}) — full replace.\n`);
   }
 
   if (previews.length > 0) {
