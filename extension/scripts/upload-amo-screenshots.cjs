@@ -10,8 +10,8 @@ const AMO_BASE_URL =
 
 const SCREENSHOTS_DIR = path.resolve(__dirname, '..', '..', 'screenshots');
 
-const MAX_RETRY_WAIT = 120; // Cap retry wait at 2 minutes (AMO can suggest 2880s+)
-const INTER_REQUEST_DELAY_MS = 3500; // 3.5s delay between write operations to avoid rate limits
+const MAX_RETRY_WAIT = 600; // Cap retry wait at 10 minutes (AMO can suggest 2880s+)
+const INTER_REQUEST_DELAY_MS = 15000; // 15s delay between write operations to avoid rate limits
 
 function base64UrlEncode(value) {
   return Buffer.from(value).toString('base64url');
@@ -238,19 +238,29 @@ async function run() {
   const addonDetails = await fetchAddonDetails(getToken());
   const previews = addonDetails.previews || [];
 
-  // Handle count mismatch: if we have more or fewer screenshots than AMO,
-  // fall back to full replace (delete all + upload all)
-  if (!force && previews.length > 0 && previews.length === files.length) {
+  // Always use smart diff when there are existing previews.
+  // Compares hashes positionally — unchanged screenshots are skipped,
+  // changed ones are deleted+reuploaded, new ones uploaded, orphans deleted.
+  // Only falls back to full replace with --force.
+  if (!force && previews.length > 0) {
     console.log(`Comparing ${files.length} local screenshot(s) against ${previews.length} AMO preview(s)...`);
 
     const diff = diffScreenshots(previews, files);
     await identifyChangedScreenshots(diff);
 
-    if (diff.changed.length === 0 && diff.added.length === 0) {
+    // Track previews that exist on AMO beyond our local files
+    const orphaned = [];
+    for (let i = files.length; i < previews.length; i++) {
+      orphaned.push({ position: i, previewId: previews[i].id });
+    }
+
+    const totalChanges = diff.changed.length + diff.added.length + orphaned.length;
+    if (totalChanges === 0) {
       console.log('\n✓ Screenshots unchanged — skipping upload.');
       process.exit(0);
     }
 
+    // Delete changed previews (will be re-uploaded with updated content)
     if (diff.changed.length > 0) {
       console.log(`\n${diff.changed.length} screenshot(s) changed — updating individually.`);
       for (const entry of diff.changed) {
@@ -258,33 +268,35 @@ async function run() {
         console.log(`  Deleted preview ${entry.previewId}`);
         await sleep(INTER_REQUEST_DELAY_MS);
       }
-      for (const entry of diff.changed) {
-        const filePath = path.join(SCREENSHOTS_DIR, entry.file);
-        await uploadPreview(getToken, filePath, entry.position);
-        console.log(`  Uploaded ${entry.file} (position ${entry.position})`);
+    }
+
+    // Delete orphaned previews (removed from screenshots dir)
+    if (orphaned.length > 0) {
+      console.log(`\n${orphaned.length} screenshot(s) removed locally — deleting from AMO.`);
+      for (const entry of orphaned) {
+        await deletePreview(getToken, entry.previewId);
+        console.log(`  Deleted orphaned preview ${entry.previewId} (position ${entry.position})`);
         await sleep(INTER_REQUEST_DELAY_MS);
       }
     }
 
-    if (diff.added.length > 0) {
-      for (const entry of diff.added) {
-        const filePath = path.join(SCREENSHOTS_DIR, entry.file);
-        await uploadPreview(getToken, filePath, entry.position);
-        console.log(`  Uploaded ${entry.file} (position ${entry.position})`);
-        await sleep(INTER_REQUEST_DELAY_MS);
-      }
+    // Upload changed and new screenshots
+    const toUpload = [...diff.changed, ...diff.added];
+    for (const entry of toUpload) {
+      const filePath = path.join(SCREENSHOTS_DIR, entry.file);
+      await uploadPreview(getToken, filePath, entry.position);
+      console.log(`  Uploaded ${entry.file} (position ${entry.position})`);
+      await sleep(INTER_REQUEST_DELAY_MS);
     }
 
-    const totalOps = diff.changed.length * 2 + diff.added.length;
-    console.log(`\nDone. ${diff.changed.length + diff.added.length} screenshot(s) updated (${totalOps} API calls).`);
+    const totalOps = diff.changed.length * 2 + diff.added.length + orphaned.length;
+    console.log(`\nDone. ${totalChanges} screenshot(s) updated (${totalOps} API calls).`);
     process.exit(0);
   }
 
-  // Force mode or count mismatch: full replace
+  // Full replace: --force or no existing previews
   if (force) {
-    console.log('--force flag set — skipping comparison.\n');
-  } else if (previews.length !== files.length) {
-    console.log(`Count mismatch (local: ${files.length}, AMO: ${previews.length}) — full replace.\n`);
+    console.log('--force flag set — full replace.\n');
   }
 
   if (previews.length > 0) {
