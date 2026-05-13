@@ -7,6 +7,7 @@ export type ToggleSettingKey =
   | 'truncateConsoleLogs'
   | 'truncateResponseBodies'
   | 'redactSensitiveInfo'
+  | 'deduplicateApiCalls'
   | 'networkExportEnabled'
   | 'autoServerSync'
   | 'preserveLogs'
@@ -23,6 +24,7 @@ const TOGGLE_CONFIGS: Array<[ToggleSettingKey, string]> = [
   ['truncateConsoleLogs', 'Truncate console logs'],
   ['truncateResponseBodies', 'Truncate response bodies'],
   ['redactSensitiveInfo', 'Redact sensitive info'],
+  ['deduplicateApiCalls', 'Deduplicate API calls'],
   ['networkExportEnabled', 'Network export to server'],
   ['autoServerSync', 'Auto sync to server'],
   ['preserveLogs', 'Preserve logs on reload'],
