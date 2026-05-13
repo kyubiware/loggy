@@ -1,6 +1,6 @@
-import { Archive, Brain, FileText, RefreshCw, Scissors, Shield, Upload } from 'lucide-react'
 import type React from 'react'
 import { IconButtonToggle } from '../../../shared/components/IconButtonToggle'
+import { TOGGLE_CONFIGS } from '../hooks/useLoggyActions'
 import { useActions, useSettings } from '../LoggyContext'
 
 interface ToggleConfig {
@@ -23,82 +23,17 @@ function ToggleButton({ label, pressed, onToggle, icon, error }: ToggleConfig): 
 }
 
 export function ExportOptionToggles(): React.JSX.Element {
-  const {
-    includeAgentContext,
-    includeResponseBodies,
-    truncateConsoleLogs,
-    truncateResponseBodies,
-    redactSensitiveInfo,
-    networkExportEnabled,
-    autoServerSync,
-    serverSyncError,
-    maxTokenLimit,
-    preserveLogs,
-  } = useSettings()
+  const settings = useSettings()
+  const { toggleSetting, setMaxTokenLimit } = useActions()
 
-  const {
-    toggleAgentContext,
-    toggleResponseBodies,
-    toggleConsoleTruncation,
-    toggleResponseBodyTruncation,
-    toggleRedactSensitive,
-    toggleNetworkExport,
-    toggleAutoServerSync,
-    setMaxTokenLimit,
-    togglePreserveLogs,
-  } = useActions()
-
-  const toggles: ToggleConfig[] = [
-    {
-      label: 'Include LLM guidance',
-      pressed: includeAgentContext,
-      onToggle: toggleAgentContext,
-      icon: <Brain size={16} />,
-    },
-    {
-      label: 'Include response bodies',
-      pressed: includeResponseBodies,
-      onToggle: toggleResponseBodies,
-      icon: <FileText size={16} />,
-    },
-    {
-      label: 'Truncate console logs',
-      pressed: truncateConsoleLogs,
-      onToggle: toggleConsoleTruncation,
-      icon: <Scissors size={16} />,
-    },
-    {
-      label: 'Truncate response bodies',
-      pressed: truncateResponseBodies,
-      onToggle: toggleResponseBodyTruncation,
-      icon: <Scissors size={16} />,
-    },
-    {
-      label: 'Redact sensitive info',
-      pressed: redactSensitiveInfo,
-      onToggle: toggleRedactSensitive,
-      icon: <Shield size={16} />,
-    },
-    {
-      label: 'Network export to server',
-      pressed: networkExportEnabled,
-      onToggle: toggleNetworkExport,
-      icon: <Upload size={16} />,
-    },
-    {
-      label: 'Auto sync to server',
-      pressed: autoServerSync,
-      onToggle: toggleAutoServerSync,
-      error: serverSyncError,
-      icon: <RefreshCw size={16} />,
-    },
-    {
-      label: 'Preserve logs on reload',
-      pressed: preserveLogs,
-      onToggle: togglePreserveLogs,
-      icon: <Archive size={16} />,
-    },
-  ]
+  const toggles: ToggleConfig[] = TOGGLE_CONFIGS.map(({ key, label, icon: Icon }) => ({
+    label,
+    pressed: settings[key] as boolean,
+    onToggle: () => toggleSetting(key),
+    icon: <Icon size={16} />,
+    // Only autoServerSync has an error state
+    ...(key === 'autoServerSync' && settings.serverSyncError ? { error: true } : {}),
+  }))
 
   return (
     <div className="flex items-center gap-0.5 bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 rounded p-0.5">
@@ -117,7 +52,7 @@ export function ExportOptionToggles(): React.JSX.Element {
           type="number"
           min={0}
           step={1000}
-          value={maxTokenLimit === 0 ? '' : maxTokenLimit}
+          value={settings.maxTokenLimit === 0 ? '' : settings.maxTokenLimit}
           placeholder="Off"
           onChange={(event) => {
             const raw = Number.parseInt(event.target.value, 10)

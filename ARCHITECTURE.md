@@ -20,8 +20,8 @@
 
 **Panel UI:**
 - Purpose: Render the DevTools panel and manage capture controls, filters, and export actions.
-- Location: `extension/panel/src/main.tsx`, `extension/panel/src/App.tsx`, `extension/panel/src/LoggyContext.tsx`, `extension/panel/src/components/`, `extension/panel/src/hooks/`, `extension/panel/capture.ts`, `extension/panel/preview.ts`, `extension/panel/actions.ts`, `extension/panel/server-probe.ts`
-- Contains: React root, context providers, hooks, action handlers, panel components, capture helpers, preview rendering, and server availability probe.
+- Location: `extension/panel/src/main.tsx`, `extension/panel/src/App.tsx`, `extension/panel/src/LoggyContext.tsx`, `extension/panel/src/LoggyContext.types.ts`, `extension/panel/src/components/`, `extension/panel/src/hooks/`, `extension/panel/src/actions.ts`, `extension/panel/capture.ts`, `extension/panel/preview.ts`, `extension/panel/server-probe.ts`
+- Contains: React root, consent-check gate (`useConsentCheck` → `ConsentView` or `LoggyProvider`), three-context provider pattern (`LogDataContext`, `SettingsContext`, `ActionsContext`), hooks, action handlers, panel components, capture helpers, preview rendering, and server availability probe.
 - Depends on: `extension/types/`, `extension/utils/`, `extension/shared/`, `extension/browser-apis/`
 - Used by: DevTools panel entry point.
 
@@ -46,10 +46,10 @@
 - Depends on: `react-markdown`, `remark-gfm`, `extension/utils/clipboard.ts`, `chrome.runtime` APIs
 - Used by: Popup "Preview" action.
 
-**Shared export pipeline:**
-- Purpose: Convert captured state into Markdown and optionally push it to the server.
-- Location: `extension/shared/export.ts`, `extension/shared/server-export.ts`, `extension/utils/formatter.ts`, `extension/utils/filtered-data.ts`, `extension/utils/pruner.ts`, `extension/utils/clipboard.ts`
-- Contains: Data filtering, redaction, pruning, Markdown formatting, clipboard write with fallback, and server push helpers.
+**Shared layer:**
+- Purpose: Provide shared Markdown export pipeline, server communication helpers, and reusable React primitives (components and hooks) used across panel, popup, and FAB UIs.
+- Location: `extension/shared/export.ts`, `extension/shared/server-export.ts`, `extension/shared/components/`, `extension/shared/hooks/`, `extension/utils/formatter.ts`, `extension/utils/filtered-data.ts`, `extension/utils/pruner.ts`, `extension/utils/clipboard.ts`
+- Contains: Data filtering, redaction, pruning, Markdown formatting, clipboard write with fallback, server push helpers (`pushToServer` via background delegation), shared React components (`IconButtonToggle`, `Tooltip`, `OptionCheckbox`), shared hooks (`useDebouncedFilter`).
 - Depends on: `extension/browser-apis/`, `extension/types/`, `extension/utils/`
 - Used by: Background runtime, panel actions, popup actions, FAB, and preview page.
 
@@ -196,7 +196,7 @@
 
 ## Cross-Cutting Concerns
 
-**Logging:** Use `console.error()` for CLI startup failures, `[Loggy:bg]`, `[Loggy:panel]`, and `[Loggy:popup]` prefixed logs for debug output in extension contexts.
+**Logging:** Use `console.error()` for CLI startup failures. Use `[Loggy]` prefixed logs for critical errors in background runtime. Use `[Loggy:bg]`, `[Loggy:panel]`, and `[Loggy:popup]` prefixed logs for debug output in respective extension contexts.
 **Caching:** Use in-memory maps for tab state and preview caching, plus `chrome.storage.session` for per-tab persistence and `chrome.storage.local` for settings.
 **Storage:** Use `chrome.storage.session` and `chrome.storage.local` in the extension; use in-memory state and optional file writes in `serve/`.
 **Clipboard:** Use `writeClipboard()` from `extension/utils/clipboard.ts` — async Clipboard API with hidden-textarea fallback — in panel, popup, FAB, and preview layers.

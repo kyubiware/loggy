@@ -41,13 +41,7 @@ export interface ActionsContextValue {
   setNetworkFilter: (value: string) => void
   toggleConsoleVisibility: () => void
   toggleNetworkVisibility: () => void
-  toggleAgentContext: () => void
-  toggleResponseBodies: () => void
-  toggleConsoleTruncation: () => void
-  toggleResponseBodyTruncation: () => void
-  toggleRedactSensitive: () => void
-  toggleNetworkExport: () => void
-  toggleAutoServerSync: () => void
+  toggleSetting: (key: import('./hooks/useLoggyActions').ToggleSettingKey) => void
   setServerUrl: (url: string) => void
   toggleRoute: (route: string) => void
   selectAllRoutes: () => void
@@ -57,5 +51,4 @@ export interface ActionsContextValue {
   clearAll: () => Promise<void>
   copy: () => Promise<void>
   setMaxTokenLimit: (value: number) => void
-  togglePreserveLogs: () => void
 }

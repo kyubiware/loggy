@@ -23,8 +23,8 @@ loggy/
 
 **`extension/`:**
 - Purpose: Hold the browser extension implementation.
-- Contains: Background logic, capture code, React panel UI, popup UI, shared utilities, browser API adapters, scripts, manifests, tests, and build outputs.
-- Key files: `extension/background/index.ts`, `extension/content-relay.ts`, `extension/panel/src/main.tsx`, `extension/popup/main.tsx`, `extension/utils/formatter.ts`, `extension/manifest.json`, `extension/package.json`
+- Contains: Background logic, capture code, React panel UI, popup UI, FAB UI (Firefox Android), preview page, shared utilities, shared React components and hooks, browser API adapters, scripts, manifests, tests, and build outputs.
+- Key files: `extension/background/index.ts`, `extension/content-relay.ts`, `extension/panel/src/main.tsx`, `extension/panel/server-probe.ts`, `extension/popup/main.tsx`, `extension/preview/preview.tsx`, `extension/fab-ui.tsx`, `extension/utils/formatter.ts`, `extension/utils/clipboard.ts`, `extension/manifest.json`, `extension/package.json`
 
 **`serve/`:**
 - Purpose: Hold the companion Fastify server.
@@ -40,6 +40,26 @@ loggy/
 - Purpose: Hold build, packaging, AMO metadata, and Firefox release automation.
 - Contains: Release orchestration, manifest rewrite helpers, Firefox bundle sanitizers, AMO description updates, and screenshot upload scripts.
 - Key files: `extension/scripts/release.cjs`, `extension/scripts/update-amo-description.cjs`, `extension/scripts/upload-amo-screenshots.cjs`, `extension/scripts/amo-description.md`
+
+**`extension/fab/`:**
+- Purpose: Hold the floating action button UI injected as a content script on Firefox Android.
+- Contains: Shadow DOM-mounted React component tree with capture toggle and clipboard export state.
+- Key files: `extension/fab-ui.tsx`, `extension/fab/FabContainer.tsx`, `extension/fab/useFabState.ts`, `extension/fab/fab.css`
+
+**`extension/preview/`:**
+- Purpose: Hold the standalone Markdown preview page launched from the popup.
+- Contains: React root, rendered/raw toggle, cached markdown retrieval via runtime messaging.
+- Key files: `extension/preview/preview.tsx`, `extension/preview/preview.html`, `extension/preview/index.css`
+
+**`extension/shared/components/`:**
+- Purpose: Hold reusable React UI primitives used across panel, popup, and FAB layers.
+- Contains: Icon button toggles, tooltips, option checkboxes.
+- Key files: `extension/shared/components/IconButtonToggle.tsx`, `extension/shared/components/Tooltip.tsx`, `extension/shared/components/OptionCheckbox.tsx`
+
+**`extension/shared/hooks/`:**
+- Purpose: Hold reusable React hooks shared across extension UIs.
+- Contains: Debounced filter input hook.
+- Key files: `extension/shared/hooks/useDebouncedFilter.ts`
 
 **`.husky/`:**
 - Purpose: Store Git hooks.
@@ -74,7 +94,11 @@ loggy/
 **New capture logic:** `extension/capture/` or `extension/background/` — keep browser capture orchestration in the extension runtime.
 **New panel UI:** `extension/panel/src/components/` or `extension/panel/src/hooks/` — keep React UI and hooks under the panel workspace.
 **New popup UI:** `extension/popup/` — keep compact browser-action controls and popup state together.
-**New shared utility:** `extension/utils/` or `extension/shared/` — keep pure formatting and reusable helpers here.
+**New shared utility:** `extension/utils/` — keep pure formatting helpers here.
+**New shared React component:** `extension/shared/components/` — keep reusable UI primitives (IconButtonToggle, Tooltip, OptionCheckbox) that cross UI boundaries.
+**New shared React hook:** `extension/shared/hooks/` — keep reusable hooks (useDebouncedFilter) that cross UI boundaries.
+**New FAB UI (Firefox Android):** `extension/fab/` — keep FAB container, state hook, and CSS in the fab directory.
+**New preview page:** `extension/preview/` — keep standalone Markdown preview React component, HTML shell, and styles.
 **New browser API wrapper:** `extension/browser-apis/` — keep browser-specific abstractions behind build-time selection.
 **New server route or helper:** `serve/src/` — keep Fastify handlers, CLI behavior, Tailscale HTTPS setup, and clipboard support together.
 **New release or AMO automation:** `extension/scripts/` — keep packaging helpers, description generation, screenshot upload, and Firefox release tasks together.
