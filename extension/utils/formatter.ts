@@ -5,6 +5,7 @@
 
 import type { ConsoleMessage } from '../types/console'
 import type { HAREntry } from '../types/har'
+import { consolidateNetworkEntries } from './consolidation-network'
 import {
   bySeverityThenCount,
   consolidateConsoleLogs,
@@ -12,7 +13,7 @@ import {
   formatTimestampRange,
   isLikelyFailureSignal,
 } from './formatter-console'
-import { formatNetworkEntry } from './formatter-network'
+import { formatConsolidatedNetworkEntry, formatNetworkEntry } from './formatter-network'
 import { escapeMarkdown, formatBytes, truncate } from './formatter-strings'
 
 /**
@@ -29,6 +30,8 @@ export interface ExportData {
   includeResponseBodies?: boolean
   /** Whether to truncate console log messages (default: true) */
   truncateConsoleLogs?: boolean
+  /** Whether to deduplicate identical API calls in the export */
+  deduplicateApiCalls?: boolean
   /** Captured console messages */
   consoleLogs: ConsoleMessage[]
   /** Captured network HAR entries */
@@ -112,13 +115,25 @@ export function formatMarkdown(data: ExportData): string {
 
   // Network Requests Section
   if (data.networkEntries.length > 0) {
-    output += `### Network Requests\n\n`
-    data.networkEntries.forEach((entry) => {
-      output += formatNetworkEntry(entry, {
-        includeResponseBodies: data.includeResponseBodies ?? false,
+    if (data.deduplicateApiCalls) {
+      const consolidated = consolidateNetworkEntries(data.networkEntries)
+      output += `### Network Requests\n\n`
+      output += `- **Unique Routes**: ${consolidated.length} (from ${data.networkEntries.length} total)\n\n`
+      consolidated.forEach((group) => {
+        output += formatConsolidatedNetworkEntry(group, {
+          includeResponseBodies: data.includeResponseBodies ?? false,
+        })
+        output += '---\n\n'
       })
-      output += '---\n\n'
-    })
+    } else {
+      output += `### Network Requests\n\n`
+      data.networkEntries.forEach((entry) => {
+        output += formatNetworkEntry(entry, {
+          includeResponseBodies: data.includeResponseBodies ?? false,
+        })
+        output += '---\n\n'
+      })
+    }
   } else {
     output += `### Network Requests\n\nNo network requests captured.\n\n`
   }

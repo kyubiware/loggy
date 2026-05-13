@@ -756,6 +756,7 @@ async function handleControlMessage(
         autoServerSync: defaults.autoServerSync,
         serverUrl: defaults.serverUrl,
         settingsAccordionOpen: defaults.settingsAccordionOpen,
+        deduplicateApiCalls: defaults.deduplicateApiCalls,
         maxTokenLimit: defaults.maxTokenLimit,
         preserveLogs: defaults.preserveLogs,
       }

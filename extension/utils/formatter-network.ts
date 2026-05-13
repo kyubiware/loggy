@@ -1,4 +1,5 @@
 import type { HAREntry } from '../types/har'
+import type { ConsolidatedNetworkEntry } from './consolidation-network'
 import { escapeMarkdown, formatBytes, truncate } from './formatter-strings'
 
 /** HTTP/2 pseudo-headers that duplicate info already in the URL/method line */
@@ -226,6 +227,101 @@ export function formatNetworkEntry(
       output += `\`\`\`${lang}\n`
       output += escapeMarkdown(truncate(response.content.text, 5000))
       output += '\n```\n\n'
+    }
+  }
+
+  return output
+}
+
+/**
+ * Formats a consolidated group of network entries as a detailed section.
+ * Deduplicated calls sharing the same method+URL+body are grouped together.
+ * @param group - Consolidated network entry group
+ * @param options - Formatting options
+ * @returns Markdown section string
+ */
+export function formatConsolidatedNetworkEntry(
+  group: ConsolidatedNetworkEntry,
+  options: { includeResponseBodies: boolean }
+): string {
+  if (group.count === 1) {
+    return formatNetworkEntry(group.entries[0], options)
+  }
+
+  const representative = group.entries[0]
+  const { request, response, time } = representative
+  const { includeResponseBodies } = options
+  const size = response?.content?.size ? formatBytes(response.content.size) : 'N/A'
+  const mimeType = response?.content?.mimeType || 'unknown'
+  const isSuccess = response.status >= 200 && response.status < 300
+  const isMinimal = response.status === 204
+
+  let output = `### ${escapeMarkdown(request.method)} ${escapeMarkdown(request.url)} (×${group.count} calls)\n\n`
+
+  const firstTime = group.timestamps[0]
+  const lastTime = group.timestamps[group.timestamps.length - 1]
+  output += `- **Time**: ${firstTime}`
+  if (firstTime !== lastTime) {
+    output += ` -> ${lastTime}`
+  }
+  output += '\n'
+
+  output += `- **Calls**: ${group.count}\n`
+  output += `- **Timestamps**: ${group.timestamps.join(', ')}\n`
+  output += `- **Duration**: ${time ? `${time}ms (first call)` : 'N/A'}\n`
+  output += `- **Status**: ${response.status} ${response.statusText}\n`
+  output += `- **Size**: ${size}\n`
+  output += `- **MIME Type**: ${mimeType}\n\n`
+
+  if (!isMinimal) {
+    output += `#### Request Headers\n`
+    output += '```\n'
+    output += formatFilteredHeaders(request.headers, { side: 'request', isSuccess })
+    output += '\n```\n\n'
+  }
+
+  if (request.postData?.text) {
+    output += `#### Request Body\n`
+    if (shouldUseCodeBlock(request.postData.mimeType)) {
+      const lang = getLanguageFromMime(request.postData.mimeType)
+      output += `\`\`\`${lang}\n`
+      output += escapeMarkdown(truncate(request.postData.text, 5000))
+      output += '\n```\n\n'
+    } else {
+      output += '```\n'
+      output += escapeMarkdown(truncate(request.postData.text, 5000))
+      output += '\n```\n\n'
+    }
+  }
+
+  if (!isMinimal) {
+    output += `#### Response Headers\n`
+    output += '```\n'
+    output += formatFilteredHeaders(response.headers, { side: 'response', isSuccess })
+    output += '\n```\n\n'
+
+    if (includeResponseBodies && response.content?.text && shouldUseCodeBlock(mimeType)) {
+      const lang = getLanguageFromMime(mimeType)
+      if (group.identicalResponses) {
+        output += `#### Response Content\n`
+        output += `\`\`\`${lang}\n`
+        output += escapeMarkdown(truncate(response.content.text, 5000))
+        output += '\n```\n'
+        output += `(×${group.count} identical responses)\n\n`
+      } else {
+        output += `#### Response Content (first call)\n`
+        output += `\`\`\`${lang}\n`
+        output += escapeMarkdown(truncate(response.content.text, 5000))
+        output += '\n```\n\n'
+
+        for (const diff of group.bodyDiffs) {
+          if (!diff.hasDiff || !diff.diffLines) continue
+          output += `#### Response Diff — Call ${diff.entryIndex + 1} (${diff.timestamp})\n`
+          output += '```diff\n'
+          output += diff.diffLines.join('\n')
+          output += '\n```\n\n'
+        }
+      }
     }
   }
 

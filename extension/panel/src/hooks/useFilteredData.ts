@@ -38,6 +38,7 @@ export function useFilteredData(): FilteredDataResult {
       serverUrl: '',
       serverConnected: false,
       maxTokenLimit: settings.maxTokenLimit,
+      deduplicateApiCalls: settings.deduplicateApiCalls,
       preserveLogs: settings.preserveLogs,
     }
 
@@ -69,6 +70,7 @@ export function useFilteredData(): FilteredDataResult {
     settings.autoServerSync,
     settings.serverSyncError,
     settings.maxTokenLimit,
+    settings.deduplicateApiCalls,
     settings.preserveLogs,
   ])
 }

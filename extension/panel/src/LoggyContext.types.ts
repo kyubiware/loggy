@@ -32,6 +32,7 @@ export interface SettingsContextValue {
     type: 'success' | 'error'
     visible: boolean
   }
+  deduplicateApiCalls: boolean
   maxTokenLimit: number
   preserveLogs: boolean
 }

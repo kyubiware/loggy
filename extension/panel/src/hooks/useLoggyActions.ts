@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { Archive, Brain, FileText, RefreshCw, Scissors, Shield, Upload } from 'lucide-react'
+import { Archive, Brain, Copy, FileText, RefreshCw, Scissors, Shield, Upload } from 'lucide-react'
 import type { Dispatch, RefObject, SetStateAction } from 'react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import type { LoggyState } from '../../../types/state'
@@ -20,6 +20,7 @@ export type ToggleSettingKey =
   | 'networkExportEnabled'
   | 'autoServerSync'
   | 'preserveLogs'
+  | 'deduplicateApiCalls'
 
 /**
  * Maps toggle setting keys to their reducer action types.
@@ -34,6 +35,7 @@ const TOGGLE_ACTION_MAP: Record<ToggleSettingKey, Action['type']> = {
   networkExportEnabled: 'TOGGLE_NETWORK_EXPORT',
   autoServerSync: 'TOGGLE_AUTO_SERVER_SYNC',
   preserveLogs: 'TOGGLE_PRESERVE_LOGS',
+  deduplicateApiCalls: 'TOGGLE_DEDUPLICATE_API_CALLS',
 }
 
 /**
@@ -52,6 +54,7 @@ export const TOGGLE_CONFIGS: Array<{
   { key: 'redactSensitiveInfo', label: 'Redact sensitive info', icon: Shield },
   { key: 'networkExportEnabled', label: 'Network export to server', icon: Upload },
   { key: 'autoServerSync', label: 'Auto sync to server', icon: RefreshCw },
+  { key: 'deduplicateApiCalls', label: 'Deduplicate API calls', icon: Copy },
   { key: 'preserveLogs', label: 'Preserve logs on reload', icon: Archive },
 ]
 

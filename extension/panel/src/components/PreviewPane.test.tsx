@@ -95,6 +95,7 @@ function makeState(
     serverSyncError: overrides.serverSyncError ?? false,
     settingsAccordionOpen: overrides.settingsAccordionOpen ?? true,
     maxTokenLimit: overrides.maxTokenLimit ?? 50000,
+    deduplicateApiCalls: overrides.deduplicateApiCalls ?? true,
     preserveLogs: overrides.preserveLogs ?? false,
   }
 }

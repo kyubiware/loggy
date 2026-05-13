@@ -273,6 +273,7 @@ describe('useCaptureData', () => {
         serverUrl: defaults.serverUrl,
         settingsAccordionOpen: defaults.settingsAccordionOpen,
         maxTokenLimit: defaults.maxTokenLimit,
+        deduplicateApiCalls: defaults.deduplicateApiCalls,
         preserveLogs: defaults.preserveLogs,
       },
     })
@@ -818,6 +819,7 @@ describe('reducer HYDRATE_SETTINGS', () => {
         serverUrl: 'http://custom:1234',
         settingsAccordionOpen: true,
         maxTokenLimit: 42000,
+        deduplicateApiCalls: true,
         preserveLogs: true,
       },
     })

@@ -26,6 +26,8 @@ export interface LoggyState {
   truncateConsoleLogs: boolean
   /** Whether to truncate network response bodies in export */
   truncateResponseBodies: boolean
+  /** Whether to deduplicate repeated API calls in export */
+  deduplicateApiCalls: boolean
   /** Whether to redact sensitive information in exports */
   redactSensitiveInfo: boolean
   /** Whether network export to server is enabled */
@@ -63,6 +65,7 @@ export type PersistedLoggySettings = Pick<
   | 'includeResponseBodies'
   | 'truncateConsoleLogs'
   | 'truncateResponseBodies'
+  | 'deduplicateApiCalls'
   | 'redactSensitiveInfo'
   | 'networkExportEnabled'
   | 'autoServerSync'
@@ -91,6 +94,7 @@ export function createInitialState(): LoggyState {
     includeResponseBodies: false,
     truncateConsoleLogs: true,
     truncateResponseBodies: true,
+    deduplicateApiCalls: true,
     redactSensitiveInfo: true,
     networkExportEnabled: false,
     autoServerSync: false,
@@ -118,6 +122,7 @@ export function extractPersistedSettings(state: LoggyState): PersistedLoggySetti
     includeResponseBodies: state.includeResponseBodies,
     truncateConsoleLogs: state.truncateConsoleLogs,
     truncateResponseBodies: state.truncateResponseBodies,
+    deduplicateApiCalls: state.deduplicateApiCalls,
     redactSensitiveInfo: state.redactSensitiveInfo,
     networkExportEnabled: state.networkExportEnabled,
     autoServerSync: state.autoServerSync,
@@ -164,6 +169,10 @@ export function mergePersistedSettings(
       typeof stored.truncateResponseBodies === 'boolean'
         ? stored.truncateResponseBodies
         : defaults.truncateResponseBodies,
+    deduplicateApiCalls:
+      typeof stored.deduplicateApiCalls === 'boolean'
+        ? stored.deduplicateApiCalls
+        : defaults.deduplicateApiCalls,
     redactSensitiveInfo:
       typeof stored.redactSensitiveInfo === 'boolean'
         ? stored.redactSensitiveInfo

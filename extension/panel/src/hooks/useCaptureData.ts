@@ -67,6 +67,7 @@ export type Action =
   | { type: 'SET_SERVER_CONNECTED'; value: boolean }
   | { type: 'SET_MAX_TOKEN_LIMIT'; value: number }
   | { type: 'TOGGLE_PRESERVE_LOGS' }
+  | { type: 'TOGGLE_DEDUPLICATE_API_CALLS' }
 
 export function reducer(state: LoggyState, action: Action): LoggyState {
   switch (action.type) {
@@ -98,6 +99,7 @@ export function reducer(state: LoggyState, action: Action): LoggyState {
         serverUrl: state.serverUrl,
         settingsAccordionOpen: state.settingsAccordionOpen,
         maxTokenLimit: state.maxTokenLimit,
+        deduplicateApiCalls: state.deduplicateApiCalls,
         preserveLogs: state.preserveLogs,
       })
 
@@ -175,6 +177,11 @@ export function reducer(state: LoggyState, action: Action): LoggyState {
       return {
         ...state,
         preserveLogs: !state.preserveLogs,
+      }
+    case 'TOGGLE_DEDUPLICATE_API_CALLS':
+      return {
+        ...state,
+        deduplicateApiCalls: !state.deduplicateApiCalls,
       }
     default:
       return state
@@ -291,6 +298,7 @@ export function useCaptureData(): {
           serverUrl: defaults.serverUrl,
           settingsAccordionOpen: defaults.settingsAccordionOpen,
           maxTokenLimit: defaults.maxTokenLimit,
+          deduplicateApiCalls: defaults.deduplicateApiCalls,
           preserveLogs: defaults.preserveLogs,
         })
 
