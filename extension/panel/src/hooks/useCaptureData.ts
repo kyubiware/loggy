@@ -40,6 +40,7 @@ function buildExportFingerprint(s: LoggyState): string {
     ac: s.includeAgentContext,
     rb: s.includeResponseBodies,
     tc: s.truncateConsoleLogs,
+    trb: s.truncateResponseBodies,
     ri: s.redactSensitiveInfo,
     ne: s.networkExportEnabled,
     cf: s.consoleFilter,
@@ -57,6 +58,7 @@ export type Action =
   | { type: 'TOGGLE_AGENT_CONTEXT' }
   | { type: 'TOGGLE_RESPONSE_BODIES' }
   | { type: 'TOGGLE_CONSOLE_TRUNCATION' }
+  | { type: 'TOGGLE_RESPONSE_BODY_TRUNCATION' }
   | { type: 'TOGGLE_REDACT_SENSITIVE' }
   | { type: 'TOGGLE_NETWORK_EXPORT' }
   | { type: 'TOGGLE_AUTO_SERVER_SYNC' }
@@ -89,6 +91,7 @@ export function reducer(state: LoggyState, action: Action): LoggyState {
         includeAgentContext: state.includeAgentContext,
         includeResponseBodies: state.includeResponseBodies,
         truncateConsoleLogs: state.truncateConsoleLogs,
+        truncateResponseBodies: state.truncateResponseBodies,
         redactSensitiveInfo: state.redactSensitiveInfo,
         networkExportEnabled: state.networkExportEnabled,
         autoServerSync: state.autoServerSync,
@@ -127,6 +130,11 @@ export function reducer(state: LoggyState, action: Action): LoggyState {
       return {
         ...state,
         truncateConsoleLogs: !state.truncateConsoleLogs,
+      }
+    case 'TOGGLE_RESPONSE_BODY_TRUNCATION':
+      return {
+        ...state,
+        truncateResponseBodies: !state.truncateResponseBodies,
       }
     case 'TOGGLE_REDACT_SENSITIVE':
       return {
@@ -276,6 +284,7 @@ export function useCaptureData(): {
           includeAgentContext: defaults.includeAgentContext,
           includeResponseBodies: defaults.includeResponseBodies,
           truncateConsoleLogs: defaults.truncateConsoleLogs,
+          truncateResponseBodies: defaults.truncateResponseBodies,
           redactSensitiveInfo: defaults.redactSensitiveInfo,
           networkExportEnabled: defaults.networkExportEnabled,
           autoServerSync: defaults.autoServerSync,

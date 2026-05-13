@@ -87,6 +87,7 @@ export function LoggyProvider({ children }: { children: ReactNode }): ReactNode 
       includeAgentContext: state.includeAgentContext,
       includeResponseBodies: state.includeResponseBodies,
       truncateConsoleLogs: state.truncateConsoleLogs,
+      truncateResponseBodies: state.truncateResponseBodies,
       redactSensitiveInfo: state.redactSensitiveInfo,
       networkExportEnabled: state.networkExportEnabled,
       autoServerSync: state.autoServerSync,

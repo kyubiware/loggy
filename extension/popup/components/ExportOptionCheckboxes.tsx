@@ -5,6 +5,7 @@ export type ToggleSettingKey =
   | 'includeAgentContext'
   | 'includeResponseBodies'
   | 'truncateConsoleLogs'
+  | 'truncateResponseBodies'
   | 'redactSensitiveInfo'
   | 'networkExportEnabled'
   | 'autoServerSync'
@@ -20,6 +21,7 @@ const TOGGLE_CONFIGS: Array<[ToggleSettingKey, string]> = [
   ['includeAgentContext', 'Include LLM guidance'],
   ['includeResponseBodies', 'Include response bodies'],
   ['truncateConsoleLogs', 'Truncate console logs'],
+  ['truncateResponseBodies', 'Truncate response bodies'],
   ['redactSensitiveInfo', 'Redact sensitive info'],
   ['networkExportEnabled', 'Network export to server'],
   ['autoServerSync', 'Auto sync to server'],

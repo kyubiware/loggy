@@ -23,6 +23,7 @@ export async function buildExportMarkdown(state: LoggyState): Promise<string> {
     }),
     networkEntries: pruneNetwork(filteredData.networkEntries, {
       redactSensitiveInfo: state.redactSensitiveInfo,
+      truncateResponseBodies: state.truncateResponseBodies,
     }),
   }
 

@@ -66,10 +66,12 @@ function makeState(
     | 'includeAgentContext'
     | 'includeResponseBodies'
     | 'truncateConsoleLogs'
+    | 'truncateResponseBodies'
   > & {
     includeAgentContext?: boolean
     includeResponseBodies?: boolean
     truncateConsoleLogs?: boolean
+    truncateResponseBodies?: boolean
   } = {}
 ): LoggyState {
   return {
@@ -86,6 +88,7 @@ function makeState(
     includeAgentContext: overrides.includeAgentContext ?? true,
     includeResponseBodies: overrides.includeResponseBodies ?? false,
     truncateConsoleLogs: overrides.truncateConsoleLogs ?? true,
+    truncateResponseBodies: overrides.truncateResponseBodies ?? true,
     redactSensitiveInfo: overrides.redactSensitiveInfo ?? true,
     networkExportEnabled: overrides.networkExportEnabled ?? true,
     autoServerSync: overrides.autoServerSync ?? false,

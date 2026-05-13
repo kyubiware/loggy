@@ -36,6 +36,7 @@ export function usePopupSettings(): {
       includeAgentContext: defaults.includeAgentContext,
       includeResponseBodies: defaults.includeResponseBodies,
       truncateConsoleLogs: defaults.truncateConsoleLogs,
+      truncateResponseBodies: defaults.truncateResponseBodies,
       redactSensitiveInfo: defaults.redactSensitiveInfo,
       networkExportEnabled: defaults.networkExportEnabled,
       autoServerSync: defaults.autoServerSync,

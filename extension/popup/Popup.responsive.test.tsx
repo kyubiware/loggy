@@ -15,6 +15,7 @@ const mockUsePopupActions = vi.hoisted(() => ({
     includeAgentContext: true,
     includeResponseBodies: false,
     truncateConsoleLogs: true,
+    truncateResponseBodies: true,
     redactSensitiveInfo: false,
     networkExportEnabled: false,
     autoServerSync: false,
@@ -95,7 +96,7 @@ describe('Popup responsive classes', () => {
     expect(iconButtonToggle.className).toContain('h-3.5')
     expect(iconButtonToggle.className).toContain('w-3.5')
 
-    expect(screen.getAllByRole('checkbox')).toHaveLength(7)
+    expect(screen.getAllByRole('checkbox')).toHaveLength(8)
 
     const filterInput = screen.getByPlaceholderText('Filter console (regex)...')
     expect(filterInput.className).toContain('max-sm:py-3')

@@ -19,6 +19,7 @@ export interface SettingsContextValue {
   includeAgentContext: boolean
   includeResponseBodies: boolean
   truncateConsoleLogs: boolean
+  truncateResponseBodies: boolean
   redactSensitiveInfo: boolean
   networkExportEnabled: boolean
   autoServerSync: boolean
@@ -43,6 +44,7 @@ export interface ActionsContextValue {
   toggleAgentContext: () => void
   toggleResponseBodies: () => void
   toggleConsoleTruncation: () => void
+  toggleResponseBodyTruncation: () => void
   toggleRedactSensitive: () => void
   toggleNetworkExport: () => void
   toggleAutoServerSync: () => void

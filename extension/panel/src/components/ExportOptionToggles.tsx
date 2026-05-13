@@ -27,6 +27,7 @@ export function ExportOptionToggles(): React.JSX.Element {
     includeAgentContext,
     includeResponseBodies,
     truncateConsoleLogs,
+    truncateResponseBodies,
     redactSensitiveInfo,
     networkExportEnabled,
     autoServerSync,
@@ -39,6 +40,7 @@ export function ExportOptionToggles(): React.JSX.Element {
     toggleAgentContext,
     toggleResponseBodies,
     toggleConsoleTruncation,
+    toggleResponseBodyTruncation,
     toggleRedactSensitive,
     toggleNetworkExport,
     toggleAutoServerSync,
@@ -63,6 +65,12 @@ export function ExportOptionToggles(): React.JSX.Element {
       label: 'Truncate console logs',
       pressed: truncateConsoleLogs,
       onToggle: toggleConsoleTruncation,
+      icon: <Scissors size={16} />,
+    },
+    {
+      label: 'Truncate response bodies',
+      pressed: truncateResponseBodies,
+      onToggle: toggleResponseBodyTruncation,
       icon: <Scissors size={16} />,
     },
     {

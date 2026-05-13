@@ -62,6 +62,10 @@ export function useLoggyActions({
     dispatch({ type: 'TOGGLE_CONSOLE_TRUNCATION' })
   }, [dispatch])
 
+  const toggleResponseBodyTruncation = useCallback(() => {
+    dispatch({ type: 'TOGGLE_RESPONSE_BODY_TRUNCATION' })
+  }, [dispatch])
+
   const toggleRedactSensitive = useCallback(() => {
     dispatch({ type: 'TOGGLE_REDACT_SENSITIVE' })
   }, [dispatch])
@@ -163,6 +167,7 @@ export function useLoggyActions({
       toggleAgentContext,
       toggleResponseBodies,
       toggleConsoleTruncation,
+      toggleResponseBodyTruncation,
       toggleRedactSensitive,
       toggleNetworkExport,
       toggleAutoServerSync,
@@ -185,6 +190,7 @@ export function useLoggyActions({
       toggleAgentContext,
       toggleResponseBodies,
       toggleConsoleTruncation,
+      toggleResponseBodyTruncation,
       toggleRedactSensitive,
       toggleNetworkExport,
       toggleAutoServerSync,

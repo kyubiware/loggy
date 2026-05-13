@@ -31,13 +31,17 @@ export function TokenCountAndCopy({
       )}
 
       <div className='flex items-center gap-2'>
-        {copyStatus === 'success' && (
-          <span className='text-xs text-green-600 dark:text-green-400'>Copied!</span>
-        )}
-        {copyStatus === 'error' && <span className='text-xs text-red-600 dark:text-red-400'>Failed</span>}
-        {copyStatus === 'no-data' && (
-          <span className='text-xs text-stone-500 dark:text-stone-400'>No data</span>
-        )}
+        <div className='w-14 text-center'>
+          {copyStatus === 'success' && (
+            <span className='text-xs text-green-600 dark:text-green-400'>Copied!</span>
+          )}
+          {copyStatus === 'error' && (
+            <span className='text-xs text-red-600 dark:text-red-400'>Failed</span>
+          )}
+          {copyStatus === 'no-data' && (
+            <span className='text-xs text-stone-500 dark:text-stone-400'>No data</span>
+          )}
+        </div>
         <button
           type='button'
           onClick={onPreview}

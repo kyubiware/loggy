@@ -24,6 +24,8 @@ export interface LoggyState {
   includeResponseBodies: boolean
   /** Whether to truncate console log messages in export */
   truncateConsoleLogs: boolean
+  /** Whether to truncate network response bodies in export */
+  truncateResponseBodies: boolean
   /** Whether to redact sensitive information in exports */
   redactSensitiveInfo: boolean
   /** Whether network export to server is enabled */
@@ -60,6 +62,7 @@ export type PersistedLoggySettings = Pick<
   | 'includeAgentContext'
   | 'includeResponseBodies'
   | 'truncateConsoleLogs'
+  | 'truncateResponseBodies'
   | 'redactSensitiveInfo'
   | 'networkExportEnabled'
   | 'autoServerSync'
@@ -87,6 +90,7 @@ export function createInitialState(): LoggyState {
     includeAgentContext: true,
     includeResponseBodies: false,
     truncateConsoleLogs: true,
+    truncateResponseBodies: true,
     redactSensitiveInfo: true,
     networkExportEnabled: false,
     autoServerSync: false,
@@ -113,6 +117,7 @@ export function extractPersistedSettings(state: LoggyState): PersistedLoggySetti
     includeAgentContext: state.includeAgentContext,
     includeResponseBodies: state.includeResponseBodies,
     truncateConsoleLogs: state.truncateConsoleLogs,
+    truncateResponseBodies: state.truncateResponseBodies,
     redactSensitiveInfo: state.redactSensitiveInfo,
     networkExportEnabled: state.networkExportEnabled,
     autoServerSync: state.autoServerSync,
@@ -155,6 +160,10 @@ export function mergePersistedSettings(
       typeof stored.truncateConsoleLogs === 'boolean'
         ? stored.truncateConsoleLogs
         : defaults.truncateConsoleLogs,
+    truncateResponseBodies:
+      typeof stored.truncateResponseBodies === 'boolean'
+        ? stored.truncateResponseBodies
+        : defaults.truncateResponseBodies,
     redactSensitiveInfo:
       typeof stored.redactSensitiveInfo === 'boolean'
         ? stored.redactSensitiveInfo

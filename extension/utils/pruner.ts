@@ -87,9 +87,10 @@ export function pruneConsole(
  */
 export function pruneNetwork(
   entries: HAREntry[],
-  options?: { redactSensitiveInfo?: boolean }
+  options?: { redactSensitiveInfo?: boolean; truncateResponseBodies?: boolean }
 ): HAREntry[] {
   const shouldRedact = options?.redactSensitiveInfo !== false
+  const shouldTruncateResponse = options?.truncateResponseBodies !== false
 
   return entries.map((entry) => {
     const pruned = { ...entry }
@@ -110,7 +111,9 @@ export function pruneNetwork(
         ...entry.response,
         content: {
           ...entry.response?.content,
-          text: truncate(entry.response?.content?.text, PRUNE_CONFIG.MAX_RESPONSE_BODY),
+          text: shouldTruncateResponse
+            ? truncate(entry.response?.content?.text, PRUNE_CONFIG.MAX_RESPONSE_BODY)
+            : (entry.response?.content?.text ?? ''),
         },
       }
     }
