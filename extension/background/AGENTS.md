@@ -1,34 +1,38 @@
 # BACKGROUND SERVICE WORKER
 
 ## OVERVIEW
-Central coordinator for state management, capture orchestration, and server export. Manifest V3 service worker (transient).
+Central coordinator for tab state, capture orchestration, consent evaluation, markdown building, and server export. Manifest V3 service worker (transient, ~1300 lines).
 
 ## STRUCTURE
-- `index.ts`: Entry point. 700+ lines managing state, storage, and message routing.
+- `index.ts`: Entry point. Per-tab state management, message routing, consent system, failed export buffering.
 
 ## WHERE TO LOOK
 | Task | Location |
 |------|----------|
-| State Management | `activeTabs` (Map), `captureState` (Map) |
-| Message Router | `chrome.runtime.onMessage.addListener` |
-| Capture Logic | `startCapture`, `stopCapture` (Debugger vs Content vs DevTools) |
-| Server Export | `exportToServe` function (POST markdown) |
-| Lifecycle | `chrome.tabs.onRemoved`, `chrome.webNavigation.onBeforeNavigate` |
+| Per-Tab State | `tabStates` Map, `createDefaultTabState`, `getOrCreateTabState`, `setTabState` |
+| Consent System | `evaluateConsent` — checks local pages, always-log hosts, active sessions |
+| Markdown Build | `buildTabMarkdown` — converts stored entries to Markdown per tab |
+| Failed Export Buffer | `appendFailedExportBuffer`, `clearFailedExportBuffer` — bounded retry queue |
+| Debugger Resume | `debuggerResumeTimersByTab` — deferred resume timers per tab |
+| Message Router | `chrome.runtime.onMessage.addListener` — routes capture/control messages |
+| Server Export | `pushToServer` — POST Markdown with handshake support |
+| Persistence | `persistTabStates`, `chrome.storage.session` — survives worker restarts |
 
 ## CONVENTIONS
-- Use `chrome.storage.local` for persistence across worker restarts.
-- Memory state (Maps) must sync with storage on change.
-- All incoming messages use `LoggyMessage` type.
-- Capture mode selection happens here before delegating to `capture/` modules.
+- Per-tab state (`TabCaptureState`) tracks mode, logCount, connected flag.
+- `evaluateConsent` gates all capture: local pages auto-consent, always-log hosts use preferred mode, others require active session.
+- Failed exports buffer up to 20 entries per tab in `chrome.storage.session`.
+- Memory Maps must sync with `chrome.storage.session` on every state change.
+- All incoming messages use `LoggyMessage` union type.
 
 ## ANTI-PATTERNS
-- **NO window/DOM access**: Use content scripts or offscreen documents if needed.
-- **NO long-running listeners**: Worker can sleep. State must be resumable.
+- **NO window/DOM access**: Service worker has none. Use content scripts.
+- **NO long-running listeners**: Worker sleeps. State must be resumable from storage.
 - **NO direct debugger calls**: Route through `capture/debugger-capture.ts`.
+- **NO unbounded buffers**: Failed export buffer capped at `MAX_FAILED_EXPORT_BUFFER` (20).
 
 ## NOTES
-- `debugger` mode requires `chrome.debugger` permission and is Chrome-only.
-- `content-script` mode relies on `MAIN` world execution (patched globals).
-- `devtools` mode expects the panel to be open; background stays in standby.
-- Tab cleanup is critical to prevent memory leaks in the `activeTabs` Map.
+- `debugger` mode is Chrome-only; `content-script` works cross-browser.
+- Three capture modes: debugger, content-script, devtools. Mode selection happens here.
+- Tab cleanup critical to prevent memory leaks in Maps.
 - Coordinates with `content-relay.ts` for bridging page events to the extension.

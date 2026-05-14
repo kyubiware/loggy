@@ -3,60 +3,58 @@
 **Scope:** React UI for DevTools Panel
 
 ## OVERVIEW
-React application providing the DevTools panel UI with filter controls, data preview, and toast notifications.
+React application providing the DevTools panel UI with filter controls, data preview, toast notifications, and consent gating.
 
 ## STRUCTURE
 ```
 src/
-├── main.tsx           # React entry point (mounts App)
-├── App.tsx            # App shell (LoggyProvider + AppContent)
-├── AppContent.tsx     # Main layout orchestration
-├── LoggyContext.tsx   # Shared state (LoggyProvider)
-├── index.css          # Global styles (Tailwind via PostCSS)
-├── components/        # UI components
-│   ├── controls/      # Filter controls and action buttons
-│   ├── PreviewPane.tsx  # Console/network data preview
-│   ├── Toast.tsx     # Toast notification component
-│   └── *.test.tsx    # Component tests
-└── hooks/             # React hooks
-    ├── useCaptureData.ts   # Messaging with background service worker
-    ├── useToast.ts         # Toast state management
-    └── *.test.tsx         # Hook tests
+├── main.tsx                 # React entry point
+├── App.tsx                  # App shell (LoggyProvider + AppContent)
+├── AppContent.tsx           # Main layout orchestration
+├── LoggyContext.tsx         # Three-context provider
+├── LoggyContext.types.ts    # Context value type definitions
+├── index.css                # Global styles (Tailwind)
+├── components/              # UI components
+│   ├── controls/            # Filter controls and action buttons
+│   ├── PreviewPane.tsx      # Console/network data preview
+│   ├── Toast.tsx            # Toast notification
+│   ├── ConsentView.tsx      # Consent gating UI
+│   └── *.test.tsx
+└── hooks/
+    ├── useCaptureData.ts    # Background messaging
+    ├── useLoggyActions.ts   # Action creators
+    ├── useConsentCheck.ts   # Consent state → ConsentView
+    ├── useToast.ts          # Toast state
+    └── *.test.tsx
 ```
 
 ## WHERE TO LOOK
 
 | Task | Location | Notes |
 |------|----------|-------|
-| React mounting | main.tsx | ReactDOM.createRoot |
-| Shared state | LoggyContext.tsx | LoggyProvider & useLoggy |
-| App layout | AppContent.tsx | Main component structure |
+| Three-context provider | LoggyContext.tsx | LogDataContext, SettingsContext, ActionsContext |
+| Context types | LoggyContext.types.ts | Typed context values |
+| Consent gating | ConsentView.tsx + useConsentCheck.ts | Start/Always Log |
+| Action creators | useLoggyActions.ts | Filters, routes, copy, clear, refresh |
+| Data capture | useCaptureData.ts | chrome.runtime.sendMessage |
 | Filter inputs | components/controls/ | State-bound inputs |
-| Preview display | components/PreviewPane.tsx | Data tables |
-| Toast UI | components/Toast.tsx | Notification component |
-| Data capture | hooks/useCaptureData.ts | Messaging via chrome.runtime.sendMessage |
-| Toast state | hooks/useToast.ts | Visibility/timeout |
+| Preview display | PreviewPane.tsx | Data tables |
 
 ## CONVENTIONS
 
-- **Components**: Functional components with hooks only (no classes)
-- **State**: LoggyContext for shared state, useState for local
-- **Event handlers**: Inline handlers with useCallback optimization
-- **Styling**: Tailwind CSS classes (PostCSS/Vite plugin)
-- **Testing**: React Testing Library, @testing-library/jest-dom
+- **Components**: Functional components with hooks only
+- **State**: Three-context pattern — LogDataContext (data), SettingsContext (config), ActionsContext (operations)
+- **Styling**: Tailwind CSS (PostCSS/Vite)
+- **Testing**: React Testing Library
 
 ## ANTI-PATTERNS
 
-- NEVER use class components - use functional components
-- NEVER mutate state directly - use setState
-- NEVER skip cleanup in useEffect - return cleanup function
-- NEVER inline complex functions - use useCallback/useMemo
+- NEVER use class components
+- NEVER mutate state directly
+- NEVER bypass the three-context pattern — use useLogData, useSettings, useActions hooks
 
 ## NOTES
 
-- Components are tested with React Testing Library
-- useCaptureData communicates with background via chrome.runtime.sendMessage()
-- useCaptureData uses typed LoggyMessage from types/messages.ts
-- useToast manages toast visibility and auto-dismissal
-- Tailwind CSS is compiled via PostCSS (Vite), not CDN
-- LoggyContext provides shared state across the panel app
+- useLoggyActions centralizes all panel operations
+- useConsentCheck manages consent flow, renders ConsentView when not consented
+- LoggyProvider wraps children in three nested context providers

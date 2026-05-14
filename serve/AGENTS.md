@@ -1,20 +1,29 @@
 # SERVE KNOWLEDGE BASE
 
+**Generated:** 2026-05-13
+**Commit:** d96265d
+**Branch:** main
+
 **Scope:** Fastify companion server
 
 ## OVERVIEW
-Fastify server providing HTTP endpoints for receiving and retrieving Loggy markdown exports. Features interactive TUI mode for live status and clipboard integration. CLI-ready with configurable port and output path.
+Fastify server providing HTTP endpoints for receiving and retrieving Loggy markdown exports. Features interactive TUI mode (readline raw-mode) for live status and clipboard integration. CLI-ready with configurable port and output path.
 
 ## STRUCTURE
+```
 serve/
 ├── src/
 │   ├── server.ts       # Fastify app factory + start function
-│   ├── tui.ts          # Interactive terminal UI (bless-based)
-│   └── clipboard.ts    # Cross-platform clipboard integration
+│   ├── tui.ts          # Interactive terminal UI (readline raw-mode)
+│   ├── clipboard.ts    # Cross-platform clipboard integration
+│   ├── tailscale.ts    # Tailscale HTTPS cert detection
+│   └── cli.ts          # CLI entry point (arg parsing, TUI launch)
 ├── tests/
 │   └── server.test.ts  # Vitest tests
 ├── bin/
 │   └── loggy-serve.js  # CLI entry point
+├── scripts/
+│   └── bump-version.cjs # Version bump automation
 ├── package.json        # Fastify deps + Vitest
 └── tsconfig.json       # TypeScript config
 ```
@@ -27,10 +36,11 @@ serve/
 | POST endpoint | src/server.ts | /loggy - receive markdown export |
 | GET export | src/server.ts | /loggy/export - retrieve latest |
 | Handshake | src/server.ts | /loggy/handshake - version check |
-| TUI logic | src/tui.ts | Interactive status bar and shortcuts |
+| TUI logic | src/tui.ts | Interactive status bar and shortcuts (readline raw-mode) |
 | Clipboard | src/clipboard.ts | Cross-platform copy integration |
+| Tailscale HTTPS | src/tailscale.ts | Auto-detect + provision TLS certs |
+| CLI entry | src/cli.ts | Arg parsing, TUI launch, `print` subcommand |
 | Error formatting | src/server.ts | formatStartupError() for EADDRINUSE |
-| CLI entry | bin/loggy-serve.js | Parses args, calls startServer() |
 
 ## CONVENTIONS
 

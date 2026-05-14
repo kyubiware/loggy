@@ -1,81 +1,73 @@
 # PANEL KNOWLEDGE BASE
 
-**Scope:** DevTools Panel UI
+**Scope:** DevTools Panel UI (React-only)
 
 ## OVERVIEW
-Main DevTools panel UI. React handles all UI; root TypeScript files are DevTools-specific business logic for capture, preview, and server checks.
+Main DevTools panel UI. Fully React-based with a three-context architecture (LogDataContext, SettingsContext, ActionsContext) managed by LoggyProvider. Consent gating controls entry into the main app.
 
 ## STRUCTURE
 ```
 panel/
-├── src/                    # React application
-│   ├── main.tsx           # React entry point
-│   ├── App.tsx            # Main React component
-│   ├── index.css          # Styles
-│   ├── components/        # React UI components
-│   │   ├── Controls.tsx   # Filter inputs and buttons
-│   │   ├── PreviewPane.tsx  # Data preview display
-│   │   ├── ActionsAndToast.test.tsx  # Component tests
-│   │   └── Toast.tsx     # Toast notification component
-│   └── hooks/            # React hooks
-│       ├── useCaptureData.ts   # Data capture logic
-│       └── useToast.ts         # Toast state management
-├── capture.ts             # Console & network capture
-├── preview.ts             # Preview rendering (non-React)
-├── server-probe.ts        # Server availability probe
-└── actions.ts             # Action handlers
+├── src/
+│   ├── main.tsx              # React entry point
+│   ├── App.tsx               # Consent gate → LoggyProvider → AppContent
+│   ├── AppContent.tsx        # Layout: PreviewPane + Toast
+│   ├── LoggyContext.tsx      # Three-context provider (LoggyProvider)
+│   ├── LoggyContext.types.ts # Context value type definitions
+│   ├── index.css             # Tailwind styles
+│   ├── components/           # React UI components
+│   │   ├── ConsentView.tsx   # Pre-consent screen
+│   │   ├── PreviewPane.tsx   # Main data display
+│   │   ├── PreviewContent.tsx
+│   │   ├── PreviewPaneHeader.tsx
+│   │   ├── Tabs.tsx / TabButton.tsx
+│   │   ├── RoutesList.tsx
+│   │   ├── FilterToggle.tsx
+│   │   ├── StatsSummary.tsx
+│   │   ├── TokenCountBadge.tsx
+│   │   ├── ServerConnection.tsx
+│   │   ├── ExportOptionToggles.tsx
+│   │   ├── Toast.tsx
+│   │   └── *.test.tsx        # Component tests
+│   └── hooks/
+│       ├── useCaptureData.ts      # Console/network capture logic
+│       ├── useLoggyActions.ts     # Action dispatcher + toggle configs
+│       ├── useConsentCheck.ts     # Consent state management
+│       ├── useFilteredData.ts     # Filtered data hook
+│       ├── useToast.ts            # Toast state management
+│       └── useCaptureData.test.tsx
+├── capture.ts              # Console & network capture (DevTools API)
+├── preview.ts              # Preview rendering helpers
+├── server-probe.ts         # Server availability check
+└── actions.ts              # Pure action handlers (clear, copy)
 ```
 
 ## WHERE TO LOOK
 
 | Task | Location | Notes |
 |------|----------|-------|
-| React entry point | src/main.tsx | Mounts React app |
-| Main React component | src/App.tsx | App orchestration |
-| Filter controls | src/components/controls/ | Input handlers |
-| Preview display | src/components/PreviewPane.tsx | Data rendering |
-| Toast component | src/components/Toast.tsx | Notification UI |
-| Data capture hook | src/hooks/useCaptureData.ts | React hook for console/network |
-| Toast hook | src/hooks/useToast.ts | Toast state management |
-| State interface | ../types/state.ts | LoggyState with visibility flags |
-| Console capture | capture.ts | Script injection, circular buffer |
-| Network capture | capture.ts | getHAR() API wrapper |
-| Filtered data | ../utils/filtered-data.ts | FilteredPanelData interface |
-| Debounce utility | ../utils/debounce.ts | Generic TypeScript debounce |
-| Preview rendering | preview.ts | DOM updates for filtered data |
-| Clipboard export | ../shared/export.ts | formatMarkdown + clipboard API & server export |
-| Server export | ../shared/server-export.ts | pushToServer helper |
+| Consent gating | src/App.tsx + hooks/useConsentCheck.ts | Checks consent before rendering app |
+| Context provider | src/LoggyContext.tsx | LoggyProvider wraps LogDataContext, SettingsContext, ActionsContext |
+| Context types | src/LoggyContext.types.ts | LogDataContextValue, SettingsContextValue, ActionsContextValue |
+| Layout | src/AppContent.tsx | PreviewPane + Toast, uses useSettings() |
+| Data access | useLogData() hook | consoleLogs, networkEntries, routeOptions, selectedRoutes |
+| Settings access | useSettings() hook | All filter/visibility/export/server flags |
+| Actions | useActions() hook | refresh, clearAll, copy, toggleSetting, setServerUrl, route ops |
+| Toggle configs | hooks/useLoggyActions.ts | TOGGLE_CONFIGS array for data-driven toggle UI |
+| Capture logic | hooks/useCaptureData.ts | State reducer, captureData, clearData |
+| Preview rendering | preview.ts | Non-React DOM helpers |
 | Server probe | server-probe.ts | Checks loggy-serve availability |
-| Action handlers | actions.ts | Button click handlers |
-| Browser APIs | ../browser-apis/index.ts | Cross-browser API abstractions |
+| Clipboard/server export | ../../shared/export.ts, server-export.ts | formatMarkdown, pushToServer |
 
 ## CONVENTIONS
 
-- **State updates**: Use spread operator for immutability
-- **DOM queries**: Use `document.getElementById()` with type assertions
-- **Event handlers**: Debounce input at 300ms
-- **Async methods**: Always use try/catch
-- **Error display**: Use React toast UI, not console-only
-- **Chrome APIs**: Wrap in Promises for async/await compatibility
-- **React patterns**: Functional components, hooks for state, no classes
-- **Message passing**: Use `chrome.runtime.sendMessage()` with typed `LoggyMessage` to communicate with background
-
-## ANTI-PATTERNS
-
-- NEVER mutate state directly - use spread operator for updates
-- NEVER skip error handling in async capture methods
-- NEVER use `eval()` outside of `chrome.devtools.inspectedWindow.eval()`
-- NEVER access DOM without caching element references
-- NEVER use React class components - use functional components with hooks
-
-## NOTES
-
-- Console capture works by injecting a script that patches console methods
-- Logs stored in inspected page's `window.__loggyConsoleLogs`
-- Circular buffer limits console logs to prevent memory bloat
-- Clipboard requires user gesture (button click) per browser security
-- Panel UI is React-only; root files are panel business logic, not an alternate UI layer
-- React components use hooks for state management and side effects
-- Toast system is React-only (`src/components/Toast.tsx`)
-- Panel communicates with background service worker for capture coordination and server export
-- Capture data source depends on mode: content-script/debugger modes get data from background, devtools mode captures directly
+- **Three-context pattern**: LogDataContext (data), SettingsContext (flags/state), ActionsContext (dispatchers). All provided by LoggyProvider.
+- **Consent gate**: App.tsx checks consent first. Renders ConsentView if not consented, LoggyProvider + AppContent if consented.
+- **State immutability**: Use spread operator; reducer actions defined in useCaptureData.
+- **Event handlers**: Debounce input at 300ms.
+- **Async methods**: Always use try/catch.
+- **Error display**: React Toast component, not console-only.
+- **Circular buffer**: Console/network logs pruned to prevent memory bloat.
+- **No vanilla JS DOM manipulation**: Panel is React-only. preview.ts provides helpers but UI is React-driven.
+- **Browser APIs**: Never import directly. Use ../../browser-apis/index.ts abstraction.
+- **TypeScript strict**: No implicit any. All hooks and contexts fully typed.

@@ -1,7 +1,7 @@
 # LOGGY PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-04-22
-**Commit:** 6263307
+**Generated:** 2026-05-13
+**Commit:** d96265d
 **Branch:** main
 
 ## OVERVIEW
@@ -34,11 +34,15 @@ Monorepo with npm workspaces containing a Chrome/Firefox DevTools extension (cap
 |------|----------|-------|
 | Extension code | extension/ | See extension/AGENTS.md |
 | Service worker | extension/background/ | Tab state, capture coordination, storage |
-| Popup UI | extension/popup/ | Status display, debugger toggle |
 | Panel UI | extension/panel/ | DevTools panel (React + vanilla) |
+| Popup UI | extension/popup/ | Status display, debugger toggle |
+| FAB UI (Firefox Android) | extension/fab/ | Floating action button on-page |
+| Preview page | extension/preview/ | Standalone Markdown preview |
+| Shared layer | extension/shared/ | Cross-UI components, hooks, export pipeline |
 | Data processing | extension/utils/ | Filters, formatter, pruner, consolidation |
 | Type definitions | extension/types/ | ConsoleMessage, HAREntry, LoggyMessage |
 | Browser APIs | extension/browser-apis/ | Chrome/Firefox build-time selection |
+| Release automation | extension/scripts/ | Build, sign, publish, AMO management |
 | Server code | serve/ | Fastify API + interactive TUI |
 | Workspace config | package.json | Workspaces: ["extension", "serve"] |
 
@@ -93,4 +97,4 @@ npm run publish:serve
 - Cross-browser builds via Vite `__BROWSER__` define + separate manifest variants
 - Firefox signing/publishing via web-ext CLI
 - Husky git hooks for pre-commit linting/formatting
-- Server runs interactive TUI by default (bless-based), `--quiet` for plain logs
+- Server runs interactive TUI by default (readline raw-mode), `--quiet` for plain logs

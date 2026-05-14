@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-04-22
-**Commit:** 6263307
+**Generated:** 2026-05-13
+**Commit:** d96265d
 **Branch:** main
 
 ## OVERVIEW
@@ -88,6 +88,8 @@ Chrome/Firefox DevTools extension capturing Console & Network logs as Markdown f
 | Shared export helpers | shared/export.ts | buildExportMarkdown, triggerServerExport |
 | Shared server export | shared/server-export.ts | pushToServer |
 | Popup UI | popup/popup.tsx | Status display, debugger toggle |
+| FAB UI (Firefox Android) | fab-ui.tsx, fab/ | Shadow DOM, capture toggle, clipboard |
+| Preview page | preview/preview.tsx | Standalone Markdown preview with rendered/raw toggle |
 | Filter logic | utils/filters.ts | Console regex, network include/exclude |
 | Filtered panel data | utils/filtered-data.ts | FilteredPanelData helpers |
 | Debounce utility | utils/debounce.ts | Generic debounce utility |
