@@ -1,8 +1,18 @@
+import { execSync } from 'node:child_process'
 import { crx } from '@crxjs/vite-plugin'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig, type PluginOption } from 'vite'
 import manifestChrome from './manifest-chrome.json'
+
+function getBuildKey(): string {
+  try {
+    const hash = execSync('git rev-parse --short HEAD', { encoding: 'utf8' }).trim()
+    return hash
+  } catch {
+    return 'dev'
+  }
+}
 
 export default defineConfig(({ mode, command }) => {
   const plugins: PluginOption[] = [react(), tailwindcss()]
@@ -39,6 +49,7 @@ export default defineConfig(({ mode, command }) => {
     base: './',
     define: {
       __BROWSER__: JSON.stringify(mode),
+      __BUILD_KEY__: JSON.stringify(getBuildKey()),
     },
     build: {
       outDir: `dist-${mode}`,

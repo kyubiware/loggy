@@ -11,6 +11,7 @@
     "build:chrome": "vite build --mode chrome",
     "build:firefox": "vite build --mode firefox",
     "package:firefox": "npm run build:firefox && rm -f loggy-firefox.xpi && (cd dist-firefox && zip -r ../loggy-firefox.xpi .)",
+    "install:firefox": "node scripts/install-firefox.cjs",
     "build:vite": "vite build",
     "build:ts": "tsc",
     "build:copy": "cp manifest.json icons/*.png dist/ && cp devtools.html dist/ && cp devtools.mjs dist/",

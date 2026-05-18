@@ -109,6 +109,17 @@ async function main() {
   console.log('Re-bundled panel.js as IIFE for Firefox');
 
   rewriteHtmlToClassicScript('panel/index.html', '../panel.js');
+
+  // --- popup/popup.html: remove modulepreload, keep module type ---
+  // Popup is not a DevTools context so ES modules work, but modulepreload
+  // links cause load failures in Firefox extension pages.
+
+  const popupHtmlPath = join(distDir, 'popup', 'popup.html');
+  let popupHtml = readFileSync(popupHtmlPath, 'utf8');
+  popupHtml = popupHtml.replace(/<link\s+rel="modulepreload"[^>]*>\n?/g, '');
+  popupHtml = popupHtml.replace(/\s*crossorigin/g, '');
+  writeFileSync(popupHtmlPath, popupHtml);
+  console.log('Rewrote popup/popup.html: removed modulepreload');
 }
 
 main().catch((err) => {

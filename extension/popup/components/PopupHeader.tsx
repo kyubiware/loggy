@@ -2,6 +2,8 @@ import type React from 'react'
 
 import iconUrl from '../../icons/icon48.png'
 
+declare const __BUILD_KEY__: string
+
 export interface PopupHeaderProps {
   connected: boolean
 }
@@ -15,6 +17,7 @@ export function PopupHeader({
         <img src={iconUrl} alt='Loggy' className='w-6 h-6' />
         Loggy
       </h1>
+      <span className='text-xs text-stone-400 font-mono'>{__BUILD_KEY__}</span>
     </div>
   )
 }
