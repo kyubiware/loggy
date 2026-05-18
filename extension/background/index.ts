@@ -536,7 +536,61 @@ async function handleControlMessage(
   | { ok: boolean }
 > {
   if (message.type === 'get-status') {
-    return getActiveTabStatus()
+    const status = getActiveTabStatus()
+
+    // If the tab is inactive, check whether it should auto-start via always-log.
+    // This fixes a race where the popup opens before content-relay-ready fires,
+    // showing the consent view for hosts that are already in the always-log list.
+    if (status.mode === 'inactive' && status.tabId >= 0) {
+      const tabId = status.tabId
+      const tab = await chrome.tabs.get(tabId).catch(() => null)
+      const url = tab?.url
+
+      if (url) {
+        const consent = await evaluateConsent(tabId, url)
+
+        if (consent.hasConsent && consent.captureMode !== 'none') {
+          const captureMode =
+            consent.captureMode === 'debugger' ? 'debugger' : 'content-script'
+          await setMode(tabId, captureMode)
+          updateIconForTab(tabId)
+
+          if (captureMode !== 'debugger') {
+            try {
+              await injectIntoTab(tabId)
+            } catch (error) {
+              console.error('[Loggy] Failed to inject content scripts on get-status:', error)
+            }
+          }
+
+          if (captureMode === 'debugger') {
+            attachToTab(tabId, (error) => {
+              if (error) {
+                console.error(
+                  '[Loggy] Failed to attach debugger for always-log on get-status:',
+                  error.message,
+                )
+                void setMode(tabId, 'content-script')
+              }
+            })
+          }
+
+          try {
+            await chrome.tabs.sendMessage(tabId, {
+              type: 'consent-changed',
+              hasConsent: true,
+              captureMode,
+            })
+          } catch {
+            // Content script may not be loaded yet
+          }
+
+          return getActiveTabStatus()
+        }
+      }
+    }
+
+    return status
   }
 
   if (message.type === 'get-tab-status') {

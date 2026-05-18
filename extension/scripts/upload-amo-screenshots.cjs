@@ -11,7 +11,7 @@ const AMO_BASE_URL =
 const SCREENSHOTS_DIR = path.resolve(__dirname, '..', '..', 'screenshots');
 
 const MAX_RETRY_WAIT = 600; // Cap retry wait at 10 minutes (AMO can suggest 2880s+)
-const INTER_REQUEST_DELAY_MS = 15000; // 15s delay between write operations to avoid rate limits
+const INTER_REQUEST_DELAY_MS = 5000; // 5s delay between write operations (429 retry handles actual rate limits)
 
 function base64UrlEncode(value) {
   return Buffer.from(value).toString('base64url');
@@ -182,34 +182,47 @@ function diffScreenshots(previews, localFiles) {
 async function identifyChangedScreenshots(diff) {
   const { unchanged } = diff;
 
-  for (let i = unchanged.length - 1; i >= 0; i--) {
-    const entry = unchanged[i];
-    const preview = diff.previews[entry.position];
-    const imageUrl = preview?.image_url;
-    if (!imageUrl) {
-      // Can't compare — treat as changed
-      unchanged.splice(i, 1);
-      diff.changed.push({ position: entry.position, previewId: entry.previewId, file: entry.file });
-      console.log(`  ${entry.file}: no remote image URL — will re-upload.`);
-      continue;
-    }
+  // Download and compare all remote hashes in parallel
+  const results = await Promise.all(
+    unchanged.map(async (entry) => {
+      const preview = diff.previews[entry.position];
+      const imageUrl = preview?.image_url;
 
-    console.log(`  Comparing ${entry.file}...`);
-    const remoteHash = await downloadHash(imageUrl);
-    if (!remoteHash) {
-      unchanged.splice(i, 1);
-      diff.changed.push({ position: entry.position, previewId: entry.previewId, file: entry.file });
-      console.log(`    Could not download remote preview — will re-upload.`);
-      continue;
-    }
+      if (!imageUrl) {
+        return { entry, status: 'changed', log: `  ${entry.file}: no remote image URL — will re-upload.` };
+      }
 
-    const localHash = hashFile(path.join(SCREENSHOTS_DIR, entry.file));
-    if (remoteHash !== localHash) {
-      unchanged.splice(i, 1);
-      diff.changed.push({ position: entry.position, previewId: entry.previewId, file: entry.file });
-      console.log(`    Content differs (local: ${localHash.slice(0, 8)}..., remote: ${remoteHash.slice(0, 8)}...).`);
-    } else {
-      console.log(`    Match.`);
+      console.log(`  Comparing ${entry.file}...`);
+      const remoteHash = await downloadHash(imageUrl);
+
+      if (!remoteHash) {
+        return { entry, status: 'changed', log: `    Could not download remote preview — will re-upload.` };
+      }
+
+      const localHash = hashFile(path.join(SCREENSHOTS_DIR, entry.file));
+      if (remoteHash !== localHash) {
+        return {
+          entry,
+          status: 'changed',
+          log: `    Content differs (local: ${localHash.slice(0, 8)}..., remote: ${remoteHash.slice(0, 8)}...).`,
+        };
+      }
+
+      return { entry, status: 'unchanged', log: `    Match.` };
+    }),
+  );
+
+  // Process results — move changed items from unchanged → changed
+  for (const result of results) {
+    console.log(result.log);
+    if (result.status === 'changed') {
+      const idx = diff.unchanged.indexOf(result.entry);
+      if (idx !== -1) diff.unchanged.splice(idx, 1);
+      diff.changed.push({
+        position: result.entry.position,
+        previewId: result.entry.previewId,
+        file: result.entry.file,
+      });
     }
   }
 }

@@ -17,6 +17,8 @@ permissions:
 jobs:
   sign-and-release:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.resolve.outputs.tag }}
 
     steps:
       - uses: actions/checkout@v5
@@ -122,12 +124,12 @@ jobs:
           CHANGELOG: ${{ steps.changelog.outputs.body }}
         run: node scripts/update-amo-description.cjs
 
-      - name: Upload screenshots to AMO
-        working-directory: extension
-        env:
-          AMO_API_KEY: ${{ secrets.AMO_API_KEY }}
-          AMO_API_SECRET: ${{ secrets.AMO_API_SECRET }}
-        run: node scripts/upload-amo-screenshots.cjs
+      - name: Upload screenshots artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screenshots/
+          retention-days: 1
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
@@ -143,3 +145,25 @@ jobs:
             extension/loggy-firefox.xpi
             extension/loggy-chrome.zip
             screenshots/*.png
+
+  update-amo-screenshots:
+    needs: sign-and-release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ needs.sign-and-release.outputs.tag }}
+
+      - name: Download screenshots
+        uses: actions/download-artifact@v4
+        with:
+          name: screenshots
+          path: screenshots
+
+      - name: Upload screenshots to AMO
+        working-directory: extension
+        env:
+          AMO_API_KEY: ${{ secrets.AMO_API_KEY }}
+          AMO_API_SECRET: ${{ secrets.AMO_API_SECRET }}
+        run: node scripts/upload-amo-screenshots.cjs
