@@ -1,4 +1,4 @@
-import { Coins, Copy, Eye } from 'lucide-react'
+import { Coins, Copy, Eye, Trash2 } from 'lucide-react'
 
 import { Tooltip } from '../../shared/components/Tooltip'
 import { formatTokenCount } from '../constants'
@@ -9,6 +9,7 @@ export interface TokenCountAndCopyProps {
   copyStatus: 'idle' | 'success' | 'error' | 'no-data'
   onCopy: () => void
   onPreview: () => void
+  onClear: () => void
 }
 
 export function TokenCountAndCopy({
@@ -17,6 +18,7 @@ export function TokenCountAndCopy({
   copyStatus,
   onCopy,
   onPreview,
+  onClear,
 }: TokenCountAndCopyProps): React.JSX.Element {
   return (
     <div className='flex items-center justify-between border-t border-stone-200 dark:border-stone-700 pt-3'>
@@ -68,6 +70,20 @@ export function TokenCountAndCopy({
           <Copy size={14} />
           Copy
         </button>
+        <Tooltip content='Clear Logs'>
+          <button
+            type='button'
+            onClick={onClear}
+            disabled={!hasData}
+            className={`flex items-center justify-center p-1.5 rounded text-xs transition-colors ${
+              hasData
+                ? 'text-stone-400 hover:text-red-500 hover:bg-red-50 dark:text-stone-500 dark:hover:text-red-400 dark:hover:bg-red-950'
+                : 'text-stone-300 cursor-not-allowed dark:text-stone-700'
+            }`}
+          >
+            <Trash2 size={14} />
+          </button>
+        </Tooltip>
       </div>
     </div>
   )

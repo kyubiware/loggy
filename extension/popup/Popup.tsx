@@ -1,4 +1,4 @@
-import { Globe, Terminal, Trash2 } from 'lucide-react'
+import { Globe, Terminal } from 'lucide-react'
 
 import { ConsentView, StopLoggingButton } from './components/ConsentView'
 import { EnhancedCaptureToggle } from './components/EnhancedCaptureToggle'
@@ -119,28 +119,14 @@ export default function Popup() {
               />
             </div>
           </SettingsAccordion>
-          <div className='flex flex-col gap-2'>
-            <TokenCountAndCopy
-              hasData={hasData}
-              tokenCount={tokenCount}
-              copyStatus={copyStatus}
-              onCopy={copyToClipboard}
-              onPreview={handlePreview}
-            />
-            <button
-              type='button'
-              onClick={handleClearLogs}
-              disabled={!hasData}
-              className={`flex items-center justify-center gap-1.5 w-full px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                hasData
-                  ? 'bg-stone-800 text-white hover:bg-stone-700 dark:bg-stone-200 dark:text-stone-900 dark:hover:bg-white'
-                  : 'bg-stone-200 text-stone-400 cursor-not-allowed dark:bg-stone-800 dark:text-stone-600'
-              }`}
-            >
-              <Trash2 size={14} />
-              Clear Logs
-            </button>
-          </div>
+          <TokenCountAndCopy
+            hasData={hasData}
+            tokenCount={tokenCount}
+            copyStatus={copyStatus}
+            onCopy={copyToClipboard}
+            onPreview={handlePreview}
+            onClear={handleClearLogs}
+          />
         </>
       )}
 
