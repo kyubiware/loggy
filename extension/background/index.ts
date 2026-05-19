@@ -55,7 +55,12 @@ import {
 import { formatMarkdown } from '../utils/formatter'
 import { isLocalPage } from '../utils/is-local-page'
 import { estimateEntryTokenCount, estimateTokenCount } from '../utils/token-estimate'
-import { injectIntoTab } from './content-scripts'
+import {
+  injectIntoTab,
+  registerAlwaysLogScriptsForHost,
+  unregisterAlwaysLogScriptsForHost,
+  syncAllAlwaysLogScripts,
+} from './content-scripts'
 
 declare const __BROWSER__: string
 
@@ -941,6 +946,7 @@ async function handleControlMessage(
   if (message.type === 'add-always-log') {
     const addMessage: AddAlwaysLogMessage = message
     await addAlwaysLogHost(addMessage.host)
+    await registerAlwaysLogScriptsForHost(addMessage.host)
 
     try {
       const tabs = await chrome.tabs.query({})
@@ -991,6 +997,7 @@ async function handleControlMessage(
   if (message.type === 'remove-always-log') {
     const removeMessage: RemoveAlwaysLogMessage = message
     await removeAlwaysLogHost(removeMessage.host)
+    await unregisterAlwaysLogScriptsForHost(removeMessage.host)
 
     try {
       const tabs = await chrome.tabs.query({})
@@ -1214,6 +1221,9 @@ async function initialize(): Promise<void> {
   }
 
   await chrome.storage.local.get(LOGGY_ALWAYS_LOG_HOSTS_KEY)
+
+  const alwaysLogHosts = await getAlwaysLogHosts()
+  await syncAllAlwaysLogScripts(alwaysLogHosts.map((h) => h.host))
 }
 
 chrome.runtime.onMessage.addListener((rawMessage, sender, sendResponse) => {

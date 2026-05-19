@@ -6,6 +6,7 @@ import '@testing-library/jest-dom/vitest'
 import { beforeEach, vi } from 'vitest'
 
 vi.stubGlobal('__BROWSER__', 'chrome')
+vi.stubGlobal('__BUILD_KEY__', 'test')
 
 type MockStorageState = {
   loggyPanelSettings?: unknown

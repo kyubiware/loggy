@@ -18,6 +18,9 @@ const mockInjectIntoTab = vi.fn(() => Promise.resolve())
 
 vi.mock('./content-scripts', () => ({
   injectIntoTab: (...args: Parameters<typeof mockInjectIntoTab>) => mockInjectIntoTab(...args),
+  registerAlwaysLogScriptsForHost: vi.fn(() => Promise.resolve()),
+  unregisterAlwaysLogScriptsForHost: vi.fn(() => Promise.resolve()),
+  syncAllAlwaysLogScripts: vi.fn(() => Promise.resolve()),
 }))
 
 vi.mock('../capture/debugger-capture', () => ({
