@@ -16,6 +16,7 @@ export type {
   AddAlwaysLogMessage,
   CachePreviewMessage,
   CaptureControlMessage,
+  ClearTabDataMessage,
   ConsentChangedMessage,
   ConsentResponseMessage,
   ContentRelayReadyMessage,

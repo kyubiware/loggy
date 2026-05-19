@@ -15,7 +15,7 @@ export function usePopupActions() {
   const [tabUrl, setTabUrl] = useState<string>('')
 
   const { settings, setSetting, loading: loadingSettings } = usePopupSettings()
-  const { tokenCount, markdown, hasData, loading: loadingData } = usePopupData(tabId)
+  const { tokenCount, markdown, hasData, loading: loadingData, refresh: refreshData } = usePopupData(tabId)
   const [serverConnected, setServerConnected] = useState(false)
   const serverPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastProbedUrlRef = useRef<string | null>(null)
@@ -158,6 +158,17 @@ export function usePopupActions() {
     })
   }
 
+  const handleClearLogs = () => {
+    if (!tabId) return
+    chrome.runtime.sendMessage(
+      { type: 'clear-tab-data', tabId },
+      () => {
+        refreshStatus()
+        refreshData()
+      },
+    )
+  }
+
   const handlePreview = () => {
     if (!hasData || !markdown) return
     chrome.runtime.sendMessage(
@@ -210,6 +221,7 @@ export function usePopupActions() {
     // Actions
     handleStartLogging,
     handleStopLogging,
+    handleClearLogs,
     handleAlwaysLog,
     handleToggleDebugger,
     handleRemoveAlwaysLog,

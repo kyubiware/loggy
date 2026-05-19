@@ -27,6 +27,7 @@ import {
   type AlwaysLogHostsResponse,
   type CachePreviewMessage,
   type CachePreviewResponse,
+  type ClearTabDataMessage,
   type CapturedConsoleEntry,
   type CapturedNetworkEntry,
   type CaptureControlMessage,
@@ -919,6 +920,24 @@ async function handleControlMessage(
     return updated
   }
 
+  if (message.type === 'clear-tab-data') {
+    const clearMessage = message as ClearTabDataMessage
+    const tabId = clearMessage.tabId
+
+    // Remove stored capture entries
+    const key = getStorageKeyForTab(tabId)
+    await chrome.storage.session.remove(key)
+
+    // Clear failed export buffer
+    await clearFailedExportBuffer(tabId)
+
+    // Reset log count in tab state
+    const current = getOrCreateTabState(tabId)
+    await setTabState({ ...current, logCount: 0 })
+
+    return { ok: true }
+  }
+
   if (message.type === 'add-always-log') {
     const addMessage: AddAlwaysLogMessage = message
     await addAlwaysLogHost(addMessage.host)
@@ -1095,6 +1114,7 @@ function isControlMessage(message: unknown): message is CaptureControlMessage {
     type === 'consent-response' ||
     type === 'start-logging' ||
     type === 'stop-logging' ||
+    type === 'clear-tab-data' ||
     type === 'add-always-log' ||
     type === 'remove-always-log' ||
     type === 'cache-preview' ||

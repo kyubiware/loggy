@@ -150,6 +150,16 @@ export interface StopLoggingMessage {
 }
 
 /**
+ * Request to clear all captured data for a tab.
+ */
+export interface ClearTabDataMessage {
+  /** Message type. */
+  type: 'clear-tab-data'
+  /** Target tab identifier. */
+  tabId: number
+}
+
+/**
  * Add a host to the always-log list.
  */
 export interface AddAlwaysLogMessage {
@@ -216,6 +226,7 @@ export type CaptureControlMessage =
   | ConsentResponseMessage
   | StartLoggingMessage
   | StopLoggingMessage
+  | ClearTabDataMessage
   | AddAlwaysLogMessage
   | RemoveAlwaysLogMessage
   | GetAlwaysLogHostsMessage
