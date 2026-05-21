@@ -22,6 +22,7 @@ const PERSISTED_KEYS: Array<keyof PersistedLoggySettings> = [
   'autoServerSync',
   'serverUrl',
   'settingsAccordionOpen',
+  'filtersAccordionOpen',
   'maxTokenLimit',
   'preserveLogs',
 ]
@@ -84,6 +85,7 @@ describe('extractPersistedSettings', () => {
       autoServerSync: false,
       serverUrl: 'http://custom:1234',
       settingsAccordionOpen: true,
+      filtersAccordionOpen: true,
       maxTokenLimit: 50000,
       preserveLogs: false,
     })
@@ -108,6 +110,7 @@ describe('mergePersistedSettings', () => {
       autoServerSync: true,
       serverUrl: 'http://custom:1234',
       settingsAccordionOpen: true,
+      filtersAccordionOpen: true,
       maxTokenLimit: 50000,
       preserveLogs: false,
     }

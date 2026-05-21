@@ -42,6 +42,7 @@ export function usePopupSettings(): {
       autoServerSync: defaults.autoServerSync,
       serverUrl: defaults.serverUrl,
       settingsAccordionOpen: defaults.settingsAccordionOpen,
+      filtersAccordionOpen: defaults.filtersAccordionOpen,
       maxTokenLimit: defaults.maxTokenLimit,
       deduplicateApiCalls: defaults.deduplicateApiCalls,
       preserveLogs: defaults.preserveLogs,

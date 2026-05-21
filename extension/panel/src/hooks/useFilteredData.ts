@@ -35,6 +35,7 @@ export function useFilteredData(): FilteredDataResult {
       autoServerSync: settings.autoServerSync,
       serverSyncError: settings.serverSyncError,
       settingsAccordionOpen: true,
+      filtersAccordionOpen: true,
       serverUrl: '',
       serverConnected: false,
       maxTokenLimit: settings.maxTokenLimit,

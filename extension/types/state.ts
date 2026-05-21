@@ -40,6 +40,8 @@ export interface LoggyState {
   serverUrl: string
   /** Whether the settings accordion is expanded in the popup */
   settingsAccordionOpen: boolean
+  /** Whether the filters accordion is expanded in the popup */
+  filtersAccordionOpen: boolean
   /** Whether the panel is currently connected to the server */
   serverConnected: boolean
   /** Captured console log entries */
@@ -71,6 +73,7 @@ export type PersistedLoggySettings = Pick<
   | 'autoServerSync'
   | 'serverUrl'
   | 'settingsAccordionOpen'
+  | 'filtersAccordionOpen'
   | 'maxTokenLimit'
   | 'preserveLogs'
 >
@@ -101,6 +104,7 @@ export function createInitialState(): LoggyState {
     serverSyncError: false,
     serverUrl: 'http://localhost:8743',
     settingsAccordionOpen: true,
+    filtersAccordionOpen: true,
     serverConnected: false,
     consoleLogs: [],
     networkEntries: [],
@@ -128,6 +132,7 @@ export function extractPersistedSettings(state: LoggyState): PersistedLoggySetti
     autoServerSync: state.autoServerSync,
     serverUrl: state.serverUrl,
     settingsAccordionOpen: state.settingsAccordionOpen,
+    filtersAccordionOpen: state.filtersAccordionOpen,
     maxTokenLimit: state.maxTokenLimit,
     preserveLogs: state.preserveLogs,
   }
@@ -188,6 +193,10 @@ export function mergePersistedSettings(
       typeof stored.settingsAccordionOpen === 'boolean'
         ? stored.settingsAccordionOpen
         : defaults.settingsAccordionOpen,
+    filtersAccordionOpen:
+      typeof stored.filtersAccordionOpen === 'boolean'
+        ? stored.filtersAccordionOpen
+        : defaults.filtersAccordionOpen,
     maxTokenLimit:
       typeof stored.maxTokenLimit === 'number' ? stored.maxTokenLimit : defaults.maxTokenLimit,
     preserveLogs:

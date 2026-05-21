@@ -9,6 +9,7 @@ import {
 import { FilterInput } from './components/FilterInput'
 import { PopupHeader } from './components/PopupHeader'
 import { ServerConnection } from './components/ServerConnection'
+import { FiltersAccordion } from './components/FiltersAccordion'
 import { SettingsAccordion } from './components/SettingsAccordion'
 import { TokenCountAndCopy } from './components/TokenCountAndCopy'
 import { AlwaysLogHosts } from './components/AlwaysLogHosts'
@@ -89,7 +90,11 @@ export default function Popup() {
                 onRetry={handleRetryConnection}
               />
             )}
-
+          </SettingsAccordion>
+          <FiltersAccordion
+            defaultOpen={settings.filtersAccordionOpen}
+            onToggle={() => setSetting('filtersAccordionOpen', !settings.filtersAccordionOpen)}
+          >
             <div className='flex flex-col gap-2'>
               <FilterInput
                 icon={<Terminal size={14} />}
@@ -118,7 +123,7 @@ export default function Popup() {
                 hiddenLabel='Show Network Filter'
               />
             </div>
-          </SettingsAccordion>
+          </FiltersAccordion>
           <TokenCountAndCopy
             hasData={hasData}
             tokenCount={tokenCount}

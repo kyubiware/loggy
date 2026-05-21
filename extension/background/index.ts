@@ -816,6 +816,7 @@ async function handleControlMessage(
         autoServerSync: defaults.autoServerSync,
         serverUrl: defaults.serverUrl,
         settingsAccordionOpen: defaults.settingsAccordionOpen,
+        filtersAccordionOpen: defaults.filtersAccordionOpen,
         deduplicateApiCalls: defaults.deduplicateApiCalls,
         maxTokenLimit: defaults.maxTokenLimit,
         preserveLogs: defaults.preserveLogs,
