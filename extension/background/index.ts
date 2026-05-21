@@ -940,6 +940,24 @@ async function handleControlMessage(
     const current = getOrCreateTabState(tabId)
     await setTabState({ ...current, logCount: 0 })
 
+    // Clear page-level capture arrays (used by Firefox direct capture)
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId },
+        func: () => {
+          const w = window as any
+          if (Array.isArray(w.__loggyConsoleLogs)) {
+            w.__loggyConsoleLogs.length = 0
+          }
+          if (Array.isArray(w.__loggyNetworkLogs)) {
+            w.__loggyNetworkLogs.length = 0
+          }
+        },
+      })
+    } catch {
+      // Tab may not support scripting (e.g. chrome:// pages)
+    }
+
     return { ok: true }
   }
 

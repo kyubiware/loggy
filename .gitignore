@@ -9,3 +9,4 @@ node_modules
 server.log
 test-run.js
 screenshots/
+.omo/
