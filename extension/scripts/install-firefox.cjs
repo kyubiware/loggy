@@ -18,6 +18,14 @@ const XPI_NAME = "loggy-firefox.xpi";
 const RDP_HOST = "127.0.0.1";
 const RDP_PORT = 6000;
 
+function getBuildKey() {
+  try {
+    return execSync("git rev-parse --short HEAD", { encoding: "utf8", cwd: rootDir }).trim();
+  } catch {
+    return "dev";
+  }
+}
+
 // --- Helpers ---
 
 function run(cmd, opts = {}) {
@@ -298,6 +306,8 @@ async function main() {
   run("npm run build:firefox");
 
   if (!existsSync(DIST_DIR)) fail(`Build output not found: ${DIST_DIR}`);
+
+  console.log(`  Build key: ${getBuildKey()}`);
 
   // Step 2: Try remote install (live, no restart)
   const installed = await remoteInstall(port);

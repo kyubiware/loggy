@@ -944,6 +944,7 @@ async function handleControlMessage(
     try {
       await chrome.scripting.executeScript({
         target: { tabId },
+        world: 'MAIN',
         func: () => {
           const w = window as any
           if (Array.isArray(w.__loggyConsoleLogs)) {
