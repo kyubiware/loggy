@@ -2,6 +2,7 @@ import { buildExportMarkdown } from '../shared/export'
 import { getFilteredPanelData } from '../utils/filtered-data'
 import {
   LOGGY_PANEL_SETTINGS_STORAGE_KEY,
+  createDefaultSettings,
   createInitialState,
   mergePersistedSettings,
 } from '../types/state'
@@ -802,25 +803,7 @@ async function handleControlMessage(
     >
     const persistedSettings = mergePersistedSettings(
       settingsResult[LOGGY_PANEL_SETTINGS_STORAGE_KEY],
-      {
-        consoleFilter: defaults.consoleFilter,
-        networkFilter: defaults.networkFilter,
-        consoleVisible: defaults.consoleVisible,
-        networkVisible: defaults.networkVisible,
-        includeAgentContext: defaults.includeAgentContext,
-        includeResponseBodies: defaults.includeResponseBodies,
-        truncateConsoleLogs: defaults.truncateConsoleLogs,
-        truncateResponseBodies: defaults.truncateResponseBodies,
-        redactSensitiveInfo: defaults.redactSensitiveInfo,
-        networkExportEnabled: defaults.networkExportEnabled,
-        autoServerSync: defaults.autoServerSync,
-        serverUrl: defaults.serverUrl,
-        settingsAccordionOpen: defaults.settingsAccordionOpen,
-        filtersAccordionOpen: defaults.filtersAccordionOpen,
-        deduplicateApiCalls: defaults.deduplicateApiCalls,
-        maxTokenLimit: defaults.maxTokenLimit,
-        preserveLogs: defaults.preserveLogs,
-      }
+      createDefaultSettings()
     )
 
     const state = {

@@ -1,39 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import {
+  createDefaultSettings,
   createInitialState,
   extractPersistedSettings,
   LOGGY_PANEL_SETTINGS_STORAGE_KEY,
   mergePersistedSettings,
-  type PersistedLoggySettings,
+  PERSISTED_SETTINGS_KEYS,
 } from './state'
-
-const PERSISTED_KEYS: Array<keyof PersistedLoggySettings> = [
-  'consoleFilter',
-  'networkFilter',
-  'consoleVisible',
-  'networkVisible',
-  'includeAgentContext',
-  'includeResponseBodies',
-  'truncateConsoleLogs',
-  'truncateResponseBodies',
-  'deduplicateApiCalls',
-  'redactSensitiveInfo',
-  'networkExportEnabled',
-  'autoServerSync',
-  'serverUrl',
-  'settingsAccordionOpen',
-  'filtersAccordionOpen',
-  'maxTokenLimit',
-  'preserveLogs',
-]
-
-function createPersistedDefaults(): PersistedLoggySettings {
-  return extractPersistedSettings(createInitialState())
-}
 
 describe('persisted settings contract', () => {
   it('exports the expected storage key constant', () => {
     expect(LOGGY_PANEL_SETTINGS_STORAGE_KEY).toBe('loggyPanelSettings')
+  })
+
+  it('createDefaultSettings returns a PersistedLoggySettings with all keys', () => {
+    const defaults = createDefaultSettings()
+    expect(Object.keys(defaults).sort()).toEqual([...PERSISTED_SETTINGS_KEYS].sort())
   })
 })
 
@@ -69,8 +51,9 @@ describe('extractPersistedSettings', () => {
 
     const persisted = extractPersistedSettings(state)
 
-    expect(Object.keys(persisted).sort()).toEqual([...PERSISTED_KEYS].sort())
+    expect(Object.keys(persisted).sort()).toEqual([...PERSISTED_SETTINGS_KEYS].sort())
     expect(persisted).toEqual({
+      ...createDefaultSettings(),
       consoleFilter: 'error',
       networkFilter: '/api',
       consoleVisible: false,
@@ -78,24 +61,16 @@ describe('extractPersistedSettings', () => {
       includeAgentContext: false,
       includeResponseBodies: true,
       truncateConsoleLogs: false,
-      truncateResponseBodies: true,
-      deduplicateApiCalls: true,
-      redactSensitiveInfo: true,
-      networkExportEnabled: false,
-      autoServerSync: false,
       serverUrl: 'http://custom:1234',
-      settingsAccordionOpen: true,
-      filtersAccordionOpen: true,
-      maxTokenLimit: 50000,
-      preserveLogs: false,
     })
   })
 })
 
 describe('mergePersistedSettings', () => {
   it('merges a valid stored payload into defaults', () => {
-    const defaults = createPersistedDefaults()
+    const defaults = createDefaultSettings()
     const stored = {
+      ...defaults,
       consoleFilter: 'warn|error',
       networkFilter: '/v1',
       consoleVisible: false,
@@ -103,23 +78,16 @@ describe('mergePersistedSettings', () => {
       includeAgentContext: false,
       includeResponseBodies: true,
       truncateConsoleLogs: false,
-      truncateResponseBodies: true,
-      deduplicateApiCalls: true,
       redactSensitiveInfo: false,
-      networkExportEnabled: false,
       autoServerSync: true,
       serverUrl: 'http://custom:1234',
-      settingsAccordionOpen: true,
-      filtersAccordionOpen: true,
-      maxTokenLimit: 50000,
-      preserveLogs: false,
     }
 
     expect(mergePersistedSettings(stored, defaults)).toEqual(stored)
   })
 
   it('falls back to defaults for malformed payloads', () => {
-    const defaults = createPersistedDefaults()
+    const defaults = createDefaultSettings()
 
     expect(mergePersistedSettings(null, defaults)).toEqual(defaults)
     expect(mergePersistedSettings('not-an-object', defaults)).toEqual(defaults)
@@ -127,7 +95,7 @@ describe('mergePersistedSettings', () => {
   })
 
   it('falls back per-key when stored keys are missing or invalid', () => {
-    const defaults = createPersistedDefaults()
+    const defaults = createDefaultSettings()
     const merged = mergePersistedSettings(
       {
         consoleFilter: 'only-this-is-valid',
@@ -146,7 +114,7 @@ describe('mergePersistedSettings', () => {
   })
 
   it('strips extra keys and never merges transient arrays', () => {
-    const defaults = createPersistedDefaults()
+    const defaults = createDefaultSettings()
     const merged = mergePersistedSettings(
       {
         consoleFilter: 'safe',
@@ -158,7 +126,7 @@ describe('mergePersistedSettings', () => {
       defaults
     )
 
-    expect(Object.keys(merged).sort()).toEqual([...PERSISTED_KEYS].sort())
+    expect(Object.keys(merged).sort()).toEqual([...PERSISTED_SETTINGS_KEYS].sort())
     expect(merged).toEqual({
       ...defaults,
       consoleFilter: 'safe',

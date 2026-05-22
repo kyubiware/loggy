@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import type { ConsoleMessage } from '../../../types/console'
 import type { HAREntry } from '../../../types/har'
-import type { LoggyState } from '../../../types/state'
+import { createInitialState, type LoggyState } from '../../../types/state'
 import { getFilteredPanelData } from '../../../utils/filtered-data'
 import { buildPreviewText, buildStatsText } from '../../preview'
 import { LoggyProvider } from '../LoggyContext'
@@ -59,45 +59,14 @@ vi.mock('../hooks/useCaptureData', () => ({
 function makeState(
   consoleLogs: ConsoleMessage[] = [],
   networkEntries: HAREntry[] = [],
-  overrides: Omit<
-    Partial<LoggyState>,
-    | 'consoleLogs'
-    | 'networkEntries'
-    | 'includeAgentContext'
-    | 'includeResponseBodies'
-    | 'truncateConsoleLogs'
-    | 'truncateResponseBodies'
-  > & {
-    includeAgentContext?: boolean
-    includeResponseBodies?: boolean
-    truncateConsoleLogs?: boolean
-    truncateResponseBodies?: boolean
-  } = {}
+  overrides: Partial<LoggyState> = {}
 ): LoggyState {
   return {
-    consoleFilter: '',
-    networkFilter: '',
-    selectedRoutes: overrides.selectedRoutes ?? [],
-    consoleVisible: true,
-    networkVisible: true,
-    serverUrl: 'http://localhost:8743',
-    serverConnected: false,
+    ...createInitialState(),
     ...overrides,
     consoleLogs,
     networkEntries,
-    includeAgentContext: overrides.includeAgentContext ?? true,
-    includeResponseBodies: overrides.includeResponseBodies ?? false,
-    truncateConsoleLogs: overrides.truncateConsoleLogs ?? true,
-    truncateResponseBodies: overrides.truncateResponseBodies ?? true,
-    redactSensitiveInfo: overrides.redactSensitiveInfo ?? true,
     networkExportEnabled: overrides.networkExportEnabled ?? true,
-    autoServerSync: overrides.autoServerSync ?? false,
-    serverSyncError: overrides.serverSyncError ?? false,
-    settingsAccordionOpen: overrides.settingsAccordionOpen ?? true,
-    filtersAccordionOpen: overrides.filtersAccordionOpen ?? true,
-    maxTokenLimit: overrides.maxTokenLimit ?? 50000,
-    deduplicateApiCalls: overrides.deduplicateApiCalls ?? true,
-    preserveLogs: overrides.preserveLogs ?? false,
   }
 }
 

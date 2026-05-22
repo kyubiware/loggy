@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import {
   LOGGY_PANEL_SETTINGS_STORAGE_KEY,
+  createDefaultSettings,
   createInitialState,
   extractPersistedSettings,
   mergePersistedSettings,
@@ -19,38 +20,14 @@ export function usePopupSettings(): {
   loading: boolean
 } {
   const defaultsRef = useRef<PersistedLoggySettings>(
-    mergePersistedSettings(undefined, extractDefaults()),
+    mergePersistedSettings(undefined, createDefaultSettings()),
   )
   const writeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [settings, setSettings] = useState<PersistedLoggySettings>(defaultsRef.current)
   const [loading, setLoading] = useState(true)
 
-  function extractDefaults(): PersistedLoggySettings {
-    const defaults = createInitialState()
-
-    return {
-      consoleFilter: defaults.consoleFilter,
-      networkFilter: defaults.networkFilter,
-      consoleVisible: defaults.consoleVisible,
-      networkVisible: defaults.networkVisible,
-      includeAgentContext: defaults.includeAgentContext,
-      includeResponseBodies: defaults.includeResponseBodies,
-      truncateConsoleLogs: defaults.truncateConsoleLogs,
-      truncateResponseBodies: defaults.truncateResponseBodies,
-      redactSensitiveInfo: defaults.redactSensitiveInfo,
-      networkExportEnabled: defaults.networkExportEnabled,
-      autoServerSync: defaults.autoServerSync,
-      serverUrl: defaults.serverUrl,
-      settingsAccordionOpen: defaults.settingsAccordionOpen,
-      filtersAccordionOpen: defaults.filtersAccordionOpen,
-      maxTokenLimit: defaults.maxTokenLimit,
-      deduplicateApiCalls: defaults.deduplicateApiCalls,
-      preserveLogs: defaults.preserveLogs,
-    }
-  }
-
   useEffect(() => {
-    const defaults = extractDefaults()
+    const defaults = createDefaultSettings()
     defaultsRef.current = defaults
 
     chrome.storage.local.get([LOGGY_PANEL_SETTINGS_STORAGE_KEY], (result) => {

@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { LoggyState } from '../../../types/state'
+import { createInitialState, type LoggyState } from '../../../types/state'
 import { type FilteredPanelData, getFilteredPanelData } from '../../../utils/filtered-data'
 import { estimateTokenCount } from '../../../utils/token-estimate'
 import { buildPreviewText, buildStatsText } from '../../preview'
@@ -19,6 +19,7 @@ export function useFilteredData(): FilteredDataResult {
   return useMemo(() => {
     // Reconstruct enough of LoggyState to satisfy getFilteredPanelData
     const pseudoState: LoggyState = {
+      ...createInitialState(),
       consoleLogs: logData.consoleLogs,
       networkEntries: logData.networkEntries,
       consoleFilter: settings.consoleFilter,
@@ -34,13 +35,10 @@ export function useFilteredData(): FilteredDataResult {
       networkExportEnabled: settings.networkExportEnabled,
       autoServerSync: settings.autoServerSync,
       serverSyncError: settings.serverSyncError,
-      settingsAccordionOpen: true,
-      filtersAccordionOpen: true,
-      serverUrl: '',
-      serverConnected: false,
       maxTokenLimit: settings.maxTokenLimit,
       deduplicateApiCalls: settings.deduplicateApiCalls,
       preserveLogs: settings.preserveLogs,
+      serverUrl: '',
     }
 
     const filteredData = getFilteredPanelData(pseudoState)

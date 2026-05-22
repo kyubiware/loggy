@@ -2,6 +2,7 @@
 
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { createDefaultSettings } from '../types/state'
 import Popup from './Popup'
 
 const mockUsePopupActions = vi.hoisted(() => ({
@@ -11,24 +12,7 @@ const mockUsePopupActions = vi.hoisted(() => ({
   isEnhanced: false,
   showConsentView: false,
   currentHost: 'example.com',
-  settings: {
-    includeAgentContext: true,
-    includeResponseBodies: false,
-    truncateConsoleLogs: true,
-    truncateResponseBodies: true,
-    redactSensitiveInfo: false,
-    networkExportEnabled: false,
-    autoServerSync: false,
-    consoleVisible: true,
-    networkVisible: true,
-    consoleFilter: '',
-    networkFilter: '',
-    serverUrl: 'http://localhost:8743',
-    settingsAccordionOpen: true,
-    filtersAccordionOpen: true,
-    maxTokenLimit: 0,
-    preserveLogs: false,
-  },
+  settings: {} as ReturnType<typeof createDefaultSettings>,
   setSetting: vi.fn(),
   localConsoleFilter: '',
   handleConsoleFilterChange: vi.fn(),
@@ -48,6 +32,12 @@ const mockUsePopupActions = vi.hoisted(() => ({
   handlePreview: vi.fn(),
   copyToClipboard: vi.fn(),
 }))
+
+mockUsePopupActions.settings = {
+  ...createDefaultSettings(),
+  redactSensitiveInfo: false,
+  maxTokenLimit: 0,
+}
 
 vi.mock('./hooks/usePopupActions', () => ({
   usePopupActions: () => mockUsePopupActions,

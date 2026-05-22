@@ -55,28 +55,33 @@ export interface LoggyState {
 }
 
 /**
+ * Single source of truth for which LoggyState keys are persisted.
+ * Add or remove a key here to update all persistence logic automatically.
+ */
+export const PERSISTED_SETTINGS_KEYS = [
+  'consoleFilter',
+  'networkFilter',
+  'consoleVisible',
+  'networkVisible',
+  'includeAgentContext',
+  'includeResponseBodies',
+  'truncateConsoleLogs',
+  'truncateResponseBodies',
+  'deduplicateApiCalls',
+  'redactSensitiveInfo',
+  'networkExportEnabled',
+  'autoServerSync',
+  'serverUrl',
+  'settingsAccordionOpen',
+  'filtersAccordionOpen',
+  'maxTokenLimit',
+  'preserveLogs',
+] as const satisfies ReadonlyArray<keyof LoggyState>
+
+/**
  * Persisted subset of Loggy settings that should survive panel reloads.
  */
-export type PersistedLoggySettings = Pick<
-  LoggyState,
-  | 'consoleFilter'
-  | 'networkFilter'
-  | 'consoleVisible'
-  | 'networkVisible'
-  | 'includeAgentContext'
-  | 'includeResponseBodies'
-  | 'truncateConsoleLogs'
-  | 'truncateResponseBodies'
-  | 'deduplicateApiCalls'
-  | 'redactSensitiveInfo'
-  | 'networkExportEnabled'
-  | 'autoServerSync'
-  | 'serverUrl'
-  | 'settingsAccordionOpen'
-  | 'filtersAccordionOpen'
-  | 'maxTokenLimit'
-  | 'preserveLogs'
->
+export type PersistedLoggySettings = Pick<LoggyState, (typeof PERSISTED_SETTINGS_KEYS)[number]>
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -114,32 +119,24 @@ export function createInitialState(): LoggyState {
 }
 
 /**
+ * Returns a fresh PersistedLoggySettings with all default values.
+ */
+export function createDefaultSettings(): PersistedLoggySettings {
+  return extractPersistedSettings(createInitialState())
+}
+
+/**
  * Extracts only persistable settings from full panel state.
  */
 export function extractPersistedSettings(state: LoggyState): PersistedLoggySettings {
-  return {
-    consoleFilter: state.consoleFilter,
-    networkFilter: state.networkFilter,
-    consoleVisible: state.consoleVisible,
-    networkVisible: state.networkVisible,
-    includeAgentContext: state.includeAgentContext,
-    includeResponseBodies: state.includeResponseBodies,
-    truncateConsoleLogs: state.truncateConsoleLogs,
-    truncateResponseBodies: state.truncateResponseBodies,
-    deduplicateApiCalls: state.deduplicateApiCalls,
-    redactSensitiveInfo: state.redactSensitiveInfo,
-    networkExportEnabled: state.networkExportEnabled,
-    autoServerSync: state.autoServerSync,
-    serverUrl: state.serverUrl,
-    settingsAccordionOpen: state.settingsAccordionOpen,
-    filtersAccordionOpen: state.filtersAccordionOpen,
-    maxTokenLimit: state.maxTokenLimit,
-    preserveLogs: state.preserveLogs,
-  }
+  return Object.fromEntries(
+    PERSISTED_SETTINGS_KEYS.map((key) => [key, state[key]])
+  ) as PersistedLoggySettings
 }
 
 /**
  * Safely merges unknown stored settings into persisted defaults.
+ * Validates each key by comparing typeof against the default value.
  */
 export function mergePersistedSettings(
   stored: unknown,
@@ -149,57 +146,12 @@ export function mergePersistedSettings(
     return { ...defaults }
   }
 
-  return {
-    consoleFilter:
-      typeof stored.consoleFilter === 'string' ? stored.consoleFilter : defaults.consoleFilter,
-    networkFilter:
-      typeof stored.networkFilter === 'string' ? stored.networkFilter : defaults.networkFilter,
-    consoleVisible:
-      typeof stored.consoleVisible === 'boolean' ? stored.consoleVisible : defaults.consoleVisible,
-    networkVisible:
-      typeof stored.networkVisible === 'boolean' ? stored.networkVisible : defaults.networkVisible,
-    includeAgentContext:
-      typeof stored.includeAgentContext === 'boolean'
-        ? stored.includeAgentContext
-        : defaults.includeAgentContext,
-    includeResponseBodies:
-      typeof stored.includeResponseBodies === 'boolean'
-        ? stored.includeResponseBodies
-        : defaults.includeResponseBodies,
-    truncateConsoleLogs:
-      typeof stored.truncateConsoleLogs === 'boolean'
-        ? stored.truncateConsoleLogs
-        : defaults.truncateConsoleLogs,
-    truncateResponseBodies:
-      typeof stored.truncateResponseBodies === 'boolean'
-        ? stored.truncateResponseBodies
-        : defaults.truncateResponseBodies,
-    deduplicateApiCalls:
-      typeof stored.deduplicateApiCalls === 'boolean'
-        ? stored.deduplicateApiCalls
-        : defaults.deduplicateApiCalls,
-    redactSensitiveInfo:
-      typeof stored.redactSensitiveInfo === 'boolean'
-        ? stored.redactSensitiveInfo
-        : defaults.redactSensitiveInfo,
-    networkExportEnabled:
-      typeof stored.networkExportEnabled === 'boolean'
-        ? stored.networkExportEnabled
-        : defaults.networkExportEnabled,
-    autoServerSync:
-      typeof stored.autoServerSync === 'boolean' ? stored.autoServerSync : defaults.autoServerSync,
-    serverUrl: typeof stored.serverUrl === 'string' ? stored.serverUrl : defaults.serverUrl,
-    settingsAccordionOpen:
-      typeof stored.settingsAccordionOpen === 'boolean'
-        ? stored.settingsAccordionOpen
-        : defaults.settingsAccordionOpen,
-    filtersAccordionOpen:
-      typeof stored.filtersAccordionOpen === 'boolean'
-        ? stored.filtersAccordionOpen
-        : defaults.filtersAccordionOpen,
-    maxTokenLimit:
-      typeof stored.maxTokenLimit === 'number' ? stored.maxTokenLimit : defaults.maxTokenLimit,
-    preserveLogs:
-      typeof stored.preserveLogs === 'boolean' ? stored.preserveLogs : defaults.preserveLogs,
-  }
+  return Object.fromEntries(
+    PERSISTED_SETTINGS_KEYS.map((key) => {
+      const storedVal = stored[key]
+      const defaultVal = defaults[key]
+      const isValid = typeof storedVal === typeof defaultVal
+      return [key, isValid ? storedVal : defaultVal]
+    })
+  ) as PersistedLoggySettings
 }

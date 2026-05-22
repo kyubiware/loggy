@@ -1,6 +1,6 @@
 import { act, render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import type { LoggyState } from '../../types/state'
+import { createInitialState, type LoggyState } from '../../types/state'
 import {
   type ActionsContextValue,
   type LogDataContextValue,
@@ -12,28 +12,8 @@ import {
 } from './LoggyContext'
 
 const baseState: LoggyState = {
-  consoleFilter: '',
-  networkFilter: '',
-  selectedRoutes: [],
-  consoleVisible: true,
-  networkVisible: true,
-  includeAgentContext: true,
-  includeResponseBodies: false,
-  truncateConsoleLogs: true,
-  truncateResponseBodies: true,
-  redactSensitiveInfo: true,
+  ...createInitialState(),
   networkExportEnabled: true,
-  autoServerSync: false,
-  serverSyncError: false,
-  serverUrl: 'http://localhost:8743',
-  settingsAccordionOpen: true,
-  filtersAccordionOpen: true,
-  serverConnected: false,
-  deduplicateApiCalls: true,
-  maxTokenLimit: 50000,
-  preserveLogs: false,
-  consoleLogs: [],
-  networkEntries: [],
 }
 
 const mocks = vi.hoisted(() => ({

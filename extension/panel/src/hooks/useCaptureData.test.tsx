@@ -4,6 +4,7 @@ import * as serverExport from '../../../shared/server-export'
 import type { ConsoleMessage } from '../../../types/console'
 import type { HAREntry } from '../../../types/har'
 import {
+  createDefaultSettings,
   createInitialState,
   LOGGY_PANEL_SETTINGS_STORAGE_KEY,
   type PersistedLoggySettings,
@@ -806,6 +807,7 @@ describe('reducer HYDRATE_SETTINGS', () => {
     const hydrated = reducer(state, {
       type: 'HYDRATE_SETTINGS',
       settings: {
+        ...createDefaultSettings(),
         consoleFilter: 'warn|error',
         networkFilter: 'api -health',
         consoleVisible: false,
@@ -814,14 +816,9 @@ describe('reducer HYDRATE_SETTINGS', () => {
         includeResponseBodies: true,
         truncateConsoleLogs: false,
         truncateResponseBodies: false,
-        redactSensitiveInfo: true,
         networkExportEnabled: true,
-        autoServerSync: false,
         serverUrl: 'http://custom:1234',
-        settingsAccordionOpen: true,
-        filtersAccordionOpen: true,
         maxTokenLimit: 42000,
-        deduplicateApiCalls: true,
         preserveLogs: true,
       },
     })
