@@ -35,19 +35,25 @@ const SERVER_POLL_INTERVAL_MS = 5000
  * Excludes timestamp so the fingerprint is stable across identical data.
  */
 function buildExportFingerprint(s: LoggyState): string {
-  return JSON.stringify({
-    c: s.consoleLogs,
-    n: s.networkEntries,
-    ac: s.includeAgentContext,
-    rb: s.includeResponseBodies,
-    tc: s.truncateConsoleLogs,
-    trb: s.truncateResponseBodies,
-    ri: s.redactSensitiveInfo,
-    ne: s.networkExportEnabled,
-    cf: s.consoleFilter,
-    nf: s.networkFilter,
-    sr: s.selectedRoutes,
-  })
+  try {
+    return JSON.stringify({
+      c: s.consoleLogs,
+      n: s.networkEntries,
+      ac: s.includeAgentContext,
+      rb: s.includeResponseBodies,
+      tc: s.truncateConsoleLogs,
+      trb: s.truncateResponseBodies,
+      ri: s.redactSensitiveInfo,
+      ne: s.networkExportEnabled,
+      cf: s.consoleFilter,
+      nf: s.networkFilter,
+      sr: s.selectedRoutes,
+    })
+  } catch {
+    // JSON.stringify can throw on non-serializable objects (BigInts, circular refs
+    // from DevTools HAR API, etc). Fall back to a length-based fingerprint.
+    return `lengths:${s.consoleLogs.length}:${s.networkEntries.length}:${s.selectedRoutes.length}`
+  }
 }
 
 export type Action =
@@ -416,47 +422,54 @@ export function useCaptureData(): {
 
     autoSyncTimeoutRef.current = setTimeout(() => {
       void (async () => {
-        debugLog('message', 'panel', 'Auto-sync effect #1 debounce: TIMEOUT FIRED')
-        const latestState = latestStateRef.current
+        try {
+          debugLog('message', 'panel', 'Auto-sync effect #1 debounce: TIMEOUT FIRED')
+          const latestState = latestStateRef.current
 
-        if (
-          latestState.consoleLogs !== scheduledConsoleLogs ||
-          latestState.networkEntries !== scheduledNetworkEntries
-        ) {
+          if (
+            latestState.consoleLogs !== scheduledConsoleLogs ||
+            latestState.networkEntries !== scheduledNetworkEntries
+          ) {
+            debugLog(
+              'message',
+              'panel',
+              'Auto-sync effect #1 debounce: data changed during debounce, skipping'
+            )
+            return
+          }
+
+          const markdown = await buildExportMarkdown(latestState)
+          debugLog('message', 'panel', 'Auto-sync effect #1 debounce: buildExportMarkdown complete')
+
+          const fingerprint = buildExportFingerprint(latestState)
+          if (fingerprint === lastExportFingerprintRef.current) {
+            debugLog(
+              'message',
+              'panel',
+              'Auto-sync effect #1 debounce: fingerprint unchanged, skipping'
+            )
+            return
+          }
+          lastExportFingerprintRef.current = fingerprint
           debugLog(
             'message',
             'panel',
-            'Auto-sync effect #1 debounce: data changed during debounce, skipping'
+            `Auto-sync effect #1 debounce: pushing to server, url=${latestState.serverUrl}`
           )
-          return
-        }
+          const success = await pushToServer(latestState.serverUrl, markdown)
 
-        const markdown = await buildExportMarkdown(latestState)
-
-        const fingerprint = buildExportFingerprint(latestState)
-        if (fingerprint === lastExportFingerprintRef.current) {
           debugLog(
             'message',
             'panel',
-            'Auto-sync effect #1 debounce: fingerprint unchanged, skipping'
+            `Auto-sync effect #1 debounce: pushToServer result=${success}`,
+            { url: latestState.serverUrl }
           )
-          return
+          dispatch({ type: 'SET_SERVER_SYNC_ERROR', value: !success })
+        } catch (err) {
+          debugLog('message', 'panel', `Auto-sync effect #1 debounce: ERROR ${String(err)}`, {
+            error: String(err),
+          })
         }
-        lastExportFingerprintRef.current = fingerprint
-        debugLog(
-          'message',
-          'panel',
-          `Auto-sync effect #1 debounce: pushing to server, url=${latestState.serverUrl}`
-        )
-        const success = await pushToServer(latestState.serverUrl, markdown)
-
-        debugLog(
-          'message',
-          'panel',
-          `Auto-sync effect #1 debounce: pushToServer result=${success}`,
-          { url: latestState.serverUrl }
-        )
-        dispatch({ type: 'SET_SERVER_SYNC_ERROR', value: !success })
       })()
     }, 1500)
 
@@ -498,29 +511,36 @@ export function useCaptureData(): {
 
     autoSyncTimeoutRef.current = setTimeout(() => {
       void (async () => {
-        debugLog('message', 'panel', 'Auto-sync effect #2 debounce: TIMEOUT FIRED')
-        const latestState = latestStateRef.current
-        const fingerprint = buildExportFingerprint(latestState)
+        try {
+          debugLog('message', 'panel', 'Auto-sync effect #2 debounce: TIMEOUT FIRED')
+          const latestState = latestStateRef.current
+          const fingerprint = buildExportFingerprint(latestState)
 
-        if (fingerprint === lastExportFingerprintRef.current) {
+          if (fingerprint === lastExportFingerprintRef.current) {
+            debugLog(
+              'message',
+              'panel',
+              'Auto-sync effect #2 debounce: fingerprint unchanged, skipping'
+            )
+            return
+          }
+
+          lastExportFingerprintRef.current = fingerprint
+          const markdown = await buildExportMarkdown(latestState)
+          debugLog('message', 'panel', 'Auto-sync effect #2 debounce: buildExportMarkdown complete')
+          const success = await pushToServer(latestState.serverUrl, markdown)
           debugLog(
             'message',
             'panel',
-            'Auto-sync effect #2 debounce: fingerprint unchanged, skipping'
+            `Auto-sync effect #2 debounce: pushToServer result=${success}`,
+            { url: latestState.serverUrl }
           )
-          return
+          dispatch({ type: 'SET_SERVER_SYNC_ERROR', value: !success })
+        } catch (err) {
+          debugLog('message', 'panel', `Auto-sync effect #2 debounce: ERROR ${String(err)}`, {
+            error: String(err),
+          })
         }
-
-        lastExportFingerprintRef.current = fingerprint
-        const markdown = await buildExportMarkdown(latestState)
-        const success = await pushToServer(latestState.serverUrl, markdown)
-        debugLog(
-          'message',
-          'panel',
-          `Auto-sync effect #2 debounce: pushToServer result=${success}`,
-          { url: latestState.serverUrl }
-        )
-        dispatch({ type: 'SET_SERVER_SYNC_ERROR', value: !success })
       })()
     }, 500)
 
