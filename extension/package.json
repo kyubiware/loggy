@@ -10,6 +10,8 @@
     "dev:firefox": "npm run build:firefox && concurrently --kill-others \"vite build --mode firefox --watch\" \"web-ext run --source-dir dist-firefox\"",
     "build:chrome": "vite build --mode chrome",
     "build:firefox": "vite build --mode firefox",
+    "build:debug-chrome": "rm -rf dist dist-chrome && vite build --mode debug-chrome && cp manifest-chrome.json dist-chrome/manifest.json && mkdir -p dist-chrome/icons && cp icons/*.png dist-chrome/icons/",
+    "build:debug-firefox": "rm -rf dist dist-firefox && vite build --mode debug-firefox && cp manifest-firefox.json dist-firefox/manifest.json && mkdir -p dist-firefox/icons && cp icons/*.png dist-firefox/icons/ && node scripts/fix-devtools-module.cjs && node scripts/rewrite-firefox-manifest.cjs && node scripts/sanitize-firefox-bundle.cjs && node scripts/fix-content-scripts.cjs",
     "package:firefox": "npm run build:firefox && rm -f loggy-firefox.xpi && (cd dist-firefox && zip -r ../loggy-firefox.xpi .)",
     "install:firefox": "node scripts/install-firefox.cjs",
     "build:vite": "vite build",

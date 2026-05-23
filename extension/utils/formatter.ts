@@ -6,6 +6,7 @@
 import type { ConsoleMessage } from '../types/console'
 import type { HAREntry } from '../types/har'
 import { consolidateNetworkEntries } from './consolidation-network'
+import type { DebugEntry } from './debug-logger'
 import {
   bySeverityThenCount,
   consolidateConsoleLogs,
@@ -36,6 +37,8 @@ export interface ExportData {
   consoleLogs: ConsoleMessage[]
   /** Captured network HAR entries */
   networkEntries: HAREntry[]
+  /** Optional debug log entries (only present in debug builds) */
+  debugEntries?: DebugEntry[]
 }
 
 export { formatBytes, truncate }
@@ -136,6 +139,19 @@ export function formatMarkdown(data: ExportData): string {
     }
   } else {
     output += `### Network Requests\n\nNo network requests captured.\n\n`
+  }
+
+  // Debug Log Section (only in debug builds)
+  if (data.debugEntries && data.debugEntries.length > 0) {
+    output += `### Extension Debug Log\n\n`
+    output += `| Timestamp | Source | Category | Message |\n`
+    output += `|------------|--------|----------|---------|\n`
+    for (const entry of data.debugEntries) {
+      const time = new Date(entry.timestamp).toISOString().slice(11, 23)
+      const message = String(entry.message).replace(/\|/g, '\\|')
+      output += `| ${time} | ${entry.source} | ${entry.category} | ${message} |\n`
+    }
+    output += '\n'
   }
 
   return output

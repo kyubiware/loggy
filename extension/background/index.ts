@@ -55,6 +55,7 @@ import {
 } from '../types/messages'
 import { formatMarkdown } from '../utils/formatter'
 import { isLocalPage } from '../utils/is-local-page'
+import { debugLog, getDebugEntries } from '../utils/debug-logger'
 import { estimateEntryTokenCount, estimateTokenCount } from '../utils/token-estimate'
 import {
   injectIntoTab,
@@ -64,6 +65,8 @@ import {
 } from './content-scripts'
 
 declare const __BROWSER__: string
+declare const __DEBUG__: boolean
+const DEBUG = __DEBUG__
 
 const DEFAULT_SERVER_URL = 'http://localhost:8743'
 const EXPORT_PATH = '/loggy'
@@ -188,6 +191,7 @@ export async function setMode(tabId: number, mode: CaptureMode): Promise<TabCapt
   }
 
   await setTabState(next)
+  debugLog('capture', 'background', `Mode changed to ${mode}`, { tabId })
   return next
 }
 
@@ -197,6 +201,7 @@ export function getMode(tabId: number): CaptureMode {
 
 async function evaluateConsent(tabId: number, url: string): Promise<ConsentState> {
   if (isLocalPage(url)) {
+    debugLog('capture', 'background', 'Consent: local page auto-granted', { tabId })
     return { hasConsent: true, captureMode: 'content-script', reason: 'local-page' }
   }
 
@@ -206,6 +211,7 @@ async function evaluateConsent(tabId: number, url: string): Promise<ConsentState
 
     if (await isHostInAlwaysLogList(host)) {
       const mode: CaptureMode = __BROWSER__ === 'chrome' ? 'debugger' : 'content-script'
+      debugLog('capture', 'background', 'Consent: always-log host', { tabId, host, captureMode: mode })
       return { hasConsent: true, captureMode: mode, reason: 'always-log' }
     }
   } catch {
@@ -214,9 +220,11 @@ async function evaluateConsent(tabId: number, url: string): Promise<ConsentState
 
   const current = getOrCreateTabState(tabId)
   if (current.mode !== 'inactive') {
+    debugLog('capture', 'background', 'Consent: per-session active', { tabId, mode: current.mode })
     return { hasConsent: true, captureMode: current.mode, reason: 'per-session' }
   }
 
+  debugLog('capture', 'background', 'Consent: denied', { tabId })
   return { hasConsent: false, captureMode: 'none', reason: 'no-consent' }
 }
 
@@ -375,6 +383,8 @@ async function buildTabMarkdown(tabId: number): Promise<string> {
     networkEntries.push(toHAREntry(stored.entry))
   }
 
+  debugLog('perf', 'background', 'Built markdown for tab', { tabId, consoleCount: consoleLogs.length, networkCount: networkEntries.length })
+
   return formatMarkdown({
     url: await getTabUrl(tabId),
     timestamp: new Date().toISOString(),
@@ -383,6 +393,7 @@ async function buildTabMarkdown(tabId: number): Promise<string> {
     truncateConsoleLogs: true,
     consoleLogs,
     networkEntries,
+    ...(DEBUG ? { debugEntries: getDebugEntries() } : {}),
   })
 }
 
@@ -420,6 +431,7 @@ async function pushToServer(url: string, markdown: string): Promise<boolean> {
 
     if (!response.ok) {
       console.error(`[Loggy] Server export failed: HTTP ${response.status} ${response.statusText}`)
+      debugLog('message', 'background', `Server export HTTP error: ${response.status}`, { status: response.status, statusText: response.statusText })
       return false
     }
 
@@ -427,10 +439,13 @@ async function pushToServer(url: string, markdown: string): Promise<boolean> {
   } catch (error) {
     if (error instanceof DOMException && error.name === 'TimeoutError') {
       console.error('[Loggy] Server export failed: Request timed out after 3s')
+      debugLog('message', 'background', 'Server export timed out after 3s')
     } else if (error instanceof TypeError) {
       console.error(`[Loggy] Server export failed: Network error - ${error.message}`)
+      debugLog('message', 'background', `Server export network error: ${error.message}`)
     } else {
       console.error('[Loggy] Server export failed:', error)
+      debugLog('message', 'background', 'Server export failed', { error })
     }
 
     return false
@@ -510,6 +525,8 @@ async function handleCaptureMessage(
       : current.mode === 'inactive'
         ? 'content-script'
         : current.mode
+  debugLog('capture', 'background', `Captured ${message.source} entry, total: ${logCount}`, { tabId, source, mode: nextMode })
+
   const next: TabCaptureState = {
     ...current,
     mode: nextMode,
@@ -1201,6 +1218,7 @@ async function refreshActiveTabId(): Promise<void> {
 }
 
 async function initialize(): Promise<void> {
+  debugLog('lifecycle', 'background', 'Service worker initializing')
   setCaptureCallback((tabId: number, message: CaptureMessage) => {
     void handleCaptureMessage(tabId, message, 'debugger')
   })
@@ -1233,6 +1251,7 @@ chrome.runtime.onMessage.addListener((rawMessage, sender, sendResponse) => {
   const message = rawMessage as LoggyMessage
   const msgType = typeof message === 'object' && message !== null && 'type' in message ? (message as { type?: unknown }).type : 'unknown'
   console.log('[Loggy:bg] onMessage received, type:', msgType, 'sender.tab?.id:', sender.tab?.id)
+  debugLog('message', 'background', `Received message type: ${String(msgType)}`, { tabId: sender.tab?.id })
 
   void (async () => {
     try {

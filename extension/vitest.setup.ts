@@ -7,6 +7,7 @@ import { beforeEach, vi } from 'vitest'
 
 vi.stubGlobal('__BROWSER__', 'chrome')
 vi.stubGlobal('__BUILD_KEY__', 'test')
+vi.stubGlobal('__DEBUG__', false)
 
 type MockStorageState = {
   loggyPanelSettings?: unknown

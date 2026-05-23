@@ -48,11 +48,12 @@ export default defineConfig(({ mode, command }) => {
     plugins,
     base: './',
     define: {
-      __BROWSER__: JSON.stringify(mode),
+      __BROWSER__: JSON.stringify(mode.startsWith('debug-') ? mode.slice(6) : mode),
       __BUILD_KEY__: JSON.stringify(getBuildKey()),
+      __DEBUG__: JSON.stringify(mode.startsWith('debug-')),
     },
     build: {
-      outDir: `dist-${mode}`,
+      outDir: `dist-${mode.startsWith('debug-') ? mode.slice(6) : mode}`,
       rollupOptions: {
         input,
         output: {

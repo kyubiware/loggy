@@ -3,8 +3,12 @@ import type { ExportData } from '../utils/formatter.js'
 import { formatMarkdown } from '../utils/formatter.js'
 import { pruneConsole, pruneNetwork } from '../utils/pruner.js'
 import { getFilteredPanelData } from '../utils/filtered-data.js'
+import { getDebugEntries } from '../utils/debug-logger.js'
 import { pushToServer } from './server-export.js'
 import type { LoggyState } from '../types/state.js'
+
+declare const __DEBUG__: boolean
+const DEBUG = __DEBUG__
 
 export async function buildExportMarkdown(state: LoggyState): Promise<string> {
   const tab = await browser.tabs.query({ active: true, currentWindow: true })
@@ -26,6 +30,7 @@ export async function buildExportMarkdown(state: LoggyState): Promise<string> {
       redactSensitiveInfo: state.redactSensitiveInfo,
       truncateResponseBodies: state.truncateResponseBodies,
     }),
+    ...(DEBUG ? { debugEntries: getDebugEntries() } : {}),
   }
 
   return formatMarkdown(exportData)
