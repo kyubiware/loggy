@@ -357,7 +357,9 @@ async function getAutoServerSync(): Promise<boolean> {
   >
   const settings = result[LOGGY_PANEL_SETTINGS_STORAGE_KEY] as { autoServerSync?: unknown } | undefined
 
-  return typeof settings?.autoServerSync === 'boolean' ? settings.autoServerSync : false
+  const value = typeof settings?.autoServerSync === 'boolean' ? settings.autoServerSync : false
+  debugLog('message', 'background', `getAutoServerSync: ${value}`)
+  return value
 }
 
 async function getTabUrl(tabId: number): Promise<string> {
@@ -419,6 +421,7 @@ async function clearFailedExportBuffer(tabId: number): Promise<void> {
 
 async function pushToServer(url: string, markdown: string): Promise<boolean> {
   console.log('[Loggy:bg] pushToServer called, url:', url, 'markdown length:', markdown.length)
+  debugLog('message', 'background', `pushToServer called, url: ${url}, markdown length: ${markdown.length}`)
   try {
     const response = await fetch(`${normalizeBaseUrl(url)}${EXPORT_PATH}`, {
       method: 'POST',
@@ -435,6 +438,7 @@ async function pushToServer(url: string, markdown: string): Promise<boolean> {
       return false
     }
 
+    debugLog('message', 'background', 'pushToServer succeeded')
     return true
   } catch (error) {
     if (error instanceof DOMException && error.name === 'TimeoutError') {
@@ -477,6 +481,7 @@ async function probeServerFromBackground(url: string): Promise<boolean> {
 
 async function exportTabToServer(tabId: number): Promise<boolean> {
   console.log('[Loggy:bg] exportTabToServer called for tabId:', tabId)
+  debugLog('message', 'background', `exportTabToServer called for tabId: ${tabId}`)
   const entries = await readStoredEntries(tabId)
 
   // Build a content fingerprint from stored entries (excludes timestamp)
@@ -484,10 +489,13 @@ async function exportTabToServer(tabId: number): Promise<boolean> {
 
   if (fingerprint === lastExportFingerprintByTab.get(tabId)) {
     console.log('[Loggy:bg] exportTabToServer SKIPPED: fingerprint unchanged for tabId:', tabId)
+    debugLog('message', 'background', `exportTabToServer SKIPPED: fingerprint unchanged for tabId: ${tabId}`)
     return true
   }
 
-  console.log('[Loggy:bg] exportTabToServer EXPORTING: new fingerprint for tabId:', tabId, 'entries:', entries.length)
+  const entryCount = entries.length
+  console.log('[Loggy:bg] exportTabToServer EXPORTING: new fingerprint for tabId:', tabId, 'entries:', entryCount)
+  debugLog('message', 'background', `exportTabToServer EXPORTING: tabId: ${tabId}, entries: ${entryCount}`)
   const markdown = await buildTabMarkdown(tabId)
   const serverUrl = await getServerUrl()
   const success = await pushToServer(serverUrl, markdown)
@@ -495,10 +503,12 @@ async function exportTabToServer(tabId: number): Promise<boolean> {
   if (success) {
     lastExportFingerprintByTab.set(tabId, fingerprint)
     await clearFailedExportBuffer(tabId)
+    debugLog('message', 'background', `exportTabToServer SUCCEEDED for tabId: ${tabId}`)
     return true
   }
 
   await appendFailedExportBuffer(tabId, markdown)
+  debugLog('message', 'background', `exportTabToServer FAILED for tabId: ${tabId} - buffered for retry`)
   return false
 }
 
@@ -538,7 +548,10 @@ async function handleCaptureMessage(
   const autoSync = await getAutoServerSync()
   console.log('[Loggy:bg] handleCaptureMessage: autoServerSync=', autoSync, 'tabId:', tabId)
   if (autoSync) {
+    debugLog('capture', 'background', `Auto-sync triggered for tabId: ${tabId}`)
     await exportTabToServer(tabId)
+  } else {
+    debugLog('capture', 'background', `Auto-sync skipped (disabled) for tabId: ${tabId}`)
   }
 }
 
@@ -1108,6 +1121,7 @@ async function handleControlMessage(
     console.log('[Loggy:bg] received push-to-server message from sender tab:', sender.tab?.id, 'url:', pushMessage.url, 'markdown length:', pushMessage.markdown.length)
     const success = await pushToServer(pushMessage.url, pushMessage.markdown)
     console.log('[Loggy:bg] push-to-server responding with success:', success)
+    debugLog('message', 'background', `push-to-server result for sender tab ${sender.tab?.id}: ${success}`)
     return { success } as PushToServerResponse
   }
 

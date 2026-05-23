@@ -3,7 +3,7 @@ import type { ExportData } from '../utils/formatter.js'
 import { formatMarkdown } from '../utils/formatter.js'
 import { pruneConsole, pruneNetwork } from '../utils/pruner.js'
 import { getFilteredPanelData } from '../utils/filtered-data.js'
-import { getDebugEntries } from '../utils/debug-logger.js'
+import { debugLog, getDebugEntries } from '../utils/debug-logger.js'
 import { pushToServer } from './server-export.js'
 import type { LoggyState } from '../types/state.js'
 
@@ -50,15 +50,18 @@ export function triggerServerExport(
   console.log('[Loggy:panel] triggerServerExport called, serverConnected:', state.serverConnected, 'serverUrl:', state.serverUrl, 'markdown length:', markdown.length)
   if (!state.serverConnected) {
     console.log('[Loggy:panel] triggerServerExport: SKIPPED - serverConnected is false')
+    debugLog('message', 'panel', 'triggerServerExport: SKIPPED - serverConnected is false')
     return
   }
 
   if (!state.serverUrl) {
     console.log('[Loggy:panel] triggerServerExport: SKIPPED - serverUrl is empty')
+    debugLog('message', 'panel', 'triggerServerExport: SKIPPED - serverUrl is empty')
     return
   }
 
   void pushToServer(state.serverUrl, markdown).then((success) => {
+    debugLog('message', 'panel', `triggerServerExport: pushToServer returned ${success}`)
     if (showToast) {
       if (success) {
         showToast('Exported to server!', 'success')
