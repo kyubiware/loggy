@@ -460,21 +460,25 @@ async function probeServerFromBackground(url: string): Promise<boolean> {
   try {
     const handshakeUrl = `${normalizeBaseUrl(url)}${HANDSHAKE_PATH}`
     console.log('[Loggy:bg] probeServerFromBackground fetching:', handshakeUrl)
+    debugLog('message', 'background', `probeServerFromBackground fetching: ${handshakeUrl}`)
     const response = await fetch(handshakeUrl, {
       signal: AbortSignal.timeout(1000),
     })
 
     if (!response.ok) {
       console.log('[Loggy:bg] probeServerFromBackground got non-ok status:', response.status)
+      debugLog('message', 'background', `probeServerFromBackground non-ok status: ${response.status}`)
       return false
     }
 
     const data = (await response.json()) as { name?: unknown }
     const result = data.name === 'loggy-serve'
     console.log('[Loggy:bg] probeServerFromBackground result:', result, 'data:', data)
+    debugLog('message', 'background', `probeServerFromBackground result: ${result}`)
     return result
   } catch (error) {
     console.error('[Loggy:bg] probeServerFromBackground error:', error)
+    debugLog('message', 'background', 'probeServerFromBackground error', { error })
     return false
   }
 }
@@ -1113,6 +1117,7 @@ async function handleControlMessage(
     console.log('[Loggy:bg] received probe-server message, url:', probeMessage.url)
     const connected = await probeServerFromBackground(probeMessage.url)
     console.log('[Loggy:bg] probe-server responding with connected:', connected)
+    debugLog('message', 'background', `probe-server responding with connected: ${connected}`)
     return { connected } as ProbeServerResponse
   }
 

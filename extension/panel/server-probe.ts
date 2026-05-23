@@ -7,6 +7,7 @@
  */
 export async function probeServer(url: string): Promise<boolean> {
   try {
+    console.log('[Loggy:panel] probeServer called, url:', url)
     return await new Promise<boolean>((resolve) => {
       chrome.runtime.sendMessage(
         { type: 'probe-server', url },
@@ -17,6 +18,7 @@ export async function probeServer(url: string): Promise<boolean> {
             return
           }
           const result = response?.connected ?? false
+          console.log('[Loggy:panel] probeServer result:', result, 'for url:', url)
           resolve(result)
         }
       )
