@@ -13,6 +13,7 @@
     "ci": "npm run typecheck --workspace=extension && npm run lint --workspace=extension && npm run test:run --workspace=extension && npm run typecheck --workspace=serve && npm run test --workspace=serve",
     "firefox": "firefox-devedition --remote-debugging-port 6000",
     "install:firefox": "npm run install:firefox --workspace=extension",
+    "install:firefox:debug": "LOGGY_DEBUG_BUILD=true npm run install:firefox --workspace=extension",
     "publish:serve": "npm publish --workspace=serve --access public"
   },
   "devDependencies": {

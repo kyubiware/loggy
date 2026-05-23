@@ -302,8 +302,11 @@ async function main() {
   const port = portIdx > -1 ? Number.parseInt(process.argv[portIdx + 1]) : RDP_PORT;
 
   // Step 1: Build
-  logStep("🔨", "Building Firefox extension");
-  run("npm run build:firefox");
+  const buildScript = process.env.LOGGY_DEBUG_BUILD
+    ? "npm run build:debug-firefox"
+    : "npm run build:firefox";
+  logStep("🔨", `Building Firefox extension${process.env.LOGGY_DEBUG_BUILD ? ' (debug)' : ''}`);
+  run(buildScript);
 
   if (!existsSync(DIST_DIR)) fail(`Build output not found: ${DIST_DIR}`);
 
