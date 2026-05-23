@@ -13,6 +13,7 @@ import {
   mergePersistedSettings,
   type PersistedLoggySettings,
 } from '../../../types/state'
+import { debugLog } from '../../../utils/debug-logger'
 import {
   captureConsoleLogs,
   captureNetworkEntries,
@@ -393,12 +394,23 @@ export function useCaptureData(): {
     const scheduledConsoleLogs = state.consoleLogs
     const scheduledNetworkEntries = state.networkEntries
 
+    debugLog(
+      'message',
+      'panel',
+      `Auto-sync effect #1 fired: autoServerSync=${state.autoServerSync}, serverConnected=${state.serverConnected}, logs=${scheduledConsoleLogs.length}, nets=${scheduledNetworkEntries.length}`
+    )
+
     if (autoSyncTimeoutRef.current) {
       clearTimeout(autoSyncTimeoutRef.current)
       autoSyncTimeoutRef.current = null
     }
 
     if (!state.autoServerSync || !state.serverConnected) {
+      debugLog(
+        'message',
+        'panel',
+        `Auto-sync effect #1 skipped: autoServerSync=${state.autoServerSync}, serverConnected=${state.serverConnected}`
+      )
       return
     }
 
@@ -410,6 +422,11 @@ export function useCaptureData(): {
           latestState.consoleLogs !== scheduledConsoleLogs ||
           latestState.networkEntries !== scheduledNetworkEntries
         ) {
+          debugLog(
+            'message',
+            'panel',
+            'Auto-sync effect #1 debounce: data changed during debounce, skipping'
+          )
           return
         }
 
@@ -417,9 +434,19 @@ export function useCaptureData(): {
 
         const fingerprint = buildExportFingerprint(latestState)
         if (fingerprint === lastExportFingerprintRef.current) {
+          debugLog(
+            'message',
+            'panel',
+            'Auto-sync effect #1 debounce: fingerprint unchanged, skipping'
+          )
           return
         }
         lastExportFingerprintRef.current = fingerprint
+        debugLog(
+          'message',
+          'panel',
+          `Auto-sync effect #1 debounce: pushing to server, url=${latestState.serverUrl}`
+        )
         const success = await pushToServer(latestState.serverUrl, markdown)
 
         dispatch({ type: 'SET_SERVER_SYNC_ERROR', value: !success })
@@ -437,12 +464,24 @@ export function useCaptureData(): {
   // Trigger server sync when export options or filters change (if auto-sync is enabled and content exists)
   // biome-ignore lint/correctness/useExhaustiveDependencies: dependencies are intentionally specified to trigger re-export when options/filters change
   useEffect(() => {
+    debugLog(
+      'message',
+      'panel',
+      `Auto-sync effect #2 fired: autoServerSync=${state.autoServerSync}, serverConnected=${state.serverConnected}, logsLen=${state.consoleLogs.length}, netsLen=${state.networkEntries.length}`
+    )
+
     if (!state.autoServerSync || !state.serverConnected) {
+      debugLog(
+        'message',
+        'panel',
+        `Auto-sync effect #2 skipped: autoServerSync=${state.autoServerSync}, serverConnected=${state.serverConnected}`
+      )
       return
     }
 
     // Only sync if there's actual data to export
     if (state.consoleLogs.length === 0 && state.networkEntries.length === 0) {
+      debugLog('message', 'panel', 'Auto-sync effect #2 skipped: no data')
       return
     }
 
@@ -456,10 +495,20 @@ export function useCaptureData(): {
         const fingerprint = buildExportFingerprint(latestState)
 
         if (fingerprint === lastExportFingerprintRef.current) {
+          debugLog(
+            'message',
+            'panel',
+            'Auto-sync effect #2 debounce: fingerprint unchanged, skipping'
+          )
           return
         }
 
         lastExportFingerprintRef.current = fingerprint
+        debugLog(
+          'message',
+          'panel',
+          `Auto-sync effect #2 debounce: pushing to server, url=${latestState.serverUrl}`
+        )
         const markdown = await buildExportMarkdown(latestState)
         const success = await pushToServer(latestState.serverUrl, markdown)
         dispatch({ type: 'SET_SERVER_SYNC_ERROR', value: !success })
