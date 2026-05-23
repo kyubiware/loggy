@@ -416,6 +416,7 @@ export function useCaptureData(): {
 
     autoSyncTimeoutRef.current = setTimeout(() => {
       void (async () => {
+        debugLog('message', 'panel', 'Auto-sync effect #1 debounce: TIMEOUT FIRED')
         const latestState = latestStateRef.current
 
         if (
@@ -497,6 +498,7 @@ export function useCaptureData(): {
 
     autoSyncTimeoutRef.current = setTimeout(() => {
       void (async () => {
+        debugLog('message', 'panel', 'Auto-sync effect #2 debounce: TIMEOUT FIRED')
         const latestState = latestStateRef.current
         const fingerprint = buildExportFingerprint(latestState)
 
