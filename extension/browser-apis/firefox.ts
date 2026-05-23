@@ -1,5 +1,10 @@
 import type { BrowserAPI } from './types';
 
+// browser.* is the native Firefox WebExtensions API. Use it for tabs.query
+// because chrome.tabs (the Chrome compatibility shim) is undefined in the
+// Firefox DevTools panel context (moz-extension:// origin).
+declare const browser: typeof chrome;
+
 export const firefoxBrowser: BrowserAPI = {
   devtools: {
     inspectedWindow: {
@@ -31,7 +36,10 @@ export const firefoxBrowser: BrowserAPI = {
   },
   tabs: {
     query: async (queryInfo) => {
-      const tabs = await chrome.tabs.query(queryInfo);
+      // Use browser.tabs (native Firefox API) instead of chrome.tabs.
+      // chrome.tabs is a compatibility shim that's undefined in the
+      // DevTools panel context (moz-extension:// origin).
+      const tabs = await browser.tabs.query(queryInfo);
       return tabs.flatMap((tab) => (typeof tab.url === 'string' ? [{ url: tab.url }] : []));
     },
   },

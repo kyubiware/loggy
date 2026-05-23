@@ -11,8 +11,16 @@ declare const __DEBUG__: boolean
 const DEBUG = __DEBUG__
 
 export async function buildExportMarkdown(state: LoggyState): Promise<string> {
-  const tab = await browser.tabs.query({ active: true, currentWindow: true })
-  const url = tab[0]?.url || 'N/A'
+  let url = 'N/A'
+  try {
+    const tab = await browser.tabs.query({ active: true, currentWindow: true })
+    url = tab[0]?.url || 'N/A'
+  } catch {
+    // browser.tabs.query may fail in Firefox DevTools panel context
+    // where chrome.tabs is undefined (moz-extension:// origin).
+    // Fall back to 'N/A' — the export still works, just without the URL.
+    debugLog('message', 'panel', 'buildExportMarkdown: tabs.query failed, using fallback URL')
+  }
   const filteredData = getFilteredPanelData(state)
 
   const exportData: ExportData = {
