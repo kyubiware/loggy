@@ -5,27 +5,28 @@
  * The actual fetch() runs in the background context to avoid CORS issues in
  * Firefox DevTools panel pages (moz-extension:// origin).
  */
+import { debugLog } from '../utils/debug-logger.js'
+
 export async function pushToServer(url: string, markdown: string): Promise<boolean> {
   try {
-    console.log('[Loggy:panel] pushToServer called, url:', url, 'markdown length:', markdown.length)
+    debugLog('message', 'panel', `pushToServer SENDING: url=${url} (${markdown.length} chars)`)
     return await new Promise<boolean>((resolve) => {
       chrome.runtime.sendMessage(
         { type: 'push-to-server', url, markdown },
         (response: { success: boolean } | undefined) => {
-          console.log('[Loggy:panel] pushToServer got response:', response, 'lastError:', chrome.runtime.lastError?.message)
           if (chrome.runtime.lastError) {
-            console.error('[Loggy] Server export failed:', chrome.runtime.lastError.message)
+            debugLog('message', 'panel', `pushToServer FAILED: ${chrome.runtime.lastError.message}`, { url })
             resolve(false)
             return
           }
           const result = response?.success ?? false
-          console.log('[Loggy:panel] pushToServer resolving with:', result)
+          debugLog('message', 'panel', `pushToServer RESOLVED: ${result}`, { url })
           resolve(result)
         },
       )
     })
   } catch (error) {
-    console.error('[Loggy:panel] pushToServer caught error:', error)
+    debugLog('message', 'panel', 'pushToServer CAUGHT error', { error, url })
     return false
   }
 }

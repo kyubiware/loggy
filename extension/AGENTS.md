@@ -134,6 +134,7 @@ Chrome/Firefox DevTools extension capturing Console & Network logs as Markdown f
 - **NEVER use runtime browser detection** — build-time `__BROWSER__` define only
 - **NEVER import browser APIs directly** outside browser-apis/
 - **NEVER add browser-specific logic** outside browser-apis/ and capture/
+- **ALWAYS use `debugLog()` for debugging/tracing logs** — never `console.log`. `debugLog(category, source, message, detail?)` writes to a ring buffer that's included in Markdown exports when `__DEBUG__` is true, making logs visible via the extension's own export feature. Categories: `capture`, `message`, `storage`, `lifecycle`, `perf`. Sources: `background`, `panel`, `popup`, `content`, `fab`.
 
 ## UNIQUE STYLES
 

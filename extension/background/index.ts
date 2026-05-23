@@ -330,9 +330,11 @@ async function getServerUrl(): Promise<string> {
   const settings = result[LOGGY_PANEL_SETTINGS_STORAGE_KEY] as StoredPanelSettings | undefined
 
   if (typeof settings?.serverUrl === 'string' && settings.serverUrl.length > 0) {
+    debugLog('message', 'background', `getServerUrl from storage: ${settings.serverUrl}`)
     return settings.serverUrl
   }
 
+  debugLog('message', 'background', `getServerUrl using default: ${DEFAULT_SERVER_URL}`)
   return DEFAULT_SERVER_URL
 }
 
@@ -358,7 +360,7 @@ async function getAutoServerSync(): Promise<boolean> {
   const settings = result[LOGGY_PANEL_SETTINGS_STORAGE_KEY] as { autoServerSync?: unknown } | undefined
 
   const value = typeof settings?.autoServerSync === 'boolean' ? settings.autoServerSync : false
-  debugLog('message', 'background', `getAutoServerSync: ${value}`)
+  debugLog('message', 'background', `getAutoServerSync: ${value} (raw: ${JSON.stringify(settings)})`)
   return value
 }
 
@@ -420,8 +422,8 @@ async function clearFailedExportBuffer(tabId: number): Promise<void> {
 }
 
 async function pushToServer(url: string, markdown: string): Promise<boolean> {
-  console.log('[Loggy:bg] pushToServer called, url:', url, 'markdown length:', markdown.length)
-  debugLog('message', 'background', `pushToServer called, url: ${url}, markdown length: ${markdown.length}`)
+  const fullUrl = `${normalizeBaseUrl(url)}${EXPORT_PATH}`
+  debugLog('message', 'background', `pushToServer FETCHING ${fullUrl} (${markdown.length} chars)`)
   try {
     const response = await fetch(`${normalizeBaseUrl(url)}${EXPORT_PATH}`, {
       method: 'POST',
@@ -433,23 +435,19 @@ async function pushToServer(url: string, markdown: string): Promise<boolean> {
     })
 
     if (!response.ok) {
-      console.error(`[Loggy] Server export failed: HTTP ${response.status} ${response.statusText}`)
-      debugLog('message', 'background', `Server export HTTP error: ${response.status}`, { status: response.status, statusText: response.statusText })
+      debugLog('message', 'background', `Server export HTTP ${response.status} ${response.statusText}`, { status: response.status, statusText: response.statusText, url: fullUrl })
       return false
     }
 
-    debugLog('message', 'background', 'pushToServer succeeded')
+    debugLog('message', 'background', `pushToServer SUCCESS ${response.status}`, { url: fullUrl })
     return true
   } catch (error) {
     if (error instanceof DOMException && error.name === 'TimeoutError') {
-      console.error('[Loggy] Server export failed: Request timed out after 3s')
-      debugLog('message', 'background', 'Server export timed out after 3s')
+      debugLog('message', 'background', 'Server export TIMEOUT after 3s', { url: fullUrl })
     } else if (error instanceof TypeError) {
-      console.error(`[Loggy] Server export failed: Network error - ${error.message}`)
-      debugLog('message', 'background', `Server export network error: ${error.message}`)
+      debugLog('message', 'background', `Server export NETWORK ERROR: ${error.message}`, { url: fullUrl })
     } else {
-      console.error('[Loggy] Server export failed:', error)
-      debugLog('message', 'background', 'Server export failed', { error })
+      debugLog('message', 'background', 'Server export FAILED', { error, url: fullUrl })
     }
 
     return false
@@ -492,8 +490,7 @@ async function exportTabToServer(tabId: number): Promise<boolean> {
   const fingerprint = JSON.stringify(entries)
 
   if (fingerprint === lastExportFingerprintByTab.get(tabId)) {
-    console.log('[Loggy:bg] exportTabToServer SKIPPED: fingerprint unchanged for tabId:', tabId)
-    debugLog('message', 'background', `exportTabToServer SKIPPED: fingerprint unchanged for tabId: ${tabId}`)
+    debugLog('message', 'background', `exportTabToServer SKIPPED: fingerprint unchanged (${entries.length} entries)`, { tabId })
     return true
   }
 
@@ -522,8 +519,10 @@ async function handleCaptureMessage(
   source: 'content-script' | 'debugger'
 ): Promise<void> {
   const current = getOrCreateTabState(tabId)
+  debugLog('capture', 'background', `handleCaptureMessage: mode=${current.mode} source=${source}`, { tabId })
 
   if (current.mode === 'devtools') {
+    debugLog('capture', 'background', 'handleCaptureMessage SKIP: panel is open (mode=devtools), background auto-sync disabled', { tabId })
     return
   }
 
@@ -550,12 +549,11 @@ async function handleCaptureMessage(
 
   await setTabState(next)
   const autoSync = await getAutoServerSync()
-  console.log('[Loggy:bg] handleCaptureMessage: autoServerSync=', autoSync, 'tabId:', tabId)
   if (autoSync) {
-    debugLog('capture', 'background', `Auto-sync triggered for tabId: ${tabId}`)
+    debugLog('capture', 'background', `Auto-sync ENABLED, calling exportTabToServer`, { tabId, autoSync })
     await exportTabToServer(tabId)
   } else {
-    debugLog('capture', 'background', `Auto-sync skipped (disabled) for tabId: ${tabId}`)
+    debugLog('capture', 'background', `Auto-sync SKIPPED (autoServerSync=false in chrome.storage.local)`, { tabId, autoSync })
   }
 }
 
@@ -1123,10 +1121,9 @@ async function handleControlMessage(
 
   if (message.type === 'push-to-server') {
     const pushMessage = message as PushToServerMessage
-    console.log('[Loggy:bg] received push-to-server message from sender tab:', sender.tab?.id, 'url:', pushMessage.url, 'markdown length:', pushMessage.markdown.length)
+    debugLog('message', 'background', `push-to-server received from panel: url=${pushMessage.url} (${pushMessage.markdown.length} chars)`)
     const success = await pushToServer(pushMessage.url, pushMessage.markdown)
-    console.log('[Loggy:bg] push-to-server responding with success:', success)
-    debugLog('message', 'background', `push-to-server result for sender tab ${sender.tab?.id}: ${success}`)
+    debugLog('message', 'background', `push-to-server result: ${success}`, { senderTabId: sender.tab?.id })
     return { success } as PushToServerResponse
   }
 

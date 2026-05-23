@@ -409,7 +409,7 @@ export function useCaptureData(): {
       debugLog(
         'message',
         'panel',
-        `Auto-sync effect #1 skipped: autoServerSync=${state.autoServerSync}, serverConnected=${state.serverConnected}`
+        `Auto-sync effect #1 SKIPPED: autoServerSync=${state.autoServerSync}, serverConnected=${state.serverConnected}`
       )
       return
     }
@@ -449,6 +449,12 @@ export function useCaptureData(): {
         )
         const success = await pushToServer(latestState.serverUrl, markdown)
 
+        debugLog(
+          'message',
+          'panel',
+          `Auto-sync effect #1 debounce: pushToServer result=${success}`,
+          { url: latestState.serverUrl }
+        )
         dispatch({ type: 'SET_SERVER_SYNC_ERROR', value: !success })
       })()
     }, 1500)
@@ -474,7 +480,7 @@ export function useCaptureData(): {
       debugLog(
         'message',
         'panel',
-        `Auto-sync effect #2 skipped: autoServerSync=${state.autoServerSync}, serverConnected=${state.serverConnected}`
+        `Auto-sync effect #2 SKIPPED: autoServerSync=${state.autoServerSync}, serverConnected=${state.serverConnected}`
       )
       return
     }
@@ -504,13 +510,14 @@ export function useCaptureData(): {
         }
 
         lastExportFingerprintRef.current = fingerprint
+        const markdown = await buildExportMarkdown(latestState)
+        const success = await pushToServer(latestState.serverUrl, markdown)
         debugLog(
           'message',
           'panel',
-          `Auto-sync effect #2 debounce: pushing to server, url=${latestState.serverUrl}`
+          `Auto-sync effect #2 debounce: pushToServer result=${success}`,
+          { url: latestState.serverUrl }
         )
-        const markdown = await buildExportMarkdown(latestState)
-        const success = await pushToServer(latestState.serverUrl, markdown)
         dispatch({ type: 'SET_SERVER_SYNC_ERROR', value: !success })
       })()
     }, 500)
