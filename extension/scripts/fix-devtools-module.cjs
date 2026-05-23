@@ -80,7 +80,10 @@ async function main() {
     bundle: true,
     format: 'iife',
     minify: true,
-    define: { __BROWSER__: '"firefox"', __DEBUG__: 'false' },
+    define: {
+      __BROWSER__: '"firefox"',
+      __DEBUG__: process.env.LOGGY_DEBUG_BUILD ? 'true' : 'false',
+    },
     resolveExtensions: ['.tsx', '.ts', '.jsx', '.js', '.mjs', '.css', '.json'],
     plugins: [resolveJsToTs],
     logLevel: 'info',
