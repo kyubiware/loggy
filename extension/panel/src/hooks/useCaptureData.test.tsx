@@ -678,10 +678,10 @@ describe('useCaptureData', () => {
       // Flush startup capture so data is loaded
       await flushMicrotasks()
 
-      // First auto-sync fires after 2500ms debounce
+      // First auto-sync fires after 1500ms debounce
       mockPushToServer.mockClear()
       await act(async () => {
-        vi.advanceTimersByTime(2500)
+        vi.advanceTimersByTime(1500)
       })
       await flushMicrotasks()
 
@@ -697,7 +697,7 @@ describe('useCaptureData', () => {
 
       // Advance past the auto-sync debounce again
       await act(async () => {
-        vi.advanceTimersByTime(2500)
+        vi.advanceTimersByTime(1500)
       })
       await flushMicrotasks()
 
@@ -722,7 +722,7 @@ describe('useCaptureData', () => {
 
       // First auto-sync
       await act(async () => {
-        vi.advanceTimersByTime(2500)
+        vi.advanceTimersByTime(1500)
       })
       await flushMicrotasks()
 
@@ -747,7 +747,7 @@ describe('useCaptureData', () => {
 
       // Advance past debounce
       await act(async () => {
-        vi.advanceTimersByTime(2500)
+        vi.advanceTimersByTime(1500)
       })
       await flushMicrotasks()
 
@@ -770,7 +770,7 @@ describe('useCaptureData', () => {
 
       // First auto-sync
       await act(async () => {
-        vi.advanceTimersByTime(2500)
+        vi.advanceTimersByTime(1500)
       })
       await flushMicrotasks()
 
@@ -785,12 +785,51 @@ describe('useCaptureData', () => {
       await flushMicrotasks()
 
       await act(async () => {
-        vi.advanceTimersByTime(2500) // debounce
+        vi.advanceTimersByTime(1500) // debounce
       })
       await flushMicrotasks()
 
       // Same data → same fingerprint → no export
       expect(mockPushToServer).not.toHaveBeenCalled()
+    })
+
+    it('exports to server despite continuous auto-refresh cycling', async () => {
+      seedStorage({
+        loggyPanelSettings: {
+          autoServerSync: true,
+          serverUrl: 'http://localhost:8743',
+        },
+      })
+      mockProbeServer.mockResolvedValue(true)
+
+      renderHook(() => useCaptureData())
+      await flushMicrotasks()
+      await flushMicrotasks()
+      mockPushToServer.mockClear()
+
+      // Simulate continuous auto-refresh where each captureData()
+      // completes before the next interval tick. Each captureData has
+      // 2 awaits (captureNetworkEntries + captureConsoleLogs), so
+      // we flush microtasks 3 times per cycle to fully drain the queue.
+      //
+      // With the current 2500ms debounce > 2000ms auto-refresh interval,
+      // the debounce is ALWAYS cancelled before it fires, so pushToServer
+      // is NEVER called (demonstrating the bug).
+      for (let i = 0; i < 6; i++) {
+        await act(async () => {
+          vi.advanceTimersByTime(2000)
+        })
+        // Multiple flushes to fully drain microtasks (each await in
+        // captureData needs its own microtask flush)
+        await flushMicrotasks()
+        await flushMicrotasks()
+        await flushMicrotasks()
+      }
+
+      // pushToServer should be called because data should eventually sync
+      // despite auto-refresh cycling. Currently fails due to debounce (2500ms)
+      // being longer than auto-refresh interval (2000ms).
+      expect(mockPushToServer).toHaveBeenCalled()
     })
   })
 })

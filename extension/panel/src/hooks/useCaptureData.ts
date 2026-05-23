@@ -424,7 +424,7 @@ export function useCaptureData(): {
 
         dispatch({ type: 'SET_SERVER_SYNC_ERROR', value: !success })
       })()
-    }, 2500)
+    }, 1500)
 
     return () => {
       if (autoSyncTimeoutRef.current) {
