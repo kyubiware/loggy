@@ -1,11 +1,13 @@
 import type { LucideIcon } from 'lucide-react'
 import { Archive, Brain, Copy, FileText, RefreshCw, Scissors, Shield, Upload } from 'lucide-react'
 import type { Dispatch, RefObject, SetStateAction } from 'react'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useMemo } from 'react'
 import type { LoggyState } from '../../../types/state'
-import { clearAction, copyAction } from '../actions'
 import type { ActionsContextValue } from '../LoggyContext.types'
 import type { Action } from './useCaptureData'
+import { useDataActions } from './useDataActions'
+import { useFilterActions } from './useFilterActions'
+import { useRouteActions } from './useRouteActions'
 
 /**
  * Setting keys that have user-facing toggle controls.
@@ -81,143 +83,41 @@ export function useLoggyActions({
   setSelectedRoutes,
   routeOptions,
 }: UseLoggyActionsParams): ActionsContextValue {
-  const setConsoleFilter = useCallback(
-    (value: string) => {
-      dispatch({ type: 'UPDATE_FILTER', field: 'consoleFilter', value })
-    },
-    [dispatch]
-  )
-
-  const setNetworkFilter = useCallback(
-    (value: string) => {
-      dispatch({ type: 'UPDATE_FILTER', field: 'networkFilter', value })
-    },
-    [dispatch]
-  )
-
-  const toggleConsoleVisibility = useCallback(() => {
-    dispatch({ type: 'TOGGLE_VISIBILITY', field: 'consoleVisible' })
-  }, [dispatch])
-
-  const toggleNetworkVisibility = useCallback(() => {
-    dispatch({ type: 'TOGGLE_VISIBILITY', field: 'networkVisible' })
-  }, [dispatch])
+  const filterActions = useFilterActions({ dispatch, setFiltersVisible })
+  const routeActions = useRouteActions({ setSelectedRoutes, routeOptions })
+  const dataActions = useDataActions({
+    captureData,
+    clearData,
+    showToastRef,
+    stateRef,
+    selectedRoutesRef,
+    dispatch,
+  })
 
   const toggleSetting = useCallback(
-    (key: ToggleSettingKey) => {
-      dispatch({ type: TOGGLE_ACTION_MAP[key] } as Action)
-    },
+    (key: ToggleSettingKey) => dispatch({ type: TOGGLE_ACTION_MAP[key] } as Action),
     [dispatch]
   )
 
   const setServerUrl = useCallback(
-    (url: string) => {
-      dispatch({ type: 'SET_SERVER_URL', value: url })
-    },
+    (url: string) => dispatch({ type: 'SET_SERVER_URL', value: url }),
     [dispatch]
   )
 
   const setMaxTokenLimit = useCallback(
-    (value: number) => {
-      dispatch({ type: 'SET_MAX_TOKEN_LIMIT', value })
-    },
+    (value: number) => dispatch({ type: 'SET_MAX_TOKEN_LIMIT', value }),
     [dispatch]
   )
 
-  const toggleRoute = useCallback(
-    (route: string) => {
-      setSelectedRoutes((previous) =>
-        previous.includes(route)
-          ? previous.filter((selectedRoute) => selectedRoute !== route)
-          : [...previous, route]
-      )
-    },
-    [setSelectedRoutes]
-  )
-
-  const selectAllRoutes = useCallback(() => {
-    setSelectedRoutes(routeOptions)
-  }, [routeOptions, setSelectedRoutes])
-
-  const deselectAllRoutes = useCallback(() => {
-    setSelectedRoutes([])
-  }, [setSelectedRoutes])
-
-  const routeOptionsKey = routeOptions.join(',')
-  const routeOptionsRef = useRef(routeOptions)
-  routeOptionsRef.current = routeOptions
-
-  // biome-ignore lint: routeOptionsKey intentionally triggers this effect on content change while using ref to avoid stale closures
-  useEffect(() => {
-    const currentRouteOptions = routeOptionsRef.current
-    setSelectedRoutes((previous) => {
-      const staleRemoved = previous.filter((route) => currentRouteOptions.includes(route))
-      const newRoutes = currentRouteOptions.filter((route) => !previous.includes(route))
-      const next = [...staleRemoved, ...newRoutes]
-      return next.length === previous.length && newRoutes.length === 0 ? previous : next
-    })
-  }, [routeOptionsKey, setSelectedRoutes])
-
-  const toggleFiltersVisible = useCallback(() => {
-    setFiltersVisible((prev) => !prev)
-  }, [setFiltersVisible])
-
-  const refresh = useCallback(async () => {
-    dispatch({ type: 'SET_DATA', consoleLogs: [], networkEntries: [] })
-    if (captureData) await captureData()
-  }, [captureData, dispatch])
-
-  const clearAll = useCallback(() => {
-    const showToast = showToastRef.current
-    if (!showToast) return Promise.resolve()
-    return clearAction(clearData, showToast)
-  }, [clearData, showToastRef])
-
-  const copy = useCallback(() => {
-    const showToast = showToastRef.current
-    if (!showToast) return Promise.resolve()
-    const currentState = stateRef.current
-    const currentRoutes = selectedRoutesRef.current
-    if (!currentState || !currentRoutes) return Promise.resolve()
-    const currentContextState: LoggyState = {
-      ...currentState,
-      selectedRoutes: currentRoutes,
-    }
-    return copyAction(currentContextState, showToast)
-  }, [selectedRoutesRef, showToastRef, stateRef])
-
   return useMemo(
     () => ({
-      setConsoleFilter,
-      setNetworkFilter,
-      toggleConsoleVisibility,
-      toggleNetworkVisibility,
+      ...filterActions,
+      ...routeActions,
+      ...dataActions,
       toggleSetting,
       setServerUrl,
-      toggleRoute,
-      selectAllRoutes,
-      deselectAllRoutes,
-      toggleFiltersVisible,
-      refresh,
-      clearAll,
-      copy,
       setMaxTokenLimit,
     }),
-    [
-      setConsoleFilter,
-      setNetworkFilter,
-      toggleConsoleVisibility,
-      toggleNetworkVisibility,
-      toggleSetting,
-      setServerUrl,
-      toggleRoute,
-      selectAllRoutes,
-      deselectAllRoutes,
-      toggleFiltersVisible,
-      refresh,
-      clearAll,
-      copy,
-      setMaxTokenLimit,
-    ]
+    [filterActions, routeActions, dataActions, toggleSetting, setServerUrl, setMaxTokenLimit]
   )
 }

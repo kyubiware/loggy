@@ -15,6 +15,14 @@
     "enabled": true,
     "rules": {
       "recommended": true,
+      "complexity": {
+        "noExcessiveLinesPerFunction": {
+          "level": "error",
+          "options": {
+            "maxLines": 50
+          }
+        }
+      },
       "nursery": {
         "noExcessiveLinesPerFile": "error"
       }
@@ -35,9 +43,27 @@
   },
   "overrides": [
     {
+      "includes": ["**/*.tsx"],
+      "linter": {
+        "rules": {
+          "complexity": {
+            "noExcessiveLinesPerFunction": {
+              "level": "error",
+              "options": {
+                "maxLines": 75
+              }
+            }
+          }
+        }
+      }
+    },
+    {
       "includes": ["**/*.test.ts", "**/*.test.tsx", "**/*.test.js", "**/*.test.cjs"],
       "linter": {
         "rules": {
+          "complexity": {
+            "noExcessiveLinesPerFunction": "off"
+          },
           "nursery": {
             "noExcessiveLinesPerFile": "off"
           }

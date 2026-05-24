@@ -1,6 +1,12 @@
 import type { HAREntry } from '../types/har'
 import type { ConsolidatedNetworkEntry } from './consolidation-network'
-import { escapeMarkdown, formatBytes, truncate } from './formatter-strings'
+import {
+  formatConsolidatedMeta,
+  formatConsolidatedResponseSection,
+  formatRequestSection,
+  formatResponseSection,
+} from './formatter-network-sections'
+import { escapeMarkdown, formatBytes } from './formatter-strings'
 
 /** HTTP/2 pseudo-headers that duplicate info already in the URL/method line */
 const SUPPRESSED_PSEUDO_HEADERS = new Set([':authority', ':method', ':path', ':scheme'])
@@ -82,7 +88,7 @@ function summarizeCookies(value: string): string {
  * - Summarizes cookie/set-cookie headers
  * - Falls back to standard formatting for remaining headers
  */
-function formatFilteredHeaders(
+export function formatFilteredHeaders(
   headers: { name: string; value: string }[] | undefined,
   context: { side: 'request' | 'response'; isSuccess: boolean }
 ): string {
@@ -129,7 +135,7 @@ function formatFilteredHeaders(
  * @param mimeType - MIME type of content
  * @returns Language identifier for Markdown code block
  */
-function getLanguageFromMime(mimeType: string | undefined): string {
+export function getLanguageFromMime(mimeType: string | undefined): string {
   if (!mimeType) return ''
   const lower = mimeType.toLowerCase()
 
@@ -147,7 +153,7 @@ function getLanguageFromMime(mimeType: string | undefined): string {
  * @param mimeType - MIME type of content
  * @returns True if content should be in code block
  */
-function shouldUseCodeBlock(mimeType: string | undefined): boolean {
+export function shouldUseCodeBlock(mimeType: string | undefined): boolean {
   if (!mimeType) return false
   const lower = mimeType.toLowerCase()
   return (
@@ -158,16 +164,6 @@ function shouldUseCodeBlock(mimeType: string | undefined): boolean {
     lower.includes('css') ||
     lower.includes('text')
   )
-}
-
-/**
- * Formats headers array as key-value pairs
- * @param headers - Array of HAR headers
- * @returns Formatted string of headers
- */
-function _formatHeaders(headers: { name: string; value: string }[] | undefined): string {
-  if (!headers || headers.length === 0) return 'None'
-  return headers.map((h) => `  ${escapeMarkdown(h.name)}: ${escapeMarkdown(h.value)}`).join('\n')
 }
 
 /**
@@ -194,41 +190,8 @@ export function formatNetworkEntry(
   output += `- **Size**: ${size}\n`
   output += `- **MIME Type**: ${mimeType}\n\n`
 
-  if (!isMinimal) {
-    output += `#### Request Headers\n`
-    output += '```\n'
-    output += formatFilteredHeaders(request.headers, { side: 'request', isSuccess })
-    output += '\n```\n\n'
-  }
-
-  if (request.postData?.text) {
-    output += `#### Request Body\n`
-    if (shouldUseCodeBlock(request.postData.mimeType)) {
-      const lang = getLanguageFromMime(request.postData.mimeType)
-      output += `\`\`\`${lang}\n`
-      output += escapeMarkdown(truncate(request.postData.text, 5000))
-      output += '\n```\n\n'
-    } else {
-      output += '```\n'
-      output += escapeMarkdown(truncate(request.postData.text, 5000))
-      output += '\n```\n\n'
-    }
-  }
-
-  if (!isMinimal) {
-    output += `#### Response Headers\n`
-    output += '```\n'
-    output += formatFilteredHeaders(response.headers, { side: 'response', isSuccess })
-    output += '\n```\n\n'
-
-    if (includeResponseBodies && response.content?.text && shouldUseCodeBlock(mimeType)) {
-      const lang = getLanguageFromMime(mimeType)
-      output += `#### Response Content\n`
-      output += `\`\`\`${lang}\n`
-      output += escapeMarkdown(truncate(response.content.text, 5000))
-      output += '\n```\n\n'
-    }
-  }
+  output += formatRequestSection(request, isSuccess, isMinimal)
+  output += formatResponseSection(response, mimeType, isSuccess, isMinimal, includeResponseBodies)
 
   return output
 }
@@ -257,73 +220,15 @@ export function formatConsolidatedNetworkEntry(
   const isMinimal = response.status === 204
 
   let output = `### ${escapeMarkdown(request.method)} ${escapeMarkdown(request.url)} (×${group.count} calls)\n\n`
-
-  const firstTime = group.timestamps[0]
-  const lastTime = group.timestamps[group.timestamps.length - 1]
-  output += `- **Time**: ${firstTime}`
-  if (firstTime !== lastTime) {
-    output += ` -> ${lastTime}`
-  }
-  output += '\n'
-
-  output += `- **Calls**: ${group.count}\n`
-  output += `- **Timestamps**: ${group.timestamps.join(', ')}\n`
-  output += `- **Duration**: ${time ? `${time}ms (first call)` : 'N/A'}\n`
-  output += `- **Status**: ${response.status} ${response.statusText}\n`
-  output += `- **Size**: ${size}\n`
-  output += `- **MIME Type**: ${mimeType}\n\n`
-
-  if (!isMinimal) {
-    output += `#### Request Headers\n`
-    output += '```\n'
-    output += formatFilteredHeaders(request.headers, { side: 'request', isSuccess })
-    output += '\n```\n\n'
-  }
-
-  if (request.postData?.text) {
-    output += `#### Request Body\n`
-    if (shouldUseCodeBlock(request.postData.mimeType)) {
-      const lang = getLanguageFromMime(request.postData.mimeType)
-      output += `\`\`\`${lang}\n`
-      output += escapeMarkdown(truncate(request.postData.text, 5000))
-      output += '\n```\n\n'
-    } else {
-      output += '```\n'
-      output += escapeMarkdown(truncate(request.postData.text, 5000))
-      output += '\n```\n\n'
-    }
-  }
-
-  if (!isMinimal) {
-    output += `#### Response Headers\n`
-    output += '```\n'
-    output += formatFilteredHeaders(response.headers, { side: 'response', isSuccess })
-    output += '\n```\n\n'
-
-    if (includeResponseBodies && response.content?.text && shouldUseCodeBlock(mimeType)) {
-      const lang = getLanguageFromMime(mimeType)
-      if (group.identicalResponses) {
-        output += `#### Response Content\n`
-        output += `\`\`\`${lang}\n`
-        output += escapeMarkdown(truncate(response.content.text, 5000))
-        output += '\n```\n'
-        output += `(×${group.count} identical responses)\n\n`
-      } else {
-        output += `#### Response Content (first call)\n`
-        output += `\`\`\`${lang}\n`
-        output += escapeMarkdown(truncate(response.content.text, 5000))
-        output += '\n```\n\n'
-
-        for (const diff of group.bodyDiffs) {
-          if (!diff.hasDiff || !diff.diffLines) continue
-          output += `#### Response Diff — Call ${diff.entryIndex + 1} (${diff.timestamp})\n`
-          output += '```diff\n'
-          output += diff.diffLines.join('\n')
-          output += '\n```\n\n'
-        }
-      }
-    }
-  }
+  output += formatConsolidatedMeta(group, response, time, size, mimeType)
+  output += formatRequestSection(request, isSuccess, isMinimal)
+  output += formatConsolidatedResponseSection(
+    group,
+    response,
+    isSuccess,
+    isMinimal,
+    includeResponseBodies
+  )
 
   return output
 }

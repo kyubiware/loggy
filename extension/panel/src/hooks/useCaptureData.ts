@@ -1,40 +1,21 @@
-// biome-ignore lint/nursery/noExcessiveLinesPerFile: limit
-import { useCallback, useEffect, useReducer, useRef } from 'react'
-import { browser } from '../../../browser-apis/index.js'
-import { buildExportMarkdown } from '../../../shared/export'
-import { pushToServer } from '../../../shared/server-export'
+import { useReducer, useRef } from 'react'
 import type { ConsoleMessage } from '../../../types/console'
 import type { HAREntry } from '../../../types/har'
 import {
   createInitialState,
-  extractPersistedSettings,
-  LOGGY_PANEL_SETTINGS_STORAGE_KEY,
   type LoggyState,
   mergePersistedSettings,
   type PersistedLoggySettings,
 } from '../../../types/state'
-import { debugLog } from '../../../utils/debug-logger'
-import {
-  captureConsoleLogs,
-  captureNetworkEntries,
-  clearCapturedConsoleLogs,
-  clearResponseBodies,
-  enrichWithResponseBodies,
-  notifyPanelClosed,
-  notifyPanelOpened,
-  startResponseBodyCapture,
-  stopResponseBodyCapture,
-} from '../../capture'
-import { probeServer } from '../../server-probe'
-
-const AUTO_REFRESH_INTERVAL_MS = 2000
-const SERVER_POLL_INTERVAL_MS = 5000
+import { useAutoSync } from './useAutoSync'
+import { useDataCapabilities } from './useDataCapabilities'
+import { useServerProbe } from './useServerProbe'
 
 /**
  * Build a content fingerprint from the export-relevant state fields.
  * Excludes timestamp so the fingerprint is stable across identical data.
  */
-function buildExportFingerprint(s: LoggyState): string {
+export function buildExportFingerprint(s: LoggyState): string {
   try {
     return JSON.stringify({
       c: s.consoleLogs,
@@ -50,8 +31,6 @@ function buildExportFingerprint(s: LoggyState): string {
       sr: s.selectedRoutes,
     })
   } catch {
-    // JSON.stringify can throw on non-serializable objects (BigInts, circular refs
-    // from DevTools HAR API, etc). Fall back to a length-based fingerprint.
     return `lengths:${s.consoleLogs.length}:${s.networkEntries.length}:${s.selectedRoutes.length}`
   }
 }
@@ -76,7 +55,59 @@ export type Action =
   | { type: 'TOGGLE_PRESERVE_LOGS' }
   | { type: 'TOGGLE_DEDUPLICATE_API_CALLS' }
 
+const TOGGLE_FLAG_KEY: Record<string, keyof LoggyState> = {
+  TOGGLE_AGENT_CONTEXT: 'includeAgentContext',
+  TOGGLE_RESPONSE_BODIES: 'includeResponseBodies',
+  TOGGLE_CONSOLE_TRUNCATION: 'truncateConsoleLogs',
+  TOGGLE_RESPONSE_BODY_TRUNCATION: 'truncateResponseBodies',
+  TOGGLE_REDACT_SENSITIVE: 'redactSensitiveInfo',
+  TOGGLE_NETWORK_EXPORT: 'networkExportEnabled',
+  TOGGLE_AUTO_SERVER_SYNC: 'autoServerSync',
+  TOGGLE_PRESERVE_LOGS: 'preserveLogs',
+  TOGGLE_DEDUPLICATE_API_CALLS: 'deduplicateApiCalls',
+}
+
+const SET_VALUE_KEY: Record<string, keyof LoggyState> = {
+  SET_SERVER_SYNC_ERROR: 'serverSyncError',
+  SET_SERVER_URL: 'serverUrl',
+  SET_SERVER_CONNECTED: 'serverConnected',
+  SET_MAX_TOKEN_LIMIT: 'maxTokenLimit',
+}
+
+function hydrateSettings(state: LoggyState, settings: PersistedLoggySettings): LoggyState {
+  const hydratedSettings = mergePersistedSettings(settings, {
+    consoleFilter: state.consoleFilter,
+    networkFilter: state.networkFilter,
+    consoleVisible: state.consoleVisible,
+    networkVisible: state.networkVisible,
+    includeAgentContext: state.includeAgentContext,
+    includeResponseBodies: state.includeResponseBodies,
+    truncateConsoleLogs: state.truncateConsoleLogs,
+    truncateResponseBodies: state.truncateResponseBodies,
+    redactSensitiveInfo: state.redactSensitiveInfo,
+    networkExportEnabled: state.networkExportEnabled,
+    autoServerSync: state.autoServerSync,
+    serverUrl: state.serverUrl,
+    settingsAccordionOpen: state.settingsAccordionOpen,
+    filtersAccordionOpen: state.filtersAccordionOpen,
+    maxTokenLimit: state.maxTokenLimit,
+    deduplicateApiCalls: state.deduplicateApiCalls,
+    preserveLogs: state.preserveLogs,
+  })
+  return { ...state, ...hydratedSettings }
+}
+
 export function reducer(state: LoggyState, action: Action): LoggyState {
+  const toggleKey = TOGGLE_FLAG_KEY[action.type]
+  if (toggleKey) {
+    return { ...state, [toggleKey]: !(state[toggleKey] as boolean) }
+  }
+
+  const setKey = SET_VALUE_KEY[action.type]
+  if (setKey) {
+    return { ...state, [setKey]: (action as Record<string, unknown>).value } as LoggyState
+  }
+
   switch (action.type) {
     case 'SET_DATA':
       return {
@@ -90,32 +121,8 @@ export function reducer(state: LoggyState, action: Action): LoggyState {
         consoleLogs: [],
         networkEntries: [],
       }
-    case 'HYDRATE_SETTINGS': {
-      const hydratedSettings = mergePersistedSettings(action.settings, {
-        consoleFilter: state.consoleFilter,
-        networkFilter: state.networkFilter,
-        consoleVisible: state.consoleVisible,
-        networkVisible: state.networkVisible,
-        includeAgentContext: state.includeAgentContext,
-        includeResponseBodies: state.includeResponseBodies,
-        truncateConsoleLogs: state.truncateConsoleLogs,
-        truncateResponseBodies: state.truncateResponseBodies,
-        redactSensitiveInfo: state.redactSensitiveInfo,
-        networkExportEnabled: state.networkExportEnabled,
-        autoServerSync: state.autoServerSync,
-        serverUrl: state.serverUrl,
-        settingsAccordionOpen: state.settingsAccordionOpen,
-        filtersAccordionOpen: state.filtersAccordionOpen,
-        maxTokenLimit: state.maxTokenLimit,
-        deduplicateApiCalls: state.deduplicateApiCalls,
-        preserveLogs: state.preserveLogs,
-      })
-
-      return {
-        ...state,
-        ...hydratedSettings,
-      }
-    }
+    case 'HYDRATE_SETTINGS':
+      return hydrateSettings(state, action.settings)
     case 'UPDATE_FILTER':
       return {
         ...state,
@@ -125,71 +132,6 @@ export function reducer(state: LoggyState, action: Action): LoggyState {
       return {
         ...state,
         [action.field]: !state[action.field],
-      }
-    case 'TOGGLE_AGENT_CONTEXT':
-      return {
-        ...state,
-        includeAgentContext: !state.includeAgentContext,
-      }
-    case 'TOGGLE_RESPONSE_BODIES':
-      return {
-        ...state,
-        includeResponseBodies: !state.includeResponseBodies,
-      }
-    case 'TOGGLE_CONSOLE_TRUNCATION':
-      return {
-        ...state,
-        truncateConsoleLogs: !state.truncateConsoleLogs,
-      }
-    case 'TOGGLE_RESPONSE_BODY_TRUNCATION':
-      return {
-        ...state,
-        truncateResponseBodies: !state.truncateResponseBodies,
-      }
-    case 'TOGGLE_REDACT_SENSITIVE':
-      return {
-        ...state,
-        redactSensitiveInfo: !state.redactSensitiveInfo,
-      }
-    case 'TOGGLE_NETWORK_EXPORT':
-      return {
-        ...state,
-        networkExportEnabled: !state.networkExportEnabled,
-      }
-    case 'TOGGLE_AUTO_SERVER_SYNC':
-      return {
-        ...state,
-        autoServerSync: !state.autoServerSync,
-      }
-    case 'SET_SERVER_SYNC_ERROR':
-      return {
-        ...state,
-        serverSyncError: action.value,
-      }
-    case 'SET_SERVER_URL':
-      return {
-        ...state,
-        serverUrl: action.value,
-      }
-    case 'SET_SERVER_CONNECTED':
-      return {
-        ...state,
-        serverConnected: action.value,
-      }
-    case 'SET_MAX_TOKEN_LIMIT':
-      return {
-        ...state,
-        maxTokenLimit: action.value,
-      }
-    case 'TOGGLE_PRESERVE_LOGS':
-      return {
-        ...state,
-        preserveLogs: !state.preserveLogs,
-      }
-    case 'TOGGLE_DEDUPLICATE_API_CALLS':
-      return {
-        ...state,
-        deduplicateApiCalls: !state.deduplicateApiCalls,
       }
     default:
       return state
@@ -203,424 +145,21 @@ export function useCaptureData(): {
   clearData: () => Promise<void>
 } {
   const [state, dispatch] = useReducer(reducer, undefined, createInitialState)
-  const isCapturing = useRef(false)
   const hydrationCompleteRef = useRef(false)
-  const autoRefreshTimer = useRef<ReturnType<typeof setInterval> | null>(null)
-  const serverPollTimer = useRef<ReturnType<typeof setInterval> | null>(null)
-  const networkClearCutoffMs = useRef<number | null>(null)
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const autoSyncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const lastProbedUrlRef = useRef<string | null>(null)
-  const latestStateRef = useRef(state)
-  const lastExportFingerprintRef = useRef<string | null>(null)
-  const preservedConsoleLogsRef = useRef<ConsoleMessage[]>([])
 
-  const probeConfiguredServer = useCallback(async (configuredServerUrl: string): Promise<void> => {
-    const connected = await probeServer(configuredServerUrl)
-    dispatch({ type: 'SET_SERVER_CONNECTED', value: connected })
-  }, [])
-
-  const filterNetworkEntriesAfterClear = useCallback((entries: HAREntry[]): HAREntry[] => {
-    const cutoffMs = networkClearCutoffMs.current
-    if (cutoffMs === null) {
-      return entries
-    }
-
-    return entries.filter((entry) => {
-      const entryTimeMs = Date.parse(entry.startedDateTime)
-      if (Number.isNaN(entryTimeMs)) {
-        return false
-      }
-
-      return entryTimeMs > cutoffMs
-    })
-  }, [])
-
-  const captureData = useCallback(async (): Promise<void> => {
-    if (isCapturing.current) return
-    isCapturing.current = true
-
-    try {
-      const rawEntries = await captureNetworkEntries()
-      const networkEntries = enrichWithResponseBodies(filterNetworkEntriesAfterClear(rawEntries))
-      let consoleLogs = await captureConsoleLogs()
-
-      // Merge preserved console logs from before navigation
-      if (preservedConsoleLogsRef.current.length > 0) {
-        consoleLogs = [...preservedConsoleLogsRef.current, ...consoleLogs]
-        preservedConsoleLogsRef.current = []
-      }
-
-      dispatch({ type: 'SET_DATA', consoleLogs, networkEntries })
-    } catch (error) {
-      console.error('Error capturing data:', error)
-    } finally {
-      isCapturing.current = false
-    }
-  }, [filterNetworkEntriesAfterClear])
-
-  const clearData = useCallback(async (): Promise<void> => {
-    dispatch({ type: 'RESET_DATA' })
-
-    networkClearCutoffMs.current = Date.now()
-    await clearCapturedConsoleLogs()
-  }, [])
-
-  const startAutoRefresh = useCallback((): void => {
-    if (autoRefreshTimer.current !== null) return
-
-    autoRefreshTimer.current = setInterval(() => {
-      void captureData()
-    }, AUTO_REFRESH_INTERVAL_MS)
-  }, [captureData])
-
-  const stopAutoRefresh = useCallback((): void => {
-    if (autoRefreshTimer.current === null) return
-    clearInterval(autoRefreshTimer.current)
-    autoRefreshTimer.current = null
-  }, [])
-
-  const completeHydrationAfterFailure = useCallback((error: unknown): void => {
-    console.error('Failed to hydrate persisted Loggy panel settings:', error)
-    hydrationCompleteRef.current = true
-  }, [])
-
-  useEffect(() => {
-    let cancelled = false
-    const defaults = createInitialState()
-
-    try {
-      browser.storage.local.get([LOGGY_PANEL_SETTINGS_STORAGE_KEY], (result) => {
-        const mergedSettings = mergePersistedSettings(result[LOGGY_PANEL_SETTINGS_STORAGE_KEY], {
-          consoleFilter: defaults.consoleFilter,
-          networkFilter: defaults.networkFilter,
-          consoleVisible: defaults.consoleVisible,
-          networkVisible: defaults.networkVisible,
-          includeAgentContext: defaults.includeAgentContext,
-          includeResponseBodies: defaults.includeResponseBodies,
-          truncateConsoleLogs: defaults.truncateConsoleLogs,
-          truncateResponseBodies: defaults.truncateResponseBodies,
-          redactSensitiveInfo: defaults.redactSensitiveInfo,
-          networkExportEnabled: defaults.networkExportEnabled,
-          autoServerSync: defaults.autoServerSync,
-          serverUrl: defaults.serverUrl,
-          settingsAccordionOpen: defaults.settingsAccordionOpen,
-          filtersAccordionOpen: defaults.filtersAccordionOpen,
-          maxTokenLimit: defaults.maxTokenLimit,
-          deduplicateApiCalls: defaults.deduplicateApiCalls,
-          preserveLogs: defaults.preserveLogs,
-        })
-
-        if (result[LOGGY_PANEL_SETTINGS_STORAGE_KEY] !== undefined) {
-          dispatch({
-            type: 'HYDRATE_SETTINGS',
-            settings: result[LOGGY_PANEL_SETTINGS_STORAGE_KEY] as PersistedLoggySettings,
-          })
-        }
-
-        hydrationCompleteRef.current = true
-
-        if (!cancelled) {
-          lastProbedUrlRef.current = mergedSettings.serverUrl
-          void probeConfiguredServer(mergedSettings.serverUrl)
-        }
-      })
-    } catch (error) {
-      completeHydrationAfterFailure(error)
-
-      if (!cancelled) {
-        lastProbedUrlRef.current = defaults.serverUrl
-        void probeConfiguredServer(defaults.serverUrl)
-      }
-    }
-
-    return () => {
-      cancelled = true
-    }
-  }, [completeHydrationAfterFailure, probeConfiguredServer])
-
-  // Probe server when serverUrl changes (after hydration)
-  useEffect(() => {
-    if (!hydrationCompleteRef.current) return
-    if (lastProbedUrlRef.current === state.serverUrl) return
-
-    lastProbedUrlRef.current = state.serverUrl
-    void probeConfiguredServer(state.serverUrl)
-  }, [state.serverUrl, probeConfiguredServer])
-
-  // Start/stop server polling based on hydration state and serverUrl
-  useEffect(() => {
-    if (!hydrationCompleteRef.current) return
-
-    // Start polling
-    if (serverPollTimer.current === null) {
-      serverPollTimer.current = setInterval(() => {
-        void probeConfiguredServer(state.serverUrl)
-      }, SERVER_POLL_INTERVAL_MS)
-    }
-
-    return () => {
-      if (serverPollTimer.current !== null) {
-        clearInterval(serverPollTimer.current)
-        serverPollTimer.current = null
-      }
-    }
-  }, [probeConfiguredServer, state.serverUrl])
-
-  // Only persist the subset of settings that should survive panel reloads
-  const persistedSettings = extractPersistedSettings(state)
-
-  useEffect(() => {
-    latestStateRef.current = state
-  }, [state])
-
-  useEffect(() => {
-    if (!hydrationCompleteRef.current) {
-      return
-    }
-
-    if (saveTimeoutRef.current) {
-      clearTimeout(saveTimeoutRef.current)
-    }
-
-    saveTimeoutRef.current = setTimeout(() => {
-      browser.storage.local.set({
-        [LOGGY_PANEL_SETTINGS_STORAGE_KEY]: persistedSettings,
-      })
-    }, 300)
-
-    return () => {
-      if (saveTimeoutRef.current) {
-        clearTimeout(saveTimeoutRef.current)
-      }
-    }
-  }, [persistedSettings])
-
-  useEffect(() => {
-    const scheduledConsoleLogs = state.consoleLogs
-    const scheduledNetworkEntries = state.networkEntries
-
-    debugLog(
-      'message',
-      'panel',
-      `Auto-sync effect #1 fired: autoServerSync=${state.autoServerSync}, serverConnected=${state.serverConnected}, logs=${scheduledConsoleLogs.length}, nets=${scheduledNetworkEntries.length}`
-    )
-
-    if (autoSyncTimeoutRef.current) {
-      clearTimeout(autoSyncTimeoutRef.current)
-      autoSyncTimeoutRef.current = null
-    }
-
-    if (!state.autoServerSync || !state.serverConnected) {
-      debugLog(
-        'message',
-        'panel',
-        `Auto-sync effect #1 SKIPPED: autoServerSync=${state.autoServerSync}, serverConnected=${state.serverConnected}`
-      )
-      return
-    }
-
-    autoSyncTimeoutRef.current = setTimeout(() => {
-      void (async () => {
-        try {
-          debugLog('message', 'panel', 'Auto-sync effect #1 debounce: TIMEOUT FIRED')
-          const latestState = latestStateRef.current
-
-          if (
-            latestState.consoleLogs !== scheduledConsoleLogs ||
-            latestState.networkEntries !== scheduledNetworkEntries
-          ) {
-            debugLog(
-              'message',
-              'panel',
-              'Auto-sync effect #1 debounce: data changed during debounce, skipping'
-            )
-            return
-          }
-
-          const markdown = await buildExportMarkdown(latestState)
-          debugLog('message', 'panel', 'Auto-sync effect #1 debounce: buildExportMarkdown complete')
-
-          const fingerprint = buildExportFingerprint(latestState)
-          if (fingerprint === lastExportFingerprintRef.current) {
-            debugLog(
-              'message',
-              'panel',
-              'Auto-sync effect #1 debounce: fingerprint unchanged, skipping'
-            )
-            return
-          }
-          lastExportFingerprintRef.current = fingerprint
-          debugLog(
-            'message',
-            'panel',
-            `Auto-sync effect #1 debounce: pushing to server, url=${latestState.serverUrl}`
-          )
-          const success = await pushToServer(latestState.serverUrl, markdown)
-
-          debugLog(
-            'message',
-            'panel',
-            `Auto-sync effect #1 debounce: pushToServer result=${success}`,
-            { url: latestState.serverUrl }
-          )
-          dispatch({ type: 'SET_SERVER_SYNC_ERROR', value: !success })
-        } catch (err) {
-          debugLog('message', 'panel', `Auto-sync effect #1 debounce: ERROR ${String(err)}`, {
-            error: String(err),
-          })
-        }
-      })()
-    }, 1500)
-
-    return () => {
-      if (autoSyncTimeoutRef.current) {
-        clearTimeout(autoSyncTimeoutRef.current)
-        autoSyncTimeoutRef.current = null
-      }
-    }
-  }, [state.autoServerSync, state.serverConnected, state.consoleLogs, state.networkEntries])
-
-  // Trigger server sync when export options or filters change (if auto-sync is enabled and content exists)
-  // biome-ignore lint/correctness/useExhaustiveDependencies: dependencies are intentionally specified to trigger re-export when options/filters change
-  useEffect(() => {
-    debugLog(
-      'message',
-      'panel',
-      `Auto-sync effect #2 fired: autoServerSync=${state.autoServerSync}, serverConnected=${state.serverConnected}, logsLen=${state.consoleLogs.length}, netsLen=${state.networkEntries.length}`
-    )
-
-    if (!state.autoServerSync || !state.serverConnected) {
-      debugLog(
-        'message',
-        'panel',
-        `Auto-sync effect #2 SKIPPED: autoServerSync=${state.autoServerSync}, serverConnected=${state.serverConnected}`
-      )
-      return
-    }
-
-    // Only sync if there's actual data to export
-    if (state.consoleLogs.length === 0 && state.networkEntries.length === 0) {
-      debugLog('message', 'panel', 'Auto-sync effect #2 skipped: no data')
-      return
-    }
-
-    if (autoSyncTimeoutRef.current) {
-      clearTimeout(autoSyncTimeoutRef.current)
-    }
-
-    autoSyncTimeoutRef.current = setTimeout(() => {
-      void (async () => {
-        try {
-          debugLog('message', 'panel', 'Auto-sync effect #2 debounce: TIMEOUT FIRED')
-          const latestState = latestStateRef.current
-          const fingerprint = buildExportFingerprint(latestState)
-
-          if (fingerprint === lastExportFingerprintRef.current) {
-            debugLog(
-              'message',
-              'panel',
-              'Auto-sync effect #2 debounce: fingerprint unchanged, skipping'
-            )
-            return
-          }
-
-          lastExportFingerprintRef.current = fingerprint
-          const markdown = await buildExportMarkdown(latestState)
-          debugLog('message', 'panel', 'Auto-sync effect #2 debounce: buildExportMarkdown complete')
-          const success = await pushToServer(latestState.serverUrl, markdown)
-          debugLog(
-            'message',
-            'panel',
-            `Auto-sync effect #2 debounce: pushToServer result=${success}`,
-            { url: latestState.serverUrl }
-          )
-          dispatch({ type: 'SET_SERVER_SYNC_ERROR', value: !success })
-        } catch (err) {
-          debugLog('message', 'panel', `Auto-sync effect #2 debounce: ERROR ${String(err)}`, {
-            error: String(err),
-          })
-        }
-      })()
-    }, 500)
-
-    return () => {
-      if (autoSyncTimeoutRef.current) {
-        clearTimeout(autoSyncTimeoutRef.current)
-        autoSyncTimeoutRef.current = null
-      }
-    }
-  }, [
-    state.autoServerSync,
-    state.serverConnected,
-    state.consoleLogs.length,
-    state.networkEntries.length,
-    state.includeAgentContext,
-    state.includeResponseBodies,
-    state.truncateConsoleLogs,
-    state.redactSensitiveInfo,
-    state.networkExportEnabled,
-    state.consoleFilter,
-    state.networkFilter,
+  const { probeConfiguredServer, markUrlProbed } = useServerProbe(
     dispatch,
-  ])
-
-  useEffect(() => {
-    startResponseBodyCapture()
-
-    const inspectedTabId = chrome.devtools.inspectedWindow.tabId
-    if (typeof inspectedTabId === 'number') {
-      notifyPanelOpened(inspectedTabId)
-    }
-
-    // Startup capture (like LoggyPanel constructor)
-    void captureData()
-
-    // Start auto-refresh if visible (like constructor)
-    if (document.visibilityState === 'visible') {
-      startAutoRefresh()
-    }
-
-    // Visibility change listener
-    const handleVisibilityChange = (): void => {
-      if (document.visibilityState === 'visible') {
-        startAutoRefresh()
-        void captureData()
-        return
-      }
-      stopAutoRefresh()
-    }
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-
-    // Navigation reset listener
-    const handleNavigated = (): void => {
-      if (latestStateRef.current.preserveLogs) {
-        // Save console logs before the page reloads, so they can be merged
-        // with new captures after navigation. Network entries are preserved
-        // by DevTools (getHAR returns entries across navigations).
-        preservedConsoleLogsRef.current = latestStateRef.current.consoleLogs
-        networkClearCutoffMs.current = null
-        return
-      }
-
-      dispatch({ type: 'RESET_DATA' })
-      networkClearCutoffMs.current = null
-      clearResponseBodies()
-    }
-    browser.devtools.network.onNavigated.addListener(handleNavigated)
-
-    // Cleanup on unmount
-    return () => {
-      if (typeof inspectedTabId === 'number') {
-        notifyPanelClosed(inspectedTabId)
-      }
-
-      stopAutoRefresh()
-      stopResponseBodyCapture()
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-      browser.devtools.network.onNavigated.removeListener(handleNavigated)
-    }
-  }, [captureData, startAutoRefresh, stopAutoRefresh])
+    state.serverUrl,
+    hydrationCompleteRef
+  )
+  const { captureData, clearData, latestStateRef } = useDataCapabilities(
+    dispatch,
+    state,
+    probeConfiguredServer,
+    hydrationCompleteRef,
+    markUrlProbed
+  )
+  useAutoSync(state, dispatch, latestStateRef)
 
   return { state, dispatch, captureData, clearData }
 }
