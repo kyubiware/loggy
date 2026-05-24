@@ -25,6 +25,7 @@
     "storage",
     "debugger",
     "activeTab",
-    "scripting"
+    "scripting",
+    "alarms"
   ]
 }

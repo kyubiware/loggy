@@ -27,7 +27,8 @@
     "storage",
     "activeTab",
     "scripting",
-    "platform_info"
+    "platform_info",
+    "alarms"
   ],
   "host_permissions": [
     "http://localhost:*/",

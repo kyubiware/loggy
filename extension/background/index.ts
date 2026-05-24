@@ -68,6 +68,8 @@ declare const __BROWSER__: string
 declare const __DEBUG__: boolean
 const DEBUG = __DEBUG__
 
+const AUTO_SYNC_ALARM_NAME = 'loggy-auto-sync'
+const POLL_FINGERPRINT_KEY_PREFIX = 'loggy_poll_fp_'
 const DEFAULT_SERVER_URL = 'http://localhost:8743'
 const EXPORT_PATH = '/loggy'
 const HANDSHAKE_PATH = '/loggy/handshake'
@@ -513,6 +515,172 @@ async function exportTabToServer(tabId: number): Promise<boolean> {
   return false
 }
 
+/**
+ * Raw data shape returned from the MAIN world capture arrays.
+ */
+interface RawBufferData {
+  consoleLogs: Array<{ timestamp: string; level: string; message: string }>
+  networkLogs: Array<{
+    timestamp: string
+    url: string
+    method: string
+    status: number
+    responseBodyPreview?: string
+    contentType?: string
+    duration?: number
+    error?: string
+  }>
+}
+
+async function getPollFingerprint(tabId: number): Promise<string> {
+  const key = `${POLL_FINGERPRINT_KEY_PREFIX}${tabId}`
+  const result = (await chrome.storage.session.get(key)) as Record<string, unknown>
+  return typeof result[key] === 'string' ? (result[key] as string) : ''
+}
+
+async function setPollFingerprint(tabId: number, fingerprint: string): Promise<void> {
+  const key = `${POLL_FINGERPRINT_KEY_PREFIX}${tabId}`
+  await chrome.storage.session.set({ [key]: fingerprint })
+}
+
+async function restorePollFingerprints(): Promise<void> {
+  // Fingerprints are stored individually in chrome.storage.session
+  // keyed by POLL_FINGERPRINT_KEY_PREFIX + tabId. They are read on demand
+  // by getPollFingerprint, so no bulk restore is needed.
+}
+
+/**
+ * Polls the MAIN world capture arrays for a tab and auto-syncs to the
+ * server when new data is detected. This is the primary data path for
+ * background auto-sync when the DevTools panel is not open.
+ */
+async function pollAndSyncTab(tabId: number): Promise<void> {
+  const current = getOrCreateTabState(tabId)
+
+  // Only poll tabs in content-script or debugger mode that aren't
+  // managed by the DevTools panel.
+  if (current.mode === 'devtools' || current.mode === 'inactive') {
+    return
+  }
+
+  // Skip if auto-sync is disabled
+  const autoSync = await getAutoServerSync()
+  if (!autoSync) {
+    return
+  }
+
+  try {
+    const results = await chrome.scripting.executeScript({
+      target: { tabId },
+      world: 'MAIN' as chrome.scripting.ExecutionWorld,
+      func: () => ({
+        consoleLogs: (window as unknown as Record<string, unknown[]>).__loggyConsoleLogs || [],
+        networkLogs: (window as unknown as Record<string, unknown[]>).__loggyNetworkLogs || [],
+      }),
+    })
+
+    const raw = results[0]?.result as RawBufferData | undefined
+    if (!raw) {
+      return
+    }
+
+    if (!Array.isArray(raw.consoleLogs) && !Array.isArray(raw.networkLogs)) {
+      return
+    }
+
+    // Compute a lightweight fingerprint from the raw arrays.
+    // Only hash the length + last entry to avoid O(n) serialization on every poll.
+    const consoleLogs = Array.isArray(raw.consoleLogs) ? raw.consoleLogs : []
+    const networkLogs = Array.isArray(raw.networkLogs) ? raw.networkLogs : []
+    const totalEntries = consoleLogs.length + networkLogs.length
+
+    if (totalEntries === 0) {
+      return
+    }
+
+    const fingerprint = `${totalEntries}:${consoleLogs.length > 0 ? JSON.stringify(consoleLogs[consoleLogs.length - 1]) : ''}:${networkLogs.length > 0 ? JSON.stringify(networkLogs[networkLogs.length - 1]) : ''}`
+    const lastFingerprint = await getPollFingerprint(tabId)
+
+    if (fingerprint === lastFingerprint) {
+      debugLog('capture', 'background', `pollAndSyncTab: no new data (fingerprint unchanged, ${totalEntries} entries)`, { tabId })
+      return
+    }
+
+    debugLog('capture', 'background', `pollAndSyncTab: new data detected (${totalEntries} entries)`, { tabId })
+
+    // Convert raw entries to the stored format and replace stored data
+    const storedEntries: StoredCapturedEntry[] = []
+
+    for (const log of consoleLogs) {
+      storedEntries.push({
+        kind: 'console',
+        entry: {
+          timestamp: log.timestamp,
+          level: log.level as CapturedConsoleEntry['level'],
+          message: log.message,
+        },
+      })
+    }
+
+    for (const net of networkLogs) {
+      storedEntries.push({
+        kind: 'network',
+        entry: {
+          timestamp: net.timestamp,
+          url: net.url,
+          method: net.method,
+          status: net.status,
+          responseBody: net.responseBodyPreview,
+          contentType: net.contentType,
+          duration: net.duration,
+        },
+      })
+    }
+
+    // Cap to MAX_ENTRIES_PER_TAB (keep the latest)
+    const capped = storedEntries.length > MAX_ENTRIES_PER_TAB
+      ? storedEntries.slice(-MAX_ENTRIES_PER_TAB)
+      : storedEntries
+
+    await writeStoredEntries(tabId, capped)
+
+    // Update tab state with new log count
+    const next: TabCaptureState = {
+      ...current,
+      connected: true,
+      logCount: capped.length,
+    }
+    await setTabState(next)
+
+    // Persist the poll fingerprint
+    await setPollFingerprint(tabId, fingerprint)
+
+    // Clear the export fingerprint so exportTabToServer won't skip
+    lastExportFingerprintByTab.delete(tabId)
+
+    debugLog('capture', 'background', `pollAndSyncTab: stored ${capped.length} entries, triggering export`, { tabId })
+    await exportTabToServer(tabId)
+  } catch (error) {
+    debugLog('capture', 'background', `pollAndSyncTab: executeScript failed`, { tabId, error: String(error) })
+  }
+}
+
+/**
+ * Iterates all active tabs in content-script mode and polls each one.
+ */
+async function pollAllActiveTabs(): Promise<void> {
+  const autoSync = await getAutoServerSync()
+  if (!autoSync) {
+    return
+  }
+
+  for (const [tabId, state] of tabStates.entries()) {
+    if (state.mode === 'content-script' || state.mode === 'debugger') {
+      await pollAndSyncTab(tabId)
+    }
+  }
+}
+
 async function handleCaptureMessage(
   tabId: number,
   message: CaptureMessage,
@@ -720,9 +888,14 @@ async function handleControlMessage(
         })
       }
 
+      // Opportunistic poll: sync any data that was captured before the
+      // content-relay connected or before auto-sync was enabled.
+      void pollAndSyncTab(tabId)
+
       return { ...updated, consent }
     }
 
+    // No consent: just update connected state and return
     const current = getOrCreateTabState(tabId)
     const updated: TabCaptureState = {
       ...current,
@@ -950,9 +1123,13 @@ async function handleControlMessage(
         hasConsent: false,
         captureMode: 'none',
       })
-    } catch {
-      // Content script may not be loaded
-    }
+          } catch {
+            // Content script may not be loaded
+          }
+
+          // Opportunistic poll: sync any data that accumulated during
+          // page load, without waiting for the next alarm cycle.
+          void pollAndSyncTab(tabId)
 
     return updated
   }
@@ -1277,6 +1454,22 @@ async function initialize(): Promise<void> {
 
   const alwaysLogHosts = await getAlwaysLogHosts()
   await syncAllAlwaysLogScripts(alwaysLogHosts.map((h) => h.host))
+
+  // Register periodic alarm for background auto-sync polling.
+  // chrome.alarms enforces a minimum period of 30s in production MV3.
+  try {
+    await chrome.alarms.clear(AUTO_SYNC_ALARM_NAME)
+    await chrome.alarms.create(AUTO_SYNC_ALARM_NAME, { periodInMinutes: 0.5 })
+    debugLog('lifecycle', 'background', 'Auto-sync alarm registered (30s period)')
+  } catch (error) {
+    debugLog('lifecycle', 'background', `Failed to register auto-sync alarm: ${String(error)}`)
+  }
+
+  // Trigger an initial poll for any tabs that already have data.
+  // Fire-and-forget: errors are logged inside pollAllActiveTabs.
+  void pollAllActiveTabs().catch(() => {
+    // Intentionally swallowed — pollAllActiveTabs logs errors internally
+  })
 }
 
 chrome.runtime.onMessage.addListener((rawMessage, sender, sendResponse) => {
@@ -1446,6 +1639,11 @@ chrome.runtime.onStartup.addListener(() => {
 
 self.addEventListener('activate', () => {
   void initialize()
+})
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name !== AUTO_SYNC_ALARM_NAME) return
+  void pollAllActiveTabs()
 })
 
 void initialize()

@@ -25,7 +25,8 @@
     "storage",
     "debugger",
     "activeTab",
-    "scripting"
+    "scripting",
+    "alarms"
   ],
   "host_permissions": [
     "http://localhost:*/",

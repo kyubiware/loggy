@@ -158,6 +158,15 @@ beforeAll(() => {
 
   c.action = { setIcon: vi.fn() }
 
+  c.alarms = {
+    create: vi.fn(() => Promise.resolve()),
+    clear: vi.fn(() => Promise.resolve()),
+    onAlarm: {
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    },
+  }
+
   c.scripting = {
     executeScript: mockScriptingExecuteScript,
   } as unknown as typeof chrome.scripting

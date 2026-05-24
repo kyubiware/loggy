@@ -174,6 +174,15 @@ beforeAll(() => {
 
   c.action = { setIcon: vi.fn() }
 
+  c.alarms = {
+    create: vi.fn(() => Promise.resolve()),
+    clear: vi.fn(() => Promise.resolve()),
+    onAlarm: {
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    },
+  }
+
   // Dynamic import — module registers listeners with the extended mocks
   return import('./index')
 })
