@@ -7,6 +7,7 @@ export const TAB_STATES_STORAGE_KEY = 'loggy_tab_capture_states'
 export const tabStates = new Map<number, TabCaptureState>()
 export const previousModeByTab = new Map<number, CaptureMode>()
 export const debuggerResumeTimersByTab = new Map<number, ReturnType<typeof setTimeout>>()
+export const explicitlyStoppedByTab = new Set<number>()
 export let activeTabId: number | null = null
 
 export function setActiveTabId(id: number | null): void {

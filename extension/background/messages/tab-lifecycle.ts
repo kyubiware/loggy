@@ -1,6 +1,7 @@
 import {
   previousModeByTab,
   debuggerResumeTimersByTab,
+  explicitlyStoppedByTab,
   getOrCreateTabState,
   setTabState,
   setMode,
@@ -31,7 +32,8 @@ export async function handleGetStatus(
   // If the tab is inactive, check whether it should auto-start via always-log.
   // This fixes a race where the popup opens before content-relay-ready fires,
   // showing the consent view for hosts that are already in the always-log list.
-  if (status.mode === 'inactive' && status.tabId >= 0) {
+  // Skip auto-activation if the user explicitly stopped logging for this tab.
+  if (status.mode === 'inactive' && !explicitlyStoppedByTab.has(status.tabId) && status.tabId >= 0) {
     const tabId = status.tabId
     const tab = await chrome.tabs.get(tabId).catch(() => null)
     const url = tab?.url

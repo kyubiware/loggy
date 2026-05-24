@@ -4,6 +4,7 @@ import {
   setTabState,
   updateIconForTab,
   debuggerResumeTimersByTab,
+  explicitlyStoppedByTab,
 } from '../tab-state'
 import { evaluateConsent } from '../consent'
 import { injectIntoTab } from '../content-scripts'
@@ -117,6 +118,7 @@ export async function handleContentRelayReady(
 }
 
 export async function handleStartLogging(tabId: number): Promise<TabCaptureState> {
+  explicitlyStoppedByTab.delete(tabId)
   const current = getOrCreateTabState(tabId)
 
   if (current.mode === 'devtools') {
@@ -172,6 +174,8 @@ export async function handleStopLogging(tabId: number): Promise<TabCaptureState>
   // Opportunistic poll: sync any data that accumulated during
   // page load, without waiting for the next alarm cycle.
   void pollAndSyncTab(tabId)
+
+  explicitlyStoppedByTab.add(tabId)
 
   return updated
 }
