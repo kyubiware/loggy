@@ -1,3 +1,14 @@
+import {
+  Brain,
+  CopyPlus,
+  FileText,
+  Globe,
+  RefreshCw,
+  Scissors,
+  Shield,
+  Archive,
+} from 'lucide-react'
+
 import { OptionCheckbox } from '../../shared/components/OptionCheckbox'
 import type { PersistedLoggySettings } from '../../types/state'
 
@@ -18,16 +29,20 @@ export interface ExportOptionCheckboxesProps {
   onSetTokenLimit: (value: number) => void
 }
 
-const TOGGLE_CONFIGS: Array<[ToggleSettingKey, string]> = [
-  ['includeAgentContext', 'Include LLM guidance'],
-  ['includeResponseBodies', 'Include response bodies'],
-  ['truncateConsoleLogs', 'Truncate console logs'],
-  ['truncateResponseBodies', 'Truncate response bodies'],
-  ['redactSensitiveInfo', 'Redact sensitive info'],
-  ['deduplicateApiCalls', 'Deduplicate API calls'],
-  ['networkExportEnabled', 'Network export to server'],
-  ['autoServerSync', 'Auto sync to server'],
-  ['preserveLogs', 'Preserve logs on reload'],
+const TOGGLE_CONFIGS: Array<[ToggleSettingKey, string, React.JSX.Element]> = [
+  ['includeAgentContext', 'Include LLM guidance', <Brain size={13} />],
+  ['includeResponseBodies', 'Include response bodies', <FileText size={13} />],
+  ['truncateConsoleLogs', 'Truncate console logs', <Scissors size={13} />],
+  [
+    'truncateResponseBodies',
+    'Truncate response bodies',
+    <Scissors size={13} className='rotate-90' />,
+  ],
+  ['redactSensitiveInfo', 'Redact sensitive info', <Shield size={13} />],
+  ['deduplicateApiCalls', 'Deduplicate API calls', <CopyPlus size={13} />],
+  ['networkExportEnabled', 'Network export to server', <Globe size={13} />],
+  ['autoServerSync', 'Auto sync to server', <RefreshCw size={13} />],
+  ['preserveLogs', 'Preserve logs on reload', <Archive size={13} />],
 ]
 
 export function ExportOptionCheckboxes({
@@ -37,11 +52,12 @@ export function ExportOptionCheckboxes({
 }: ExportOptionCheckboxesProps): React.JSX.Element {
   return (
     <div className='flex flex-col gap-2'>
-      {TOGGLE_CONFIGS.map(([key, label]) => (
+      {TOGGLE_CONFIGS.map(([key, label, icon]) => (
         <OptionCheckbox
           key={key}
           testId={key}
           label={label}
+          icon={icon}
           checked={settings[key]}
           onChange={() => onToggle(key)}
         />

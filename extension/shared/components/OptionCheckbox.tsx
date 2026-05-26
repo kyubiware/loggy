@@ -1,8 +1,9 @@
-import React from 'react'
+import React, { type ReactNode } from 'react'
 
 interface OptionCheckboxProps {
   testId: string
   label: string
+  icon?: ReactNode
   checked: boolean
   onChange: () => void
 }
@@ -10,6 +11,7 @@ interface OptionCheckboxProps {
 export const OptionCheckbox = React.memo(function OptionCheckbox({
   testId,
   label,
+  icon,
   checked,
   onChange,
 }: OptionCheckboxProps): React.JSX.Element {
@@ -22,6 +24,7 @@ export const OptionCheckbox = React.memo(function OptionCheckbox({
         checked={checked}
         onChange={onChange}
       />
+      {icon}
       {label}
     </label>
   )
