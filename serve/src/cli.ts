@@ -171,6 +171,25 @@ async function main() {
     process.exit(0)
   }
 
+  if (process.argv.includes('--help') || process.argv.includes('-h')) {
+    console.log(`loggy v${pkg.version}
+
+Usage: loggy [command] [flags]
+
+Commands:
+  print              Print the latest export received by the server
+
+Flags:
+  --port <number>    Port to listen on (default: 8743)
+  --output <path>    Write every received export to a file
+  --quiet            Disable interactive TUI
+  --https            Force HTTPS with Tailscale certificates
+  --no-https         Disable HTTPS even if Tailscale is available
+  -v, --version      Print version
+  -h, --help         Print this help message`)
+    process.exit(0)
+  }
+
   const notifier = updateNotifier({ pkg })
   notifier.notify({ defer: true })
 
