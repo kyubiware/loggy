@@ -62,7 +62,7 @@ export default function Popup() {
   }
 
   return (
-    <div className='p-4 flex flex-col gap-4 text-stone-800 dark:text-stone-200 bg-white dark:bg-stone-900 min-h-[200px] max-sm:min-h-[100dvh] max-sm:flex-1 max-sm:overflow-y-auto w-80 max-sm:w-full'>
+    <div className='p-4 flex flex-col gap-4 text-stone-800 dark:text-stone-200 bg-white dark:bg-stone-900 min-h-[200px] max-sm:min-h-[100dvh] max-sm:flex-1 max-sm:overflow-y-auto w-80 max-sm:w-full max-w-80'>
       <PopupHeader
         connected={status.connected}
         copyStatus={copyStatus}

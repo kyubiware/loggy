@@ -65,7 +65,7 @@ export function SettingsAccordion({
       >
         <div className='flex items-center gap-1 min-w-0'>
           <span className='shrink-0'>Settings</span>
-          <div className='group-open:hidden flex items-center gap-0.5 ml-1'>
+          <div className='group-open:hidden flex flex-wrap items-center gap-0.5 ml-1 [&_button]:w-[18px] [&_button]:h-[18px]'>
             {SETTING_ICONS.map(({ key, icon, label }) => (
               <span
                 key={key}
