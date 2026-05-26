@@ -113,7 +113,7 @@ export function createInitialState(): LoggyState {
     serverConnected: false,
     consoleLogs: [],
     networkEntries: [],
-    maxTokenLimit: 50000,
+    maxTokenLimit: 10000,
     preserveLogs: false,
   }
 }

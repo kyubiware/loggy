@@ -3,6 +3,8 @@ import {
   CopyPlus,
   FileText,
   Globe,
+  Minus,
+  Plus,
   RefreshCw,
   Scissors,
   Shield,
@@ -66,20 +68,30 @@ export function ExportOptionCheckboxes({
         <label className='text-xs text-stone-600 dark:text-stone-400 whitespace-nowrap'>
           Token limit
         </label>
-        <input
-          type='number'
-          min={0}
-          step={1000}
-          value={settings.maxTokenLimit === 0 ? '' : settings.maxTokenLimit}
-          placeholder='Off'
-          onChange={(event) => {
-            const raw = Number.parseInt(event.target.value, 10)
-            const value = Number.isNaN(raw) ? 0 : Math.max(0, Math.round(raw / 1000) * 1000)
-            onSetTokenLimit(value)
-          }}
-          className='flex-1 px-2 py-1 text-xs text-stone-800 dark:text-stone-200 bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 rounded'
+        <div
+          className='flex items-center gap-0.5'
           title='Maximum estimated tokens per tab (0 = no limit)'
-        />
+        >
+          <button
+            type='button'
+            onClick={() => onSetTokenLimit(Math.max(0, settings.maxTokenLimit - 1000))}
+            className='flex items-center justify-center w-6 h-6 rounded bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-600 transition-colors'
+            aria-label='Decrease token limit'
+          >
+            <Minus size={12} />
+          </button>
+          <span className='flex items-center justify-center w-12 px-1 py-1 text-xs text-stone-800 dark:text-stone-200 bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 rounded text-center font-medium'>
+            {settings.maxTokenLimit === 0 ? 'Off' : `${settings.maxTokenLimit / 1000}K`}
+          </span>
+          <button
+            type='button'
+            onClick={() => onSetTokenLimit(settings.maxTokenLimit + 1000)}
+            className='flex items-center justify-center w-6 h-6 rounded bg-white dark:bg-stone-700 border border-stone-200 dark:border-stone-600 text-stone-500 dark:text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-600 transition-colors'
+            aria-label='Increase token limit'
+          >
+            <Plus size={12} />
+          </button>
+        </div>
       </div>
     </div>
   )
