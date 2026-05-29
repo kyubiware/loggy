@@ -1,4 +1,5 @@
 import { useReducer, useRef } from 'react'
+import { debugLog } from '../../../utils/debug-logger'
 import type { ConsoleMessage } from '../../../types/console'
 import type { HAREntry } from '../../../types/har'
 import {
@@ -100,7 +101,9 @@ function hydrateSettings(state: LoggyState, settings: PersistedLoggySettings): L
 export function reducer(state: LoggyState, action: Action): LoggyState {
   const toggleKey = TOGGLE_FLAG_KEY[action.type]
   if (toggleKey) {
-    return { ...state, [toggleKey]: !(state[toggleKey] as boolean) }
+    const newValue = !(state[toggleKey] as boolean)
+    debugLog('lifecycle', 'panel', `reducer: TOGGLE ${toggleKey}: ${state[toggleKey]} → ${newValue}`)
+    return { ...state, [toggleKey]: newValue }
   }
 
   const setKey = SET_VALUE_KEY[action.type]
@@ -110,18 +113,30 @@ export function reducer(state: LoggyState, action: Action): LoggyState {
 
   switch (action.type) {
     case 'SET_DATA':
+      debugLog('capture', 'panel', `reducer: SET_DATA`, {
+        consoleLogs: action.consoleLogs.length,
+        networkEntries: action.networkEntries.length,
+        preserveLogs: state.preserveLogs,
+      })
       return {
         ...state,
         consoleLogs: action.consoleLogs,
         networkEntries: action.networkEntries,
       }
     case 'RESET_DATA':
+      debugLog('lifecycle', 'panel', `reducer: RESET_DATA (clearing ${state.consoleLogs.length} console, ${state.networkEntries.length} network)`, {
+        preserveLogs: state.preserveLogs,
+      })
       return {
         ...state,
         consoleLogs: [],
         networkEntries: [],
       }
     case 'HYDRATE_SETTINGS':
+      debugLog('storage', 'panel', `reducer: HYDRATE_SETTINGS`, {
+        preserveLogs: action.settings.preserveLogs,
+        keys: Object.keys(action.settings),
+      })
       return hydrateSettings(state, action.settings)
     case 'UPDATE_FILTER':
       return {

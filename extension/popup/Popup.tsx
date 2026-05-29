@@ -62,7 +62,7 @@ export default function Popup() {
   }
 
   return (
-    <div className='p-4 flex flex-col gap-4 text-stone-800 dark:text-stone-200 bg-white dark:bg-stone-900 min-h-[200px] max-sm:min-h-[100dvh] max-sm:flex-1 max-sm:overflow-y-auto w-80 max-sm:w-full max-w-80'>
+    <div className='p-4 flex flex-col gap-4 text-stone-800 dark:text-stone-200 bg-white dark:bg-stone-900 min-h-50 max-sm:min-h-dvh max-sm:flex-1 max-sm:overflow-y-auto w-80 max-sm:w-full max-w-80'>
       <PopupHeader
         connected={status.connected}
         copyStatus={copyStatus}
@@ -80,14 +80,23 @@ export default function Popup() {
         <>
           <SettingsAccordion
             defaultOpen={settings.settingsAccordionOpen}
-            onToggle={() => setSetting('settingsAccordionOpen', !settings.settingsAccordionOpen)}
+            onToggle={() =>
+              setSetting(
+                'settingsAccordionOpen',
+                !settings.settingsAccordionOpen,
+              )
+            }
             settings={settings}
-            onToggleSetting={(key: ToggleSettingKey) => setSetting(key, !settings[key])}
+            onToggleSetting={(key: ToggleSettingKey) =>
+              setSetting(key, !settings[key])
+            }
           >
             <ExportOptionCheckboxes
               settings={settings}
-              onToggle={(key: ToggleSettingKey) => setSetting(key, !settings[key])}
-              onSetTokenLimit={(value) => setSetting('maxTokenLimit', value)}
+              onToggle={(key: ToggleSettingKey) =>
+                setSetting(key, !settings[key])
+              }
+              onSetTokenLimit={value => setSetting('maxTokenLimit', value)}
             />
             {settings.networkExportEnabled && (
               <ServerConnection
@@ -100,7 +109,9 @@ export default function Popup() {
           </SettingsAccordion>
           <FiltersAccordion
             defaultOpen={settings.filtersAccordionOpen}
-            onToggle={() => setSetting('filtersAccordionOpen', !settings.filtersAccordionOpen)}
+            onToggle={() =>
+              setSetting('filtersAccordionOpen', !settings.filtersAccordionOpen)
+            }
           >
             <div className='flex flex-col gap-2'>
               <FilterInput
@@ -134,8 +145,6 @@ export default function Popup() {
           <TokenCountAndCopy
             hasData={hasData}
             tokenCount={tokenCount}
-            copyStatus={copyStatus}
-            onCopy={copyToClipboard}
             onPreview={handlePreview}
             onClear={handleClearLogs}
           />

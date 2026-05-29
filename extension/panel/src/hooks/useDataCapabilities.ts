@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { browser } from '../../../browser-apis/index.js'
+import { debugLog } from '../../../utils/debug-logger'
 import type { ConsoleMessage } from '../../../types/console'
 import type { HAREntry } from '../../../types/har'
 import {
@@ -145,11 +146,24 @@ function useLifecycleEffect(
     document.addEventListener('visibilitychange', handleVisibilityChange)
 
     const handleNavigated = (): void => {
-      if (latestStateRef.current.preserveLogs) {
+      const preserveLogs = latestStateRef.current.preserveLogs
+      debugLog('lifecycle', 'panel', `onNavigated fired: preserveLogs=${preserveLogs}`, {
+        consoleLogCount: latestStateRef.current.consoleLogs.length,
+        networkEntryCount: latestStateRef.current.networkEntries.length,
+        existingPreservedCount: preservedConsoleLogsRef.current.length,
+        networkClearCutoffMs: networkClearCutoffMs.current,
+      })
+
+      if (preserveLogs) {
         preservedConsoleLogsRef.current = latestStateRef.current.consoleLogs
         networkClearCutoffMs.current = null
+        debugLog('lifecycle', 'panel', `onNavigated: PRESERVING ${preservedConsoleLogsRef.current.length} console logs, networkCutoff=null`, {
+          preservedCount: preservedConsoleLogsRef.current.length,
+        })
         return
       }
+
+      debugLog('lifecycle', 'panel', 'onNavigated: CLEARING data (preserveLogs=false)')
       dispatch({ type: 'RESET_DATA' })
       networkClearCutoffMs.current = null
       clearResponseBodies()
@@ -205,8 +219,24 @@ export function useDataCapabilities(
       const rawEntries = await captureNetworkEntries()
       const networkEntries = enrichWithResponseBodies(filterNetworkEntriesAfterClear(rawEntries))
       let consoleLogs = await captureConsoleLogs()
+
+      debugLog('capture', 'panel', `captureData: raw capture complete`, {
+        capturedConsoleLogs: consoleLogs.length,
+        capturedNetworkEntries: networkEntries.length,
+        rawNetworkEntries: rawEntries.length,
+        networkClearCutoffMs: networkClearCutoffMs.current,
+        pendingPreservedCount: preservedConsoleLogsRef.current.length,
+        preserveLogs: latestStateRef.current.preserveLogs,
+      })
+
       if (preservedConsoleLogsRef.current.length > 0) {
+        const prevCount = consoleLogs.length
         consoleLogs = [...preservedConsoleLogsRef.current, ...consoleLogs]
+        debugLog('capture', 'panel', `captureData: MERGED preserved logs`, {
+          preservedCount: preservedConsoleLogsRef.current.length,
+          newCount: prevCount,
+          totalCount: consoleLogs.length,
+        })
         preservedConsoleLogsRef.current = []
       }
       dispatch({ type: 'SET_DATA', consoleLogs, networkEntries })
@@ -217,6 +247,11 @@ export function useDataCapabilities(
     }
   }, [filterNetworkEntriesAfterClear, dispatch])
   const clearData = useCallback(async (): Promise<void> => {
+    debugLog('lifecycle', 'panel', 'clearData: manual clear requested', {
+      consoleLogCount: latestStateRef.current.consoleLogs.length,
+      networkEntryCount: latestStateRef.current.networkEntries.length,
+      preserveLogs: latestStateRef.current.preserveLogs,
+    })
     dispatch({ type: 'RESET_DATA' })
     networkClearCutoffMs.current = Date.now()
     await clearCapturedConsoleLogs()
