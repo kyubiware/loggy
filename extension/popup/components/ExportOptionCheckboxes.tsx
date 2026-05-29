@@ -34,17 +34,20 @@ export interface ExportOptionCheckboxesProps {
 const TOGGLE_CONFIGS: Array<[ToggleSettingKey, string, React.JSX.Element]> = [
   ['includeAgentContext', 'Include LLM guidance', <Brain size={13} />],
   ['includeResponseBodies', 'Include response bodies', <FileText size={13} />],
+  ['redactSensitiveInfo', 'Redact sensitive info', <Shield size={13} />],
+  ['deduplicateApiCalls', 'Deduplicate API calls', <CopyPlus size={13} />],
+  ['networkExportEnabled', 'Network export to server', <Globe size={13} />],
+  ['autoServerSync', 'Auto sync to server', <RefreshCw size={13} />],
+  ['preserveLogs', 'Preserve logs on reload', <Archive size={13} />],
+]
+
+export const TRUNCATE_CONFIGS: Array<[ToggleSettingKey, string, React.JSX.Element]> = [
   ['truncateConsoleLogs', 'Truncate console logs', <Scissors size={13} />],
   [
     'truncateResponseBodies',
     'Truncate response bodies',
     <Scissors size={13} className='rotate-90' />,
   ],
-  ['redactSensitiveInfo', 'Redact sensitive info', <Shield size={13} />],
-  ['deduplicateApiCalls', 'Deduplicate API calls', <CopyPlus size={13} />],
-  ['networkExportEnabled', 'Network export to server', <Globe size={13} />],
-  ['autoServerSync', 'Auto sync to server', <RefreshCw size={13} />],
-  ['preserveLogs', 'Preserve logs on reload', <Archive size={13} />],
 ]
 
 export function ExportOptionCheckboxes({

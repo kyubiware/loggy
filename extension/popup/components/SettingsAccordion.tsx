@@ -4,7 +4,6 @@ import {
   Brain,
   ChevronDown,
   FileText,
-  Scissors,
   Shield,
   CopyPlus,
   Globe,
@@ -31,12 +30,6 @@ const SETTING_ICONS: Array<{
 }> = [
   { key: 'includeAgentContext', icon: <Brain size={14} />, label: 'Include LLM guidance' },
   { key: 'includeResponseBodies', icon: <FileText size={14} />, label: 'Include response bodies' },
-  { key: 'truncateConsoleLogs', icon: <Scissors size={14} />, label: 'Truncate console logs' },
-  {
-    key: 'truncateResponseBodies',
-    icon: <Scissors size={14} className='rotate-90' />,
-    label: 'Truncate response bodies',
-  },
   { key: 'redactSensitiveInfo', icon: <Shield size={14} />, label: 'Redact sensitive info' },
   { key: 'deduplicateApiCalls', icon: <CopyPlus size={14} />, label: 'Deduplicate API calls' },
   { key: 'networkExportEnabled', icon: <Globe size={14} />, label: 'Network export to server' },

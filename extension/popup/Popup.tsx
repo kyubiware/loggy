@@ -4,6 +4,7 @@ import { ConsentView, StopLoggingButton } from './components/ConsentView'
 import { EnhancedCaptureToggle } from './components/EnhancedCaptureToggle'
 import {
   ExportOptionCheckboxes,
+  TRUNCATE_CONFIGS,
   type ToggleSettingKey,
 } from './components/ExportOptionCheckboxes'
 import { FilterInput } from './components/FilterInput'
@@ -13,6 +14,7 @@ import { FiltersAccordion } from './components/FiltersAccordion'
 import { SettingsAccordion } from './components/SettingsAccordion'
 import { TokenCountAndCopy } from './components/TokenCountAndCopy'
 import { AlwaysLogHosts } from './components/AlwaysLogHosts'
+import { OptionCheckbox } from '../shared/components/OptionCheckbox'
 import { usePopupActions } from './hooks/usePopupActions'
 
 export default function Popup() {
@@ -112,7 +114,23 @@ export default function Popup() {
             onToggle={() =>
               setSetting('filtersAccordionOpen', !settings.filtersAccordionOpen)
             }
+            settings={settings}
+            onToggleSetting={(key: ToggleSettingKey) =>
+              setSetting(key, !settings[key])
+            }
           >
+            <div className='flex flex-col gap-2'>
+              {TRUNCATE_CONFIGS.map(([key, label, icon]) => (
+                <OptionCheckbox
+                  key={key}
+                  testId={key}
+                  label={label}
+                  icon={icon}
+                  checked={settings[key]}
+                  onChange={() => setSetting(key, !settings[key])}
+                />
+              ))}
+            </div>
             <div className='flex flex-col gap-2'>
               <FilterInput
                 icon={<Terminal size={14} />}
