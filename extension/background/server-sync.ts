@@ -58,6 +58,16 @@ export async function getAutoServerSync(): Promise<boolean> {
   return value
 }
 
+export async function getPreserveLogs(): Promise<boolean> {
+  const result = (await chrome.storage.local.get(LOGGY_PANEL_SETTINGS_STORAGE_KEY)) as Record<
+    string,
+    unknown
+  >
+  const settings = result[LOGGY_PANEL_SETTINGS_STORAGE_KEY] as { preserveLogs?: unknown } | undefined
+
+  return typeof settings?.preserveLogs === 'boolean' ? settings.preserveLogs : false
+}
+
 export async function getTabUrl(tabId: number): Promise<string> {
   try {
     const tab = await chrome.tabs.get(tabId)

@@ -1,4 +1,4 @@
-import { debugLog } from '../utils/debug-logger'
+import { clearDebugEntries, debugLog } from '../utils/debug-logger'
 import { LOGGY_MESSAGE_NAMESPACE, type CaptureMessage, type LoggyMessage } from '../types/messages'
 import {
   attachToTab,
@@ -17,6 +17,7 @@ import {
   getOrCreateTabState,
   getStorageKeyForTab,
   setMode,
+  setTabState,
   persistTabStates,
   updateIconForTab,
   restoreTabStatesFromStorage,
@@ -24,8 +25,12 @@ import {
   refreshActiveTabId,
 } from './tab-state'
 import { evaluateConsent } from './consent'
-import { getFailedBufferStorageKeyForTab, lastExportFingerprintByTab } from './server-sync'
-import { AUTO_SYNC_ALARM_NAME, pollAllActiveTabs } from './polling'
+import {
+  getFailedBufferStorageKeyForTab,
+  getPreserveLogs,
+  lastExportFingerprintByTab,
+} from './server-sync'
+import { AUTO_SYNC_ALARM_NAME, pollAllActiveTabs, setPollFingerprint } from './polling'
 import {
   handleCaptureMessage,
   handleControlMessage,
@@ -166,6 +171,29 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
 })
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  // Clear stored entries when the page starts loading (refresh or navigation),
+  // unless preserveLogs is enabled.
+  if (changeInfo.status === 'loading') {
+    void (async () => {
+      try {
+        const preserveLogs = await getPreserveLogs()
+        if (!preserveLogs) {
+          debugLog('capture', 'background', `Tab loading: clearing stored entries (preserveLogs=false)`, { tabId })
+          await chrome.storage.session.remove(getStorageKeyForTab(tabId))
+          await setPollFingerprint(tabId, '')
+          lastExportFingerprintByTab.delete(tabId)
+          const current = getOrCreateTabState(tabId)
+          await setTabState({ ...current, logCount: 0 })
+          clearDebugEntries()
+        } else {
+          debugLog('capture', 'background', `Tab loading: preserving entries (preserveLogs=true)`, { tabId })
+        }
+      } catch (error) {
+        debugLog('capture', 'background', `Tab loading: failed to clear entries`, { tabId, error: String(error) })
+      }
+    })()
+  }
+
   // Only react to URL changes (SPA navigation or full page navigation)
   if (!changeInfo.url) {
     return
