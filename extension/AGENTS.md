@@ -126,6 +126,7 @@ Chrome/Firefox DevTools extension capturing Console & Network logs as Markdown f
 
 ## ANTI-PATTERNS (THIS PROJECT)
 
+- **NEVER reduce file size by compressing whitespace** — when Biome reports `noExcessiveLinesPerFunction` or `noExcessiveLinesPerFile`, split the code into smaller files or extract functions/hooks into separate modules. Do NOT put multiple statements on one line, remove blank lines between logical groups, or compact object literals to squeeze under line limits. Readability always wins.
 - **NEVER mutate state directly** — use spread operator
 - **NEVER use implicit any** — strict mode
 - **NEVER skip error handling** — all async ops have try/catch
