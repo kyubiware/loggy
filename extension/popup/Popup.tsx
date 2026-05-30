@@ -34,6 +34,7 @@ export default function Popup() {
     serverConnected,
     handleServerUrlChange,
     handleRetryConnection,
+    markdown,
     tokenCount,
     hasData,
     copyStatus,
@@ -163,6 +164,7 @@ export default function Popup() {
           <TokenCountAndCopy
             hasData={hasData}
             tokenCount={tokenCount}
+            markdown={markdown}
             onPreview={handlePreview}
             onClear={handleClearLogs}
           />

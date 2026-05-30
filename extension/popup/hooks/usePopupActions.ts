@@ -215,6 +215,7 @@ export function usePopupActions() {
     handleServerUrlChange,
     handleRetryConnection,
     // Data
+    markdown,
     tokenCount,
     hasData,
     copyStatus,

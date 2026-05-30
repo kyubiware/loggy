@@ -21,6 +21,7 @@ const mockUsePopupActions = vi.hoisted(() => ({
   serverConnected: false,
   handleServerUrlChange: vi.fn(),
   handleRetryConnection: vi.fn(),
+  markdown: '',
   tokenCount: 0,
   hasData: false,
   copyStatus: 'idle' as const,
@@ -73,7 +74,7 @@ describe('Popup responsive classes', () => {
 
     const mainContainer = container.firstElementChild as HTMLElement
     expect(mainContainer.className).toContain('w-80')
-    expect(mainContainer.className).toContain('max-sm:min-h-[100dvh]')
+    expect(mainContainer.className).toContain('max-sm:min-h-dvh')
     expect(mainContainer.className).toContain('max-sm:flex-1')
     expect(mainContainer.className).toContain('max-sm:overflow-y-auto')
 
