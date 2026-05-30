@@ -1,5 +1,4 @@
 import { useReducer, useRef } from 'react'
-import { debugLog } from '../../../utils/debug-logger'
 import type { ConsoleMessage } from '../../../types/console'
 import type { HAREntry } from '../../../types/har'
 import {
@@ -8,6 +7,7 @@ import {
   mergePersistedSettings,
   type PersistedLoggySettings,
 } from '../../../types/state'
+import { debugLog } from '../../../utils/debug-logger'
 import { useAutoSync } from './useAutoSync'
 import { useDataCapabilities } from './useDataCapabilities'
 import { useServerProbe } from './useServerProbe'
@@ -102,7 +102,11 @@ export function reducer(state: LoggyState, action: Action): LoggyState {
   const toggleKey = TOGGLE_FLAG_KEY[action.type]
   if (toggleKey) {
     const newValue = !(state[toggleKey] as boolean)
-    debugLog('lifecycle', 'panel', `reducer: TOGGLE ${toggleKey}: ${state[toggleKey]} → ${newValue}`)
+    debugLog(
+      'lifecycle',
+      'panel',
+      `reducer: TOGGLE ${toggleKey}: ${state[toggleKey]} → ${newValue}`
+    )
     return { ...state, [toggleKey]: newValue }
   }
 
@@ -124,9 +128,14 @@ export function reducer(state: LoggyState, action: Action): LoggyState {
         networkEntries: action.networkEntries,
       }
     case 'RESET_DATA':
-      debugLog('lifecycle', 'panel', `reducer: RESET_DATA (clearing ${state.consoleLogs.length} console, ${state.networkEntries.length} network)`, {
-        preserveLogs: state.preserveLogs,
-      })
+      debugLog(
+        'lifecycle',
+        'panel',
+        `reducer: RESET_DATA (clearing ${state.consoleLogs.length} console, ${state.networkEntries.length} network)`,
+        {
+          preserveLogs: state.preserveLogs,
+        }
+      )
       return {
         ...state,
         consoleLogs: [],
