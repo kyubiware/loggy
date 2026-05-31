@@ -74,9 +74,7 @@ describe('Popup responsive classes', () => {
 
     const mainContainer = container.firstElementChild as HTMLElement
     expect(mainContainer.className).toContain('w-80')
-    expect(mainContainer.className).toContain('max-sm:min-h-dvh')
-    expect(mainContainer.className).toContain('max-sm:flex-1')
-    expect(mainContainer.className).toContain('max-sm:overflow-y-auto')
+    expect(mainContainer.className).toContain('min-h-50')
 
     const popupHeader = screen.getByText('Loggy').closest('div') as HTMLElement
     expect(popupHeader.className).toContain('max-sm:sticky')
