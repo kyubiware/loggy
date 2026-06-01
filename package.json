@@ -16,7 +16,13 @@
     "firefox:debug": "npm run install:firefox:debug && npm run firefox",
     "install:firefox": "npm run install:firefox --workspace=extension",
     "install:firefox:debug": "LOGGY_DEBUG_BUILD=true npm run install:firefox --workspace=extension",
-    "publish:serve": "npm publish --workspace=serve --access public"
+    "publish:serve": "npm publish --workspace=serve --access public",
+    "release:extension:patch": "bash scripts/release-extension.sh patch",
+    "release:extension:minor": "bash scripts/release-extension.sh minor",
+    "release:extension:major": "bash scripts/release-extension.sh major",
+    "release:serve:patch": "bash scripts/release-serve.sh patch",
+    "release:serve:minor": "bash scripts/release-serve.sh minor",
+    "release:serve:major": "bash scripts/release-serve.sh major"
   },
   "devDependencies": {
     "husky": "^9.1.7",
