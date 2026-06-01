@@ -3,6 +3,7 @@ import { debugLog } from '../utils/debug-logger'
 
 export const STORAGE_KEY_PREFIX = 'loggy_capture_'
 export const TAB_STATES_STORAGE_KEY = 'loggy_tab_capture_states'
+export const EXPLICITLY_STOPPED_STORAGE_KEY = 'loggy_explicitly_stopped_tabs'
 
 export const tabStates = new Map<number, TabCaptureState>()
 export const previousModeByTab = new Map<number, CaptureMode>()
@@ -41,6 +42,39 @@ export function getOrCreateTabState(tabId: number): TabCaptureState {
 export function persistTabStates(): Promise<void> {
   const serialized = Object.fromEntries(tabStates.entries())
   return chrome.storage.session.set({ [TAB_STATES_STORAGE_KEY]: serialized })
+}
+
+export function persistExplicitlyStoppedTabs(): Promise<void> {
+  return chrome.storage.session.set({
+    [EXPLICITLY_STOPPED_STORAGE_KEY]: Array.from(explicitlyStoppedByTab),
+  })
+}
+
+export async function markTabExplicitlyStopped(tabId: number): Promise<void> {
+  explicitlyStoppedByTab.add(tabId)
+  await persistExplicitlyStoppedTabs()
+}
+
+export async function unmarkTabExplicitlyStopped(tabId: number): Promise<void> {
+  explicitlyStoppedByTab.delete(tabId)
+  await persistExplicitlyStoppedTabs()
+}
+
+export async function restoreExplicitlyStoppedTabsFromStorage(): Promise<void> {
+  const result = (await chrome.storage.session.get(EXPLICITLY_STOPPED_STORAGE_KEY)) as Record<
+    string,
+    unknown
+  >
+  const stored = result[EXPLICITLY_STOPPED_STORAGE_KEY]
+  if (!Array.isArray(stored)) {
+    return
+  }
+  for (const value of stored) {
+    const tabId = Number(value)
+    if (Number.isFinite(tabId)) {
+      explicitlyStoppedByTab.add(tabId)
+    }
+  }
 }
 
 export async function setTabState(state: TabCaptureState): Promise<void> {

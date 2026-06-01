@@ -23,6 +23,7 @@ import {
   updateIconForTab,
   restoreTabStatesFromStorage,
   restoreLogCountsFromStorage,
+  restoreExplicitlyStoppedTabsFromStorage,
   refreshActiveTabId,
 } from './tab-state'
 import { evaluateConsent } from './consent'
@@ -47,6 +48,7 @@ async function initialize(): Promise<void> {
 
   await restoreTabStatesFromStorage()
   await restoreLogCountsFromStorage()
+  await restoreExplicitlyStoppedTabsFromStorage()
   await refreshActiveTabId()
 
   for (const [tabId, state] of tabStates.entries()) {
@@ -155,12 +157,17 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   previousModeByTab.delete(tabId)
   tabStates.delete(tabId)
   lastExportFingerprintByTab.delete(tabId)
+  const wasExplicitlyStopped = explicitlyStoppedByTab.delete(tabId)
   if (activeTabId === tabId) {
     setActiveTabId(null)
   }
 
   void (async () => {
     await persistTabStates()
+    if (wasExplicitlyStopped) {
+      const { persistExplicitlyStoppedTabs } = await import('./tab-state')
+      await persistExplicitlyStoppedTabs()
+    }
     await chrome.storage.session.remove(getStorageKeyForTab(tabId))
     await chrome.storage.session.remove(getFailedBufferStorageKeyForTab(tabId))
   })()

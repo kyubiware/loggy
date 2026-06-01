@@ -348,4 +348,43 @@ describe('stop-logging prevents get-status auto-re-activation', () => {
     const status = await sendMessage<{ mode: string }>({ type: 'get-status' })
     expect(status.mode).toBe('inactive')
   })
+
+  it('keeps mode inactive when content-relay-ready fires after stop-logging', async () => {
+    const TAB_ID_RELAY = 604
+
+    setActiveTab({ id: TAB_ID_RELAY, url: LOCALHOST_URL })
+    activateTab(TAB_ID_RELAY)
+
+    // Start logging first
+    await sendMessage({ type: 'start-logging', tabId: TAB_ID_RELAY })
+
+    // Stop logging
+    const stopResult = await sendMessage<{ mode: string }>({
+      type: 'stop-logging',
+      tabId: TAB_ID_RELAY,
+    })
+    expect(stopResult.mode).toBe('inactive')
+
+    // Simulate content-relay-ready message arriving from the page
+    // (e.g. after a refresh re-injected the content script before
+    // the navigation handler could block re-injection).
+    mockInjectIntoTab.mockClear()
+    const relayResult = await sendMessage<{ mode?: string; consent?: { hasConsent: boolean } }>(
+      {
+        type: 'content-relay-ready',
+        url: LOCALHOST_URL,
+        tabId: TAB_ID_RELAY,
+      },
+      { tab: { id: TAB_ID_RELAY, url: LOCALHOST_URL } as chrome.tabs.Tab },
+    )
+
+    // Should NOT have re-injected content scripts
+    expect(mockInjectIntoTab).not.toHaveBeenCalled()
+    // Consent should be denied
+    expect(relayResult.consent?.hasConsent).toBe(false)
+
+    // Mode should still be inactive
+    const status = await sendMessage<{ mode: string }>({ type: 'get-status' })
+    expect(status.mode).toBe('inactive')
+  })
 })

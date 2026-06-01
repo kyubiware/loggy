@@ -5,6 +5,8 @@ import {
   updateIconForTab,
   debuggerResumeTimersByTab,
   explicitlyStoppedByTab,
+  markTabExplicitlyStopped,
+  unmarkTabExplicitlyStopped,
 } from '../tab-state'
 import { evaluateConsent } from '../consent'
 import { injectIntoTab } from '../content-scripts'
@@ -40,7 +42,7 @@ export async function handleToggleDebugger(tabId: number): Promise<TabCaptureSta
     detachFromTab(tabId)
     const fallbackMode: CaptureMode = current.connected ? 'content-script' : 'inactive'
     const updated = await setMode(tabId, fallbackMode)
-    explicitlyStoppedByTab.add(tabId)
+    await markTabExplicitlyStopped(tabId)
     return updated
   }
 
@@ -51,7 +53,7 @@ export async function handleToggleDebugger(tabId: number): Promise<TabCaptureSta
     }
   })
   const updated = await setMode(tabId, 'debugger')
-  explicitlyStoppedByTab.delete(tabId)
+  await unmarkTabExplicitlyStopped(tabId)
   return updated
 }
 
@@ -64,6 +66,17 @@ export async function handleContentRelayReady(
   const tabId = message.tabId ?? sender.tab?.id
   if (typeof tabId !== 'number') {
     return { ok: false }
+  }
+
+  // If the user explicitly stopped logging for this tab, do not
+  // re-activate capture on a content-relay handshake (e.g. after a
+  // page refresh re-injected the content script).
+  if (explicitlyStoppedByTab.has(tabId)) {
+    const current = getOrCreateTabState(tabId)
+    return {
+      ...current,
+      consent: { hasConsent: false, captureMode: 'none', reason: 'explicitly-stopped' },
+    }
   }
 
   const url = message.url || (sender.tab?.url ?? '')
@@ -119,7 +132,7 @@ export async function handleContentRelayReady(
 }
 
 export async function handleStartLogging(tabId: number): Promise<TabCaptureState> {
-  explicitlyStoppedByTab.delete(tabId)
+  await unmarkTabExplicitlyStopped(tabId)
   const current = getOrCreateTabState(tabId)
 
   if (current.mode === 'devtools') {
@@ -176,7 +189,7 @@ export async function handleStopLogging(tabId: number): Promise<TabCaptureState>
   // page load, without waiting for the next alarm cycle.
   void pollAndSyncTab(tabId)
 
-  explicitlyStoppedByTab.add(tabId)
+  await markTabExplicitlyStopped(tabId)
 
   return updated
 }
