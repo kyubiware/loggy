@@ -1,6 +1,6 @@
 import type React from 'react'
 
-import { Check, Copy } from 'lucide-react'
+import { Check, Copy, Pause, Play } from 'lucide-react'
 
 import iconUrl from '../../icons/icon48.png'
 
@@ -9,6 +9,9 @@ export interface PopupHeaderProps {
   copyStatus?: 'idle' | 'success' | 'error' | 'no-data'
   onCopy?: () => void
   hasData?: boolean
+  showEnhancedToggle?: boolean
+  isEnhanced?: boolean
+  onToggleEnhanced?: () => void
 }
 
 export function PopupHeader({
@@ -16,6 +19,9 @@ export function PopupHeader({
   copyStatus = 'idle',
   onCopy,
   hasData = false,
+  showEnhancedToggle = false,
+  isEnhanced = false,
+  onToggleEnhanced,
 }: PopupHeaderProps): React.JSX.Element {
   return (
     <div className='flex items-center justify-between border-b border-stone-200 dark:border-stone-700 pb-2 max-sm:sticky max-sm:top-0 max-sm:z-10 max-sm:bg-white max-sm:dark:bg-stone-900'>
@@ -24,6 +30,20 @@ export function PopupHeader({
         Loggy
       </h1>
       <div className='flex items-center gap-2'>
+        {showEnhancedToggle && (
+          <button
+            type='button'
+            onClick={onToggleEnhanced}
+            className={`p-1.5 rounded transition-colors ${
+              isEnhanced
+                ? 'text-amber-600 hover:text-amber-800 hover:bg-amber-50 dark:text-amber-400 dark:hover:text-amber-300 dark:hover:bg-amber-900/40'
+                : 'text-stone-500 hover:text-stone-800 hover:bg-stone-100 dark:text-stone-400 dark:hover:text-stone-200 dark:hover:bg-stone-800'
+            }`}
+            title={isEnhanced ? 'Stop Enhanced Capture' : 'Start Enhanced Capture'}
+          >
+            {isEnhanced ? <Pause size={16} /> : <Play size={16} />}
+          </button>
+        )}
         {copyStatus === 'success' && (
           <Check size={14} className='text-green-600 dark:text-green-400' />
         )}

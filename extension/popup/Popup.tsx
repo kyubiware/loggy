@@ -1,7 +1,6 @@
 import { Globe, Terminal } from 'lucide-react'
 
 import { ConsentView, StopLoggingButton } from './components/ConsentView'
-import { EnhancedCaptureToggle } from './components/EnhancedCaptureToggle'
 import {
   ExportOptionCheckboxes,
   TRUNCATE_CONFIGS,
@@ -69,6 +68,9 @@ export default function Popup() {
         copyStatus={copyStatus}
         onCopy={copyToClipboard}
         hasData={hasData}
+        showEnhancedToggle={!isFirefox}
+        isEnhanced={isEnhanced}
+        onToggleEnhanced={handleToggleDebugger}
       />
 
       {showConsentView ? (
@@ -169,12 +171,6 @@ export default function Popup() {
         </>
       )}
 
-      {!isFirefox && (
-        <EnhancedCaptureToggle
-          isEnhanced={isEnhanced}
-          onToggle={handleToggleDebugger}
-        />
-      )}
       {!showConsentView && status.mode !== 'devtools' && (
         <StopLoggingButton onStop={handleStopLogging} />
       )}
