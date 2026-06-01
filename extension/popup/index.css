@@ -2,6 +2,6 @@
 
 @layer base {
   button {
-    cursor: default;
+    cursor: pointer;
   }
 }
