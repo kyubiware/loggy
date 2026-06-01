@@ -15,6 +15,7 @@ import {
 } from '../../capture/debugger-capture'
 import { pollAndSyncTab } from '../polling'
 import type {
+  CaptureMode,
   ConsentResponseMessage,
   ConsentState,
   ContentRelayReadyMessage,
@@ -37,10 +38,9 @@ export async function handleToggleDebugger(tabId: number): Promise<TabCaptureSta
 
   if (current.mode === 'debugger') {
     detachFromTab(tabId)
-    const updated = await setMode(
-      tabId,
-      current.connected ? 'content-script' : 'inactive',
-    )
+    const fallbackMode: CaptureMode = current.connected ? 'content-script' : 'inactive'
+    const updated = await setMode(tabId, fallbackMode)
+    explicitlyStoppedByTab.add(tabId)
     return updated
   }
 
@@ -51,6 +51,7 @@ export async function handleToggleDebugger(tabId: number): Promise<TabCaptureSta
     }
   })
   const updated = await setMode(tabId, 'debugger')
+  explicitlyStoppedByTab.delete(tabId)
   return updated
 }
 

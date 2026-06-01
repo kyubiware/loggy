@@ -12,6 +12,7 @@ import {
   tabStates,
   previousModeByTab,
   debuggerResumeTimersByTab,
+  explicitlyStoppedByTab,
   activeTabId,
   setActiveTabId,
   getOrCreateTabState,
@@ -202,6 +203,12 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   const url = changeInfo.url
   void (async () => {
     try {
+      // Skip auto-reactivation if the user explicitly stopped logging for this tab
+      if (explicitlyStoppedByTab.has(tabId)) {
+        debugLog('capture', 'background', `Tab navigation: skipping re-activation (explicitly stopped)`, { tabId })
+        return
+      }
+
       const consent = await evaluateConsent(tabId, url)
 
       if (consent.hasConsent) {

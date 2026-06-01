@@ -74,8 +74,11 @@ type MessageListener = (
 
 type TabActivatedListener = (activeInfo: { tabId: number }) => void
 
+type TabUpdatedListener = (tabId: number, changeInfo: Record<string, unknown>) => void
+
 const onMessageListeners: MessageListener[] = []
 const onActivatedListeners: TabActivatedListener[] = []
+const onUpdatedListeners: TabUpdatedListener[] = []
 
 // --- Storage state ---
 
@@ -151,7 +154,11 @@ beforeAll(() => {
         onActivatedListeners.push(fn)
       }),
     },
-    onUpdated: { addListener: vi.fn() },
+    onUpdated: {
+      addListener: vi.fn((fn: TabUpdatedListener) => {
+        onUpdatedListeners.push(fn)
+      }),
+    },
     sendMessage: vi.fn(),
     get: vi.fn(() => {
       if (!mockActiveTab) {
@@ -201,6 +208,16 @@ function activateTab(tabId: number): void {
   for (const listener of onActivatedListeners) {
     listener({ tabId })
   }
+}
+
+function fireTabUpdated(tabId: number, changeInfo: Record<string, unknown>): void {
+  for (const listener of onUpdatedListeners) {
+    listener(tabId, changeInfo)
+  }
+}
+
+function flushAsync(ms = 50): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 // --- Tests ---
@@ -300,5 +317,35 @@ describe('stop-logging prevents get-status auto-re-activation', () => {
       tabId: TAB_ID_RESUME,
     })
     expect(restartResult.mode).not.toBe('inactive')
+  })
+
+  it('keeps mode inactive after stop-logging + page refresh (navigation)', async () => {
+    const TAB_ID_NAV = 603
+
+    setActiveTab({ id: TAB_ID_NAV, url: LOCALHOST_URL })
+    activateTab(TAB_ID_NAV)
+
+    // Start logging first
+    const startResult = await sendMessage<{ mode: string }>({
+      type: 'start-logging',
+      tabId: TAB_ID_NAV,
+    })
+    expect(startResult.mode).not.toBe('inactive')
+
+    // Stop logging
+    const stopResult = await sendMessage<{ mode: string }>({
+      type: 'stop-logging',
+      tabId: TAB_ID_NAV,
+    })
+    expect(stopResult.mode).toBe('inactive')
+
+    // Simulate page refresh (loading + URL change)
+    fireTabUpdated(TAB_ID_NAV, { status: 'loading' })
+    fireTabUpdated(TAB_ID_NAV, { url: 'http://localhost:3000/refreshed-page' })
+    await flushAsync()
+
+    // get-status should NOT auto-reactivate after navigation
+    const status = await sendMessage<{ mode: string }>({ type: 'get-status' })
+    expect(status.mode).toBe('inactive')
   })
 })
