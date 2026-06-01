@@ -128,6 +128,9 @@ export function usePopupActions() {
       { type: 'stop-logging', tabId },
       () => refreshStatus(),
     )
+    if (currentHost) {
+      chrome.runtime.sendMessage({ type: 'remove-always-log', host: currentHost })
+    }
   }
 
   const handleAlwaysLog = () => {
@@ -149,12 +152,6 @@ export function usePopupActions() {
           setStatus(response)
         },
       )
-    })
-  }
-
-  const handleRemoveAlwaysLog = (host: string) => {
-    chrome.runtime.sendMessage({ type: 'remove-always-log', host }, () => {
-      refreshStatus()
     })
   }
 
@@ -225,7 +222,6 @@ export function usePopupActions() {
     handleClearLogs,
     handleAlwaysLog,
     handleToggleDebugger,
-    handleRemoveAlwaysLog,
     handlePreview,
     copyToClipboard,
   }

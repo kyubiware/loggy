@@ -13,7 +13,6 @@ import { ServerConnection } from './components/ServerConnection'
 import { FiltersAccordion } from './components/FiltersAccordion'
 import { SettingsAccordion } from './components/SettingsAccordion'
 import { TokenCountAndCopy } from './components/TokenCountAndCopy'
-import { AlwaysLogHosts } from './components/AlwaysLogHosts'
 import { OptionCheckbox } from '../shared/components/OptionCheckbox'
 import { usePopupActions } from './hooks/usePopupActions'
 
@@ -43,7 +42,6 @@ export default function Popup() {
     handleClearLogs,
     handleAlwaysLog,
     handleToggleDebugger,
-    handleRemoveAlwaysLog,
     handlePreview,
     copyToClipboard,
   } = usePopupActions()
@@ -180,7 +178,6 @@ export default function Popup() {
       {!showConsentView && status.mode !== 'devtools' && (
         <StopLoggingButton onStop={handleStopLogging} />
       )}
-      <AlwaysLogHosts onRemove={handleRemoveAlwaysLog} />
     </div>
   )
 }
