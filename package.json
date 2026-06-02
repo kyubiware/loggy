@@ -22,7 +22,8 @@
     "release:extension:major": "bash scripts/release-extension.sh major",
     "release:serve:patch": "bash scripts/release-serve.sh patch",
     "release:serve:minor": "bash scripts/release-serve.sh minor",
-    "release:serve:major": "bash scripts/release-serve.sh major"
+    "release:serve:major": "bash scripts/release-serve.sh major",
+    "package:chrome": "npm run package:chrome --workspace=extension"
   },
   "devDependencies": {
     "husky": "^9.1.7",

@@ -29,7 +29,6 @@
     "alarms"
   ],
   "host_permissions": [
-    "http://localhost:*/",
     "*://*/*"
   ]
 }

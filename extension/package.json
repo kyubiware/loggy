@@ -34,7 +34,9 @@
     "sign:firefox": "dotenv -- web-ext sign --source-dir dist-firefox --channel listed --amo-metadata amo-metadata.json",
     "update-amo": "dotenv -- REPLACE_DESCRIPTION=scripts/amo-description.md node scripts/update-amo-description.cjs",
     "lint:firefox": "web-ext lint --source-dir dist-firefox",
+    "package:chrome": "npm run build:chrome && rm -f loggy-chrome.zip && (cd dist-chrome && zip -r ../loggy-chrome.zip .)",
     "screenshot": "node scripts/screenshot-firefox.cjs",
+    "screenshot:chrome": "node scripts/screenshot-chrome.cjs",
     "release": "node scripts/release.cjs"
   },
   "keywords": [],
