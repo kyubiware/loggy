@@ -454,4 +454,21 @@ describe('start-logging uses debugger mode on Chrome', () => {
     // triggers an async fallback to 'content-script'
     expect(result.mode).toBe('debugger')
   })
+
+  it('sets connected=true so toggle-debugger pauses to content-script (not inactive)', async () => {
+    await sendMessage<{ mode: string }>({
+      type: 'start-logging',
+      tabId: TAB_ID,
+    })
+
+    // Simulate clicking the pause button in popup
+    const toggleResult = await sendMessage<{ mode: string; connected: boolean }>({
+      type: 'toggle-debugger',
+      tabId: TAB_ID,
+    })
+
+    // Should detach and fall back to content-script, NOT inactive
+    expect(toggleResult.mode).toBe('content-script')
+    expect(mockDetachFromTab).toHaveBeenCalledWith(TAB_ID)
+  })
 })

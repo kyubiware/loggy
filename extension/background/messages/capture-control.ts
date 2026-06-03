@@ -159,8 +159,12 @@ export async function handleStartLogging(tabId: number): Promise<TabCaptureState
       }
     })
     const updated = await setMode(tabId, 'debugger')
+    // Mark connected so handleToggleDebugger pauses to content-script
+    // instead of falling back to inactive (which would show consent view).
+    const connectedState = { ...updated, connected: true }
+    await setTabState(connectedState)
     updateIconForTab(tabId)
-    return updated
+    return connectedState
   }
 
   // Firefox: content-script mode
