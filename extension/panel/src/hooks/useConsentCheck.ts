@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useConsentActions } from '../../../shared/hooks/useConsentActions'
 import type { ConsentState } from '../../../types/messages'
 
 type ConsentCheckState = 'checking' | 'not-consented' | 'consented'
@@ -36,23 +37,20 @@ export function useConsentCheck() {
     )
   }, [])
 
-  const handleStartLogging = useCallback(() => {
+  const refreshConsent = useCallback(() => {
     const tabId = chrome.devtools.inspectedWindow.tabId
-    if (typeof tabId === 'number') {
-      chrome.runtime.sendMessage({ type: 'start-logging', tabId })
-    }
-    setConsentState('consented')
+    if (typeof tabId !== 'number') return
+    chrome.runtime.sendMessage({ type: 'request-consent', tabId }, (response: ConsentState) => {
+      setConsentState(response?.hasConsent ? 'consented' : 'not-consented')
+    })
   }, [])
 
-  const handleAlwaysLog = useCallback(() => {
-    if (!host) return
-    const tabId = chrome.devtools.inspectedWindow.tabId
-    chrome.runtime.sendMessage({ type: 'add-always-log', host })
-    if (typeof tabId === 'number') {
-      chrome.runtime.sendMessage({ type: 'start-logging', tabId })
-    }
-    setConsentState('consented')
-  }, [host])
+  const tabId = chrome.devtools.inspectedWindow.tabId
+  const { handleStartLogging, handleAlwaysLog } = useConsentActions({
+    tabId,
+    host,
+    onStateChanged: refreshConsent,
+  })
 
   return { consentState, host, handleStartLogging, handleAlwaysLog }
 }

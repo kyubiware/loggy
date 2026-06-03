@@ -1,6 +1,6 @@
 import { Globe, Terminal } from 'lucide-react'
 
-import { ConsentView, StopLoggingButton } from './components/ConsentView'
+import { ConsentView, StopLoggingButton } from '../shared/components/ConsentView'
 import {
   ExportOptionCheckboxes,
   TRUNCATE_CONFIGS,

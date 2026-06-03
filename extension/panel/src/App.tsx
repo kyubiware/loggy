@@ -1,6 +1,6 @@
 import type React from 'react'
+import { ConsentView } from '../../shared/components/ConsentView'
 import { AppContent } from './AppContent'
-import { ConsentView } from './components/ConsentView'
 import { useConsentCheck } from './hooks/useConsentCheck'
 import { LoggyProvider } from './LoggyContext'
 
@@ -17,7 +17,12 @@ export default function App(): React.JSX.Element {
 
   if (consentState === 'not-consented') {
     return (
-      <ConsentView host={host} onStartLogging={handleStartLogging} onAlwaysLog={handleAlwaysLog} />
+      <ConsentView
+        host={host}
+        onStartLogging={handleStartLogging}
+        onAlwaysLog={handleAlwaysLog}
+        fullPage
+      />
     )
   }
 

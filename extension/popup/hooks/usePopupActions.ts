@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { probeServer } from '../../panel/server-probe'
+import { useConsentActions } from '../../shared/hooks/useConsentActions'
 import { useDebouncedFilter } from '../../shared/hooks/useDebouncedFilter'
 import type { StatusResponse } from '../../types/messages'
 import { usePopupData } from './usePopupData'
@@ -101,7 +102,7 @@ export function usePopupActions() {
     }
   })()
 
-  const refreshStatus = () => {
+  const refreshStatus = useCallback(() => {
     chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
       const tabId = tabs[0]?.id
       if (!tabId) return
@@ -112,34 +113,13 @@ export function usePopupActions() {
         },
       )
     })
-  }
+  }, [])
 
-  const handleStartLogging = () => {
-    if (!tabId) return
-    chrome.runtime.sendMessage(
-      { type: 'start-logging', tabId },
-      () => refreshStatus(),
-    )
-  }
-
-  const handleStopLogging = () => {
-    if (!tabId) return
-    chrome.runtime.sendMessage(
-      { type: 'stop-logging', tabId },
-      () => refreshStatus(),
-    )
-    if (currentHost) {
-      chrome.runtime.sendMessage({ type: 'remove-always-log', host: currentHost })
-    }
-  }
-
-  const handleAlwaysLog = () => {
-    if (!currentHost) return
-    chrome.runtime.sendMessage(
-      { type: 'add-always-log', host: currentHost },
-      () => refreshStatus(),
-    )
-  }
+  const { handleStartLogging, handleStopLogging, handleAlwaysLog } = useConsentActions({
+    tabId,
+    host: currentHost,
+    onStateChanged: refreshStatus,
+  })
 
   const handleToggleDebugger = () => {
     chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
