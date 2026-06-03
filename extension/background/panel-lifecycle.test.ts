@@ -206,8 +206,9 @@ describe('tabs.onUpdated handler — content-script re-injection', () => {
   })
 
   it('re-injects content scripts on navigation when tab is in content-script mode', async () => {
-    // Setup: Put tab into content-script mode via start-logging
-    await sendControlMessage({ type: 'start-logging', tabId: TAB_ID })
+    // Setup: Put tab into content-script mode directly
+    const tabStateModule = await import('./tab-state')
+    await tabStateModule.setMode(TAB_ID, 'content-script')
 
     // Clear the mock after setup so we only count re-injection calls
     mockInjectIntoTab.mockClear()

@@ -273,7 +273,10 @@ describe('auto-server-sync in handleCaptureMessage', () => {
       },
     })
 
-    await sendMessage({ type: 'start-logging', tabId: TAB_EXPORT_TRUE })
+    // Set tab to content-script mode directly (start-logging now uses
+    // debugger mode on Chrome, which ignores content-script captures)
+    const tabStateModule = await import('./tab-state')
+    await tabStateModule.setMode(TAB_EXPORT_TRUE, 'content-script')
 
     await sendMessage(
       {
