@@ -9,7 +9,7 @@ const mockUsePopupActions = vi.hoisted(() => ({
   status: { connected: true, mode: 'devtools' as const },
   isFirefox: false,
   isLoading: false,
-  isEnhanced: false,
+  isLoggingActive: false,
   showConsentView: false,
   currentHost: 'example.com',
   settings: {} as ReturnType<typeof createDefaultSettings>,

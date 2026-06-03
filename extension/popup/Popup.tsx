@@ -20,7 +20,7 @@ export default function Popup() {
     status,
     isFirefox,
     isLoading,
-    isEnhanced,
+    isLoggingActive,
     showConsentView,
     currentHost,
     settings,
@@ -63,15 +63,17 @@ export default function Popup() {
 
   return (
     <div className='p-4 flex flex-col gap-4 text-stone-800 dark:text-stone-200 bg-white dark:bg-stone-900 min-h-50 w-80'>
-      <PopupHeader
-        connected={status.connected}
-        copyStatus={copyStatus}
-        onCopy={copyToClipboard}
-        hasData={hasData}
-        showEnhancedToggle={!isFirefox}
-        isEnhanced={isEnhanced}
-        onToggleEnhanced={handleToggleDebugger}
-      />
+      {!showConsentView && (
+        <PopupHeader
+          connected={status.connected}
+          copyStatus={copyStatus}
+          onCopy={copyToClipboard}
+          hasData={hasData}
+          showLoggingToggle={!isFirefox}
+          isLoggingActive={isLoggingActive}
+          onToggleLogging={handleToggleDebugger}
+        />
+      )}
 
       {showConsentView ? (
         <ConsentView

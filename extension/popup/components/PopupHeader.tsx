@@ -9,9 +9,9 @@ export interface PopupHeaderProps {
   copyStatus?: 'idle' | 'success' | 'error' | 'no-data'
   onCopy?: () => void
   hasData?: boolean
-  showEnhancedToggle?: boolean
-  isEnhanced?: boolean
-  onToggleEnhanced?: () => void
+  showLoggingToggle?: boolean
+  isLoggingActive?: boolean
+  onToggleLogging?: () => void
 }
 
 export function PopupHeader({
@@ -19,9 +19,9 @@ export function PopupHeader({
   copyStatus = 'idle',
   onCopy,
   hasData = false,
-  showEnhancedToggle = false,
-  isEnhanced = false,
-  onToggleEnhanced,
+  showLoggingToggle = false,
+  isLoggingActive = false,
+  onToggleLogging,
 }: PopupHeaderProps): React.JSX.Element {
   return (
     <div className='flex items-center justify-between border-b border-stone-200 dark:border-stone-700 pb-2 max-sm:sticky max-sm:top-0 max-sm:z-10 max-sm:bg-white max-sm:dark:bg-stone-900'>
@@ -30,18 +30,18 @@ export function PopupHeader({
         Loggy
       </h1>
       <div className='flex items-center gap-2'>
-        {showEnhancedToggle && (
+        {showLoggingToggle && (
           <button
             type='button'
-            onClick={onToggleEnhanced}
+            onClick={onToggleLogging}
             className={`p-1.5 rounded transition-colors ${
-              isEnhanced
+              isLoggingActive
                 ? 'text-amber-600 hover:text-amber-800 hover:bg-amber-50 dark:text-amber-400 dark:hover:text-amber-300 dark:hover:bg-amber-900/40'
                 : 'text-stone-500 hover:text-stone-800 hover:bg-stone-100 dark:text-stone-400 dark:hover:text-stone-200 dark:hover:bg-stone-800'
             }`}
-            title={isEnhanced ? 'Stop Enhanced Capture' : 'Start Enhanced Capture'}
+            title={isLoggingActive ? 'Stop Logging' : 'Start Logging'}
           >
-            {isEnhanced ? <Pause size={16} /> : <Play size={16} />}
+            {isLoggingActive ? <Pause size={16} /> : <Play size={16} />}
           </button>
         )}
         {copyStatus === 'success' && (

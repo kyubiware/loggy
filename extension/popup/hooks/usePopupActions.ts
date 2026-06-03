@@ -189,7 +189,7 @@ export function usePopupActions() {
   }
 
   const isLoading = loadingStatus || loadingSettings || loadingData
-  const isEnhanced = status?.mode === 'debugger'
+  const isLoggingActive = status?.mode === 'content-script' || status?.mode === 'debugger'
   const showConsentView = status?.mode === 'inactive'
 
   return {
@@ -197,7 +197,7 @@ export function usePopupActions() {
     status,
     isFirefox,
     isLoading,
-    isEnhanced,
+    isLoggingActive,
     showConsentView,
     currentHost,
     // Settings & filters
