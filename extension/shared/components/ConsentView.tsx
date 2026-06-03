@@ -4,13 +4,20 @@ export interface ConsentViewProps {
   host: string
   onStartLogging: () => void
   onAlwaysLog: () => void
+  /** When true, renders as a full-page centered layout (panel). When false, renders inline (popup). */
+  fullPage?: boolean
 }
 
-export function ConsentView({ host, onStartLogging, onAlwaysLog }: ConsentViewProps): React.JSX.Element {
-  return (
-    <div className='flex flex-col gap-4 py-4'>
+export function ConsentView({
+  host,
+  onStartLogging,
+  onAlwaysLog,
+  fullPage = false,
+}: ConsentViewProps): React.JSX.Element {
+  const content = (
+    <div className='flex flex-col gap-4 py-4 px-6 max-w-sm w-full'>
       <div className='flex flex-col items-center gap-2 text-center'>
-        <span className='text-3xl'>🔒</span>
+        <span className={fullPage ? 'text-4xl' : 'text-3xl'}>🔒</span>
         <p className='text-sm text-stone-600 dark:text-stone-400'>
           Loggy is not capturing logs on this page
         </p>
@@ -43,6 +50,16 @@ export function ConsentView({ host, onStartLogging, onAlwaysLog }: ConsentViewPr
       </p>
     </div>
   )
+
+  if (fullPage) {
+    return (
+      <div className='min-h-screen bg-stone-50 dark:bg-stone-900 text-stone-800 dark:text-stone-200 flex items-center justify-center'>
+        {content}
+      </div>
+    )
+  }
+
+  return content
 }
 
 export interface StopLoggingButtonProps {
