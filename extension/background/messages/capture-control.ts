@@ -1,3 +1,5 @@
+declare const __BROWSER__: string
+
 import {
   getOrCreateTabState,
   setMode,
@@ -139,6 +141,29 @@ export async function handleStartLogging(tabId: number): Promise<TabCaptureState
     return { ...current }
   }
 
+  const pendingResume = debuggerResumeTimersByTab.get(tabId)
+  if (pendingResume) {
+    clearTimeout(pendingResume)
+    debuggerResumeTimersByTab.delete(tabId)
+  }
+
+  // On Chrome, use debugger mode (same as the toggle button) so the
+  // Chrome debugging banner appears and capture works immediately.
+  // On Firefox, fall back to content-script mode.
+  if (__BROWSER__ === 'chrome') {
+    attachToTab(tabId, (error) => {
+      if (error) {
+        console.error('[Loggy] Failed to attach debugger:', error.message)
+        void setMode(tabId, 'content-script')
+        void injectIntoTab(tabId)
+      }
+    })
+    const updated = await setMode(tabId, 'debugger')
+    updateIconForTab(tabId)
+    return updated
+  }
+
+  // Firefox: content-script mode
   const updated = await setMode(tabId, 'content-script')
   updateIconForTab(tabId)
 

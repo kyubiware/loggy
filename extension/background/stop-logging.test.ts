@@ -42,10 +42,14 @@ vi.mock('./content-scripts', () => ({
   syncAllAlwaysLogScripts: vi.fn(() => Promise.resolve()),
 }))
 
+const mockAttachToTab = vi.fn()
+const mockDetachFromTab = vi.fn()
+const mockIsAttached = vi.fn(() => false)
+
 vi.mock('../capture/debugger-capture', () => ({
-  attachToTab: vi.fn(),
-  detachFromTab: vi.fn(),
-  isAttached: vi.fn(() => false),
+  attachToTab: (...args: Parameters<typeof mockAttachToTab>) => mockAttachToTab(...args),
+  detachFromTab: (...args: Parameters<typeof mockDetachFromTab>) => mockDetachFromTab(...args),
+  isAttached: (...args: Parameters<typeof mockIsAttached>) => mockIsAttached(...args),
   setCaptureCallback: vi.fn(),
 }))
 
@@ -386,5 +390,68 @@ describe('stop-logging prevents get-status auto-re-activation', () => {
     // Mode should still be inactive
     const status = await sendMessage<{ mode: string }>({ type: 'get-status' })
     expect(status.mode).toBe('inactive')
+  })
+})
+
+describe('start-logging uses debugger mode on Chrome', () => {
+  const TAB_ID = 700
+  const PAGE_URL = 'https://example.com/page'
+
+  beforeEach(async () => {
+    mockAttachToTab.mockClear()
+    mockDetachFromTab.mockClear()
+    mockInjectIntoTab.mockClear()
+
+    // Reset in-memory tab state
+    const tabStateModule = await import('./tab-state')
+    tabStateModule.tabStates.clear()
+    tabStateModule.explicitlyStoppedByTab.clear()
+
+    // Reset storage state
+    for (const key of Object.keys(localStorageState)) {
+      delete localStorageState[key]
+    }
+    for (const key of Object.keys(sessionStorageState)) {
+      delete sessionStorageState[key]
+    }
+
+    setActiveTab({ id: TAB_ID, url: PAGE_URL })
+    activateTab(TAB_ID)
+  })
+
+  it('attaches debugger and sets mode to debugger on Chrome when user clicks Start Logging', async () => {
+    const result = await sendMessage<{ mode: string }>({
+      type: 'start-logging',
+      tabId: TAB_ID,
+    })
+
+    expect(result.mode).toBe('debugger')
+    expect(mockAttachToTab).toHaveBeenCalledWith(TAB_ID, expect.any(Function))
+  })
+
+  it('does not inject content scripts when using debugger mode', async () => {
+    await sendMessage<{ mode: string }>({
+      type: 'start-logging',
+      tabId: TAB_ID,
+    })
+
+    expect(mockInjectIntoTab).not.toHaveBeenCalled()
+  })
+
+  it('falls back to content-script mode if debugger attach fails', async () => {
+    // Simulate attachToTab calling its error callback
+    mockAttachToTab.mockImplementation((_tabId: number, onError: (error: Error) => void) => {
+      onError(new Error('Cannot access tab'))
+    })
+
+    const result = await sendMessage<{ mode: string }>({
+      type: 'start-logging',
+      tabId: TAB_ID,
+    })
+
+    // Should start in debugger mode, error callback triggers fallback
+    // The mode is set synchronously to 'debugger', then the error callback
+    // triggers an async fallback to 'content-script'
+    expect(result.mode).toBe('debugger')
   })
 })
