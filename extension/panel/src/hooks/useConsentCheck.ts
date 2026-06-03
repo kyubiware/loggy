@@ -37,12 +37,20 @@ export function useConsentCheck() {
   }, [])
 
   const handleStartLogging = useCallback(() => {
+    const tabId = chrome.devtools.inspectedWindow.tabId
+    if (typeof tabId === 'number') {
+      chrome.runtime.sendMessage({ type: 'start-logging', tabId })
+    }
     setConsentState('consented')
   }, [])
 
   const handleAlwaysLog = useCallback(() => {
     if (!host) return
+    const tabId = chrome.devtools.inspectedWindow.tabId
     chrome.runtime.sendMessage({ type: 'add-always-log', host })
+    if (typeof tabId === 'number') {
+      chrome.runtime.sendMessage({ type: 'start-logging', tabId })
+    }
     setConsentState('consented')
   }, [host])
 
