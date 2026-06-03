@@ -1,0 +1,29 @@
+AI agents write your code. They need the logs to fix bugs on the first try. Loggy captures every console message and network request in one click. No more dragging, selecting, and reformatting by hand. Your agent gets the full context and finds what it needs.
+
+HOW TO USE
+
+1. Click the Loggy icon in your browser toolbar
+2. Hit Start Logging
+3. Reproduce the bug
+4. Click Copy to Clipboard
+5. Paste into your AI chat
+
+No DevTools required for basic capture.
+
+FEATURES
+
+• One-click capture from the toolbar popup
+• Regex-based console filtering and include/exclude patterns for network requests
+• Automatic pruning of binary blobs, base64, and oversized responses
+• Structured Markdown output with timestamps, log levels, and request details
+• Copy to clipboard in one click, ready to paste
+• Optional server export to your own loggy-serve instance
+• Full DevTools panel for advanced filtering and preview when you need more control
+
+PRIVACY
+
+Loggy runs entirely locally in your browser:
+• No data sent to external servers
+• No analytics or tracking
+• Clipboard access only happens on your explicit action
+• Optional server export only connects to your own instance
