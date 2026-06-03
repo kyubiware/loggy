@@ -603,15 +603,15 @@ function previewMockScript(markdown) {
 // ─── Screenshot Functions ───────────────────────────────────────────────────
 
 /**
- * CWS popup screenshot: 640×400 viewport, fullPage capture (popup content is
- * small enough to fit within these dimensions).
+ * CWS popup screenshot: 360px-wide viewport matching actual browser popup width.
+ * fullPage capture so the full popup height is captured.
  */
 async function screenshotPopup(browser, baseUrl) {
   console.log('📸 Screenshotting popup (active state)...')
 
   const context = await browser.newContext({
-    viewport: { width: 640, height: 400 },
-    deviceScaleFactor: 1,
+    viewport: { width: 360, height: 600 },
+    deviceScaleFactor: 2,
   })
 
   const page = await context.newPage()
