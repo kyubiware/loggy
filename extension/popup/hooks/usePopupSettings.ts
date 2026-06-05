@@ -13,6 +13,10 @@ type SettingValue = string | boolean | number
 
 /**
  * Reads and syncs persisted Loggy settings for the popup UI.
+ *
+ * Writes settings to storage immediately on every change (no debounce).
+ * Extension popups are destroyed on close, so debounced writes would be
+ * lost if the popup closes before the timeout fires.
  */
 export function usePopupSettings(): {
   settings: PersistedLoggySettings
@@ -22,7 +26,6 @@ export function usePopupSettings(): {
   const defaultsRef = useRef<PersistedLoggySettings>(
     mergePersistedSettings(undefined, createDefaultSettings()),
   )
-  const writeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [settings, setSettings] = useState<PersistedLoggySettings>(defaultsRef.current)
   const [loading, setLoading] = useState(true)
 
@@ -62,11 +65,6 @@ export function usePopupSettings(): {
 
     return () => {
       chrome.storage.onChanged.removeListener(handleStorageChange)
-
-      if (writeTimeoutRef.current !== null) {
-        clearTimeout(writeTimeoutRef.current)
-        writeTimeoutRef.current = null
-      }
     }
   }, [])
 
@@ -79,15 +77,9 @@ export function usePopupSettings(): {
           ...updatedSettings,
         })
 
-        if (writeTimeoutRef.current !== null) {
-          clearTimeout(writeTimeoutRef.current)
-        }
-
-        writeTimeoutRef.current = setTimeout(() => {
-          chrome.storage.local.set({
-            [LOGGY_PANEL_SETTINGS_STORAGE_KEY]: persistedSettings,
-          })
-        }, 300)
+        chrome.storage.local.set({
+          [LOGGY_PANEL_SETTINGS_STORAGE_KEY]: persistedSettings,
+        })
 
         return updatedSettings
       })
