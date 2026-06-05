@@ -62,17 +62,6 @@ jobs:
         working-directory: extension
         run: npm run build:firefox
 
-      - name: Install Playwright Firefox
-        timeout-minutes: 5
-        working-directory: extension
-        run: |
-          sudo apt-mark hold firefox
-          npx playwright install --with-deps firefox
-
-      - name: Generate screenshots
-        working-directory: extension
-        run: npm run screenshot
-
       - name: Lint with web-ext
         working-directory: extension
         run: npx web-ext lint --source-dir dist-firefox
@@ -124,13 +113,6 @@ jobs:
           CHANGELOG: ${{ steps.changelog.outputs.body }}
         run: node scripts/update-amo-description.cjs
 
-      - name: Upload screenshots artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: screenshots
-          path: screenshots/
-          retention-days: 1
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
@@ -144,26 +126,3 @@ jobs:
           files: |
             extension/loggy-firefox.xpi
             extension/loggy-chrome.zip
-            screenshots/*.png
-
-  update-amo-screenshots:
-    needs: sign-and-release
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          ref: ${{ needs.sign-and-release.outputs.tag }}
-
-      - name: Download screenshots
-        uses: actions/download-artifact@v4
-        with:
-          name: screenshots
-          path: screenshots
-
-      - name: Upload screenshots to AMO
-        working-directory: extension
-        env:
-          AMO_API_KEY: ${{ secrets.AMO_API_KEY }}
-          AMO_API_SECRET: ${{ secrets.AMO_API_SECRET }}
-        run: node scripts/upload-amo-screenshots.cjs

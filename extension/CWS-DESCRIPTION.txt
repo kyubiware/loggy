@@ -17,7 +17,9 @@ FEATURES
 • Automatic pruning of binary blobs, base64, and oversized responses
 • Structured Markdown output with timestamps, log levels, and request details
 • Copy to clipboard in one click, ready to paste
-• Optional server export to your own loggy-serve instance
+• Optional real-time export to loggy-serve — a companion Fastify server (`npx loggy-serve`)
+   that receives Markdown exports over HTTP, serves them via CLI (print), interactive TUI
+   (clipboard, status), and optionally enables Tailscale HTTPS
 • Full DevTools panel for advanced filtering and preview when you need more control
 
 PRIVACY
