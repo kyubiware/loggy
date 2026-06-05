@@ -70,10 +70,12 @@ function main() {
   logStep('🚀', 'Opening Chrome with extension loaded');
   const absDist = resolve(distDir);
 
+  // Use a temp directory outside the extension to avoid polluting dist-chrome/
+  const tmpDir = join(rootDir, '.tmp-chrome-profile');
+
   try {
-    // --user-data-dir creates a temp profile so the extension loads cleanly
     execSync(
-      `"${chrome}" --load-extension="${absDist}" --user-data-dir="${absDist}/.chrome-profile"`,
+      `"${chrome}" --load-extension="${absDist}" --user-data-dir="${tmpDir}"`,
       { stdio: 'ignore', detached: true },
     );
   } catch {
@@ -81,7 +83,7 @@ function main() {
   }
 
   console.log(`  Extension loaded from: ${absDist}`);
-  console.log('  chrome://extensions to manage.\n');
+  console.log('  Go to chrome://extensions to manage and grant permissions.\n');
 }
 
 main();

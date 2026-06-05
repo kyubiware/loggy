@@ -27,3 +27,5 @@ Thumbs.db
 
 *.xpi
 *.zip
+
+.tmp-chrome-profile/
