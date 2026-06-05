@@ -35,6 +35,8 @@
     "update-amo": "dotenv -- REPLACE_DESCRIPTION=scripts/amo-description.md node scripts/update-amo-description.cjs",
     "lint:firefox": "web-ext lint --source-dir dist-firefox",
     "package:chrome": "npm run build:chrome && rm -f loggy-chrome.zip && (cd dist-chrome && zip -r ../loggy-chrome.zip .)",
+    "install:chrome": "node scripts/install-chrome.cjs",
+    "pack:chrome": "npm run build:chrome && node scripts/pack-chrome-crx.cjs",
     "screenshot": "node scripts/screenshot-firefox.cjs",
     "screenshot:chrome": "node scripts/screenshot-chrome.cjs",
     "release": "node scripts/release.cjs"
@@ -56,6 +58,7 @@
     "@vitejs/plugin-react": "^5.1.4",
     "@vitest/ui": "^4.0.18",
     "concurrently": "^9.1.2",
+    "crx3": "^2.0.0",
     "dotenv-cli": "^11.0.0",
     "jsdom": "^28.1.0",
     "playwright": "^1.59.1",
