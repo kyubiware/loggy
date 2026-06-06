@@ -1,6 +1,6 @@
 import type React from 'react'
 
-import { Check, Copy, Pause, Play } from 'lucide-react'
+import { Check, Copy, Pause, Play, Square } from 'lucide-react'
 
 import iconUrl from '../../icons/icon48.png'
 
@@ -12,6 +12,7 @@ export interface PopupHeaderProps {
   showLoggingToggle?: boolean
   isLoggingActive?: boolean
   onToggleLogging?: () => void
+  onStopLogging?: () => void
 }
 
 export function PopupHeader({
@@ -22,6 +23,7 @@ export function PopupHeader({
   showLoggingToggle = false,
   isLoggingActive = false,
   onToggleLogging,
+  onStopLogging,
 }: PopupHeaderProps): React.JSX.Element {
   return (
     <div className='flex items-center justify-between border-b border-stone-200 dark:border-stone-700 pb-2 max-sm:sticky max-sm:top-0 max-sm:z-10 max-sm:bg-white max-sm:dark:bg-stone-900'>
@@ -42,6 +44,16 @@ export function PopupHeader({
             title={isLoggingActive ? 'Stop Logging' : 'Start Logging'}
           >
             {isLoggingActive ? <Pause size={16} /> : <Play size={16} />}
+          </button>
+        )}
+        {onStopLogging && isLoggingActive && (
+          <button
+            type='button'
+            onClick={onStopLogging}
+            className='p-1.5 rounded text-red-500 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/40 transition-colors'
+            title='Stop Logging'
+          >
+            <Square size={16} />
           </button>
         )}
         {copyStatus === 'success' && (

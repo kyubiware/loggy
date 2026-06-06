@@ -1,6 +1,6 @@
 import { Globe, Terminal } from 'lucide-react'
 
-import { ConsentView, StopLoggingButton } from '../shared/components/ConsentView'
+import { ConsentView } from '../shared/components/ConsentView'
 import {
   ExportOptionCheckboxes,
   TRUNCATE_CONFIGS,
@@ -72,6 +72,7 @@ export default function Popup() {
           showLoggingToggle={!isFirefox}
           isLoggingActive={isLoggingActive}
           onToggleLogging={handleToggleDebugger}
+          onStopLogging={status.mode !== 'devtools' ? handleStopLogging : undefined}
         />
       )}
 
@@ -173,9 +174,6 @@ export default function Popup() {
         </>
       )}
 
-      {!showConsentView && status.mode !== 'devtools' && (
-        <StopLoggingButton onStop={handleStopLogging} />
-      )}
     </div>
   )
 }
