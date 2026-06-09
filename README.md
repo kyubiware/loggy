@@ -1,79 +1,100 @@
-# Loggy
+<div align="center">
+  <img src="loggy_icon.png" width="128" alt="Loggy Icon">
 
-A Chrome/Firefox DevTools extension that captures Console & Network logs and exports them as structured Markdown — optimized for pasting into LLM debugging workflows.
+  # Loggy
 
-## What It Does
+  [![Chrome Web Store](https://img.shields.io/chrome-web-store/v/gaefhhegebljimfnjjbbikhddkpilpaf)](https://chromewebstore.google.com/detail/loggy/gaefhhegebljimfnjjbbikhddkpilpaf)
+  [![Firefox Add-ons](https://img.shields.io/amo/v/5dcdd43f5fa642e69f21)](https://addons.mozilla.org/en-US/firefox/addon/5dcdd43f5fa642e69f21/)
+  [![npm](https://img.shields.io/npm/v/loggy-serve)](https://www.npmjs.com/package/loggy-serve)
 
-Loggy adds a tab to Chrome DevTools that lets you capture, filter, and export browser logs in one click. The output is clean Markdown, ready to paste into any LLM chat.
+  AI agents write your code. They need the logs to fix bugs on the first try. Loggy captures every console message and network request in one click. No more dragging, selecting, and reformatting by hand. Your agent gets the full context and finds what it needs.
 
-- **One-click capture** of console logs and network requests
-- **Regex filtering** for console messages, string-based include/exclude for network requests
-- **Automatic pruning** of binary data, base64 blobs, and oversized payloads
-- **Smart consolidation** that groups related logs by signal ranking and failure patterns
-- **Markdown export** copied directly to clipboard
+</div>
 
-## Companion Server
+---
 
-The `serve` workspace provides an optional Fastify server for receiving exports over HTTP instead of the clipboard. Useful for piping logs into automated workflows.
+![Loggy Panel Overview](screenshots/panel-expanded.png)
 
-```bash
-# From the repo root
-npx loggy-serve --port 8743
-```
+## Features
 
-Endpoints:
+- **One-click capture**: Instantly collect console logs and network requests from the current tab.
+- **Regex filtering**: Use regular expressions to filter console messages (e.g. `error|warn`).
+- **Targeted network capture**: Include or exclude specific routes using string patterns.
+- **Automatic pruning**: Automatically removes binary data, base64 blobs, and oversized payloads to keep exports clean.
+- **Smart consolidation**: Groups related logs by signal ranking and failure patterns to highlight what matters.
+- **Markdown export**: Generates structured Markdown ready for clipboard or HTTP export.
+- **Firefox Android support**: Includes a dedicated Floating Action Button (FAB) UI for mobile debugging.
+- **Cross-browser compatibility**: Native support for both Chrome and Firefox.
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/loggy` | Submit a markdown export (text/plain) |
-| `GET` | `/loggy/export` | Retrieve the latest export |
-| `GET` | `/loggy/handshake` | Server version info |
+## How It Works
 
-## Links
+Loggy uses a specialized capture pipeline to ensure your logs are useful and concise.
 
-- **Firefox Add-on**: [addons.mozilla.org](https://addons.mozilla.org/en-US/firefox/addon/5dcdd43f5fa642e69f21/)
-- **npm (loggy-serve)**: [npmjs.com](https://www.npmjs.com/package/loggy-serve)
+1. **Capture**: Uses the Debugger API (Chrome) or DevTools APIs (Firefox) to intercept console and network events.
+2. **Filter**: Applies your regex and path filters to discard irrelevant noise.
+3. **Prune**: Identifies and strips heavy payloads like images, fonts, or large JSON blobs.
+4. **Consolidate**: Analyzes logs to group repeating patterns or related network/console errors.
+5. **Export**: Formats the resulting data into GFM-compliant Markdown.
 
 ## Installation
 
 ### Chrome
 
-1. Clone the repo and install dependencies:
+1. Clone the repository:
    ```bash
-   git clone <repo-url> loggy && cd loggy && npm install
+   git clone https://github.com/kyubiware/loggy && cd loggy
    ```
-2. Build the extension:
+2. Install dependencies and build:
    ```bash
-   npm run build
+   npm install && npm run build
    ```
-3. Open `chrome://extensions/` and enable **Developer mode**
-4. Click **Load unpacked** and select the `dist-chrome` directory
-5. Open DevTools (F12) on any page — look for the **Loggy** tab
+3. Open `chrome://extensions/` and enable **Developer mode**.
+4. Click **Load unpacked** and select the `dist-chrome` directory.
+5. Open DevTools (F12) and find the **Loggy** tab.
 
 ### Firefox
 
-Install from [addons.mozilla.org](https://addons.mozilla.org/en-US/firefox/addon/5dcdd43f5fa642e69f21/).
+Install directly from [Firefox Add-ons](https://addons.mozilla.org/en-US/firefox/addon/5dcdd43f5fa642e69f21/).
 
 To build from source:
-
 ```bash
 npm run package:firefox
 ```
-
-Load the resulting `loggy-firefox.xpi` as a temporary add-on via `about:debugging`.
+Load the `loggy-firefox.xpi` as a temporary add-on via `about:debugging`.
 
 ## Usage
 
-1. Open DevTools (F12) and click the **Loggy** tab
-2. Optionally set filters:
-   - **Console filter** — regex pattern (e.g. `error|warn`)
-   - **Network filter** — include/exclude patterns (`-` prefix to exclude, e.g. `api -*.png`)
-3. Click **Refresh** to capture current data
-4. Review the preview, then click **Copy to Clipboard**
+1. Open DevTools (F12) and click the **Loggy** tab.
+2. Configure your filters:
+   - **Console filter**: A regex pattern for messages.
+   - **Network filter**: Path patterns (use `-` to exclude, e.g. `api -*.png`).
+3. Click **Refresh** to capture current data.
+4. Review the preview and click **Copy to Clipboard**.
 
-## Output Format
+![Markdown Preview](screenshots/panel-preview.png)
 
-Exports are structured Markdown:
+## Companion Server
+
+The `serve` package provides a Fastify server to receive exports over HTTP. This is useful for automated logging or when you want to pipe browser logs into a file or another tool.
+
+```bash
+npx loggy-serve --port 8743
+```
+
+> [!TIP]
+> Use the `--quiet` flag to disable the TUI and output plain logs to the terminal.
+
+### API Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/loggy` | Submit a markdown export (text/plain) |
+| `GET` | `/loggy/export` | Retrieve the latest export |
+| `GET` | `/loggy/handshake` | Server version information |
+
+## Output Example
+
+The exported Markdown is structured for clarity and readability:
 
 ```markdown
 ## Debug Log Export
@@ -87,7 +108,7 @@ Exports are structured Markdown:
 ### Console Logs
 | Timestamp | Level | Message |
 |-----------|-------|---------|
-| ... | error | Something went wrong |
+| 10:30:05 | error | Failed to load resource: the server responded with a status of 404 |
 
 ### Network Activity
 ...
@@ -95,32 +116,28 @@ Exports are structured Markdown:
 
 ## Development
 
-```bash
-npm install           # Install all workspace dependencies
-npm run build         # Build extension (Chrome + Firefox)
-npm run dev           # Vite dev server (Chrome mode)
-npm test              # Run tests across all workspaces
-npm run lint          # Biome lint (extension workspace)
-npm run lint:fix      # Auto-fix lint issues
-npm run format        # Format with Biome
-```
+| Task | Command |
+|------|---------|
+| Install dependencies | `npm install` |
+| Build extension | `npm run build` |
+| Dev server (Chrome HMR) | `npm run dev` |
+| Run all tests | `npm test` |
+| Lint & Format | `npm run lint && npm run format` |
 
 ### Requirements
 
-| Program | Version | How to Install |
-|---------|---------|----------------|
-| **Node.js** | 24 or later | [nodejs.org](https://nodejs.org) or [nvm](https://github.com/nvm-sh/nvm) |
-| **npm** | Included with Node.js | Installed automatically |
-| **zip** | Any recent version | Linux: `sudo apt install zip` · macOS: pre-installed · Windows: [7-Zip](https://7-zip.org) or WSL |
-
-All other build dependencies (Vite, TypeScript, React, Tailwind CSS, Biome, etc.) are installed automatically via `npm install`.
-
-**Supported operating systems:** Linux, macOS, Windows (WSL recommended for packaging).
+| Program | Version | Source |
+|---------|---------|--------|
+| **Node.js** | 24+ | [nodejs.org](https://nodejs.org) |
+| **npm** | Latest | Included with Node |
+| **zip** | Recent | OS Package Manager |
 
 ## Privacy
 
-Loggy runs entirely locally. No data leaves your machine — no analytics, no external servers, no tracking. Clipboard access only happens on explicit user action.
+Loggy runs entirely locally. No data leaves your machine unless you explicitly use the Companion Server. There are no analytics, tracking, or external dependencies. Clipboard access is only triggered by your direct action.
 
-## License
+## Links
 
-[MIT](LICENSE) © Kyubiware
+- [Chrome Web Store](https://chromewebstore.google.com/detail/loggy/gaefhhegebljimfnjjbbikhddkpilpaf)
+- [Firefox Add-on](https://addons.mozilla.org/en-US/firefox/addon/5dcdd43f5fa642e69f21/)
+- [npm (loggy-serve)](https://www.npmjs.com/package/loggy-serve)
