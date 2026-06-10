@@ -4,6 +4,7 @@ import { formatMarkdown } from '../utils/formatter.js'
 import { pruneConsole, pruneNetwork } from '../utils/pruner.js'
 import { getFilteredPanelData } from '../utils/filtered-data.js'
 import { debugLog, getDebugEntries } from '../utils/debug-logger.js'
+import { truncateToTokenLimit } from '../utils/token-estimate.js'
 import { pushToServer } from './server-export.js'
 import type { LoggyState } from '../types/state.js'
 
@@ -41,7 +42,7 @@ export async function buildExportMarkdown(state: LoggyState): Promise<string> {
     ...(DEBUG ? { debugEntries: getDebugEntries() } : {}),
   }
 
-  return formatMarkdown(exportData)
+  return truncateToTokenLimit(formatMarkdown(exportData), state.maxTokenLimit)
 }
 
 /**

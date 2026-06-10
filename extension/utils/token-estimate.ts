@@ -51,3 +51,40 @@ export function estimateEntryTokenCount(
 
   return estimateTokenCount(parts.join(''))
 }
+
+const TRUNCATION_MARKER = '\n\n> Output truncated to fit token limit.\n'
+
+/**
+ * Truncates text so its estimated token count does not exceed maxTokens.
+ * Cuts at the last newline before the limit to avoid splitting mid-line.
+ * Appends a truncation marker whose size is accounted for in the budget.
+ *
+ * @param text - Text to potentially truncate
+ * @param maxTokens - Maximum allowed estimated tokens (0 = no limit, return as-is)
+ * @returns Text within the token budget, or original text if already within limit
+ */
+export function truncateToTokenLimit(text: string, maxTokens: number): string {
+  if (maxTokens <= 0 || text.length === 0) {
+    return text
+  }
+
+  const maxChars = maxTokens * 4
+  if (text.length <= maxChars) {
+    return text
+  }
+
+  const markerChars = TRUNCATION_MARKER.length
+  const availableChars = maxChars - markerChars
+
+  if (availableChars <= 0) {
+    return TRUNCATION_MARKER
+  }
+
+  const truncated = text.slice(0, availableChars)
+  const lastNewline = truncated.lastIndexOf('\n')
+
+  // Only snap to newline if it's reasonably close (within 20% of available)
+  const cutPoint = lastNewline > availableChars * 0.8 ? lastNewline : availableChars
+
+  return text.slice(0, cutPoint) + TRUNCATION_MARKER
+}
