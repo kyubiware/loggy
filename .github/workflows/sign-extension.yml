@@ -58,6 +58,15 @@ jobs:
           rm -f loggy-chrome.zip
           (cd dist-chrome && zip -r ../loggy-chrome.zip .)
 
+      - name: Publish to Chrome Web Store
+        uses: mnao305/chrome-extension-upload@v6.0.0
+        with:
+          file-path: extension/loggy-chrome.zip
+          extension-id: ${{ secrets.CWS_EXTENSION_ID }}
+          client-id: ${{ secrets.CWS_CLIENT_ID }}
+          client-secret: ${{ secrets.CWS_CLIENT_SECRET }}
+          refresh-token: ${{ secrets.CWS_REFRESH_TOKEN }}
+
       - name: Build Firefox extension
         working-directory: extension
         run: npm run build:firefox
