@@ -6,6 +6,7 @@
 import { describe, expect, test } from 'vitest'
 import type { HAREntry } from '../types/har'
 import { formatNetworkEntry } from './formatter-network'
+import { formatResponseSection } from './formatter-network-sections'
 
 describe('formatNetworkEntry - includeResponseBodies flag', () => {
   const createMockEntry = (overrides: Partial<HAREntry> = {}): HAREntry => ({
@@ -418,6 +419,88 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
       expect(result).not.toContain('Sec-CH-UA')
       expect(result).toContain('Cookie: [2 cookies,')
       expect(result).toContain('Content-Type: application/json')
+    })
+  })
+
+  describe('formatResponseSection - truncateResponseBodies flag', () => {
+    const longBody = `{"data":"${'x'.repeat(8000)}"}`
+
+    test('should NOT truncate response body when truncateResponseBodies is false', () => {
+      const response = {
+        status: 200,
+        statusText: 'OK',
+        headers: [{ name: 'Content-Type', value: 'application/json' }],
+        content: {
+          size: longBody.length,
+          mimeType: 'application/json',
+          text: longBody,
+        },
+      }
+      const result = formatResponseSection(response, 'application/json', true, false, true, false)
+
+      expect(result).toContain(longBody)
+      expect(result).not.toContain('[truncated]')
+    })
+
+    test('should truncate response body when truncateResponseBodies is true', () => {
+      const response = {
+        status: 200,
+        statusText: 'OK',
+        headers: [{ name: 'Content-Type', value: 'application/json' }],
+        content: {
+          size: longBody.length,
+          mimeType: 'application/json',
+          text: longBody,
+        },
+      }
+      const result = formatResponseSection(response, 'application/json', true, false, true, true)
+
+      expect(result).toContain('[truncated]')
+      expect(result).not.toContain(longBody)
+    })
+
+    test('should preserve full response body in formatNetworkEntry when truncateResponseBodies is false', () => {
+      const entry = createMockEntry({
+        response: {
+          status: 200,
+          statusText: 'OK',
+          headers: [{ name: 'Content-Type', value: 'application/json' }],
+          content: {
+            size: longBody.length,
+            mimeType: 'application/json',
+            text: longBody,
+          },
+        },
+      })
+      const result = formatNetworkEntry(entry, {
+        includeResponseBodies: true,
+        truncateResponseBodies: false,
+      })
+
+      expect(result).toContain(longBody)
+      expect(result).not.toContain('[truncated]')
+    })
+
+    test('should truncate response body in formatNetworkEntry when truncateResponseBodies is true', () => {
+      const entry = createMockEntry({
+        response: {
+          status: 200,
+          statusText: 'OK',
+          headers: [{ name: 'Content-Type', value: 'application/json' }],
+          content: {
+            size: longBody.length,
+            mimeType: 'application/json',
+            text: longBody,
+          },
+        },
+      })
+      const result = formatNetworkEntry(entry, {
+        includeResponseBodies: true,
+        truncateResponseBodies: true,
+      })
+
+      expect(result).toContain('[truncated]')
+      expect(result).not.toContain(longBody)
     })
   })
 })

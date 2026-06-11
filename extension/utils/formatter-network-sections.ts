@@ -45,7 +45,8 @@ export function formatResponseSection(
   mimeType: string,
   isSuccess: boolean,
   isMinimal: boolean,
-  includeResponseBodies: boolean
+  includeResponseBodies: boolean,
+  truncateResponseBodies: boolean = true
 ): string {
   let output = ''
 
@@ -57,9 +58,12 @@ export function formatResponseSection(
 
     if (includeResponseBodies && response.content?.text && shouldUseCodeBlock(mimeType)) {
       const lang = getLanguageFromMime(mimeType)
+      const contentText = truncateResponseBodies
+        ? truncate(response.content.text, 5000)
+        : response.content.text
       output += `#### Response Content\n`
       output += `\`\`\`${lang}\n`
-      output += escapeMarkdown(truncate(response.content.text, 5000))
+      output += escapeMarkdown(contentText)
       output += '\n```\n\n'
     }
   }
@@ -76,7 +80,8 @@ export function formatConsolidatedResponseSection(
   response: HAREntry['response'],
   isSuccess: boolean,
   isMinimal: boolean,
-  includeResponseBodies: boolean
+  includeResponseBodies: boolean,
+  truncateResponseBodies: boolean = true
 ): string {
   let output = ''
   const mimeType = response?.content?.mimeType || 'unknown'
@@ -89,16 +94,19 @@ export function formatConsolidatedResponseSection(
 
     if (includeResponseBodies && response.content?.text && shouldUseCodeBlock(mimeType)) {
       const lang = getLanguageFromMime(mimeType)
+      const contentText = truncateResponseBodies
+        ? truncate(response.content.text, 5000)
+        : response.content.text
       if (group.identicalResponses) {
         output += `#### Response Content\n`
         output += `\`\`\`${lang}\n`
-        output += escapeMarkdown(truncate(response.content.text, 5000))
+        output += escapeMarkdown(contentText)
         output += '\n```\n'
         output += `(×${group.count} identical responses)\n\n`
       } else {
         output += `#### Response Content (first call)\n`
         output += `\`\`\`${lang}\n`
-        output += escapeMarkdown(truncate(response.content.text, 5000))
+        output += escapeMarkdown(contentText)
         output += '\n```\n\n'
 
         for (const diff of group.bodyDiffs) {

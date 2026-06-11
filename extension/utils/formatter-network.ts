@@ -174,10 +174,10 @@ export function shouldUseCodeBlock(mimeType: string | undefined): boolean {
  */
 export function formatNetworkEntry(
   entry: HAREntry,
-  options: { includeResponseBodies: boolean }
+  options: { includeResponseBodies: boolean; truncateResponseBodies?: boolean }
 ): string {
   const { request, response, startedDateTime, time } = entry
-  const { includeResponseBodies } = options
+  const { includeResponseBodies, truncateResponseBodies = true } = options
   const size = response?.content?.size ? formatBytes(response.content.size) : 'N/A'
   const mimeType = response?.content?.mimeType || 'unknown'
   const isSuccess = response.status >= 200 && response.status < 300
@@ -191,7 +191,14 @@ export function formatNetworkEntry(
   output += `- **MIME Type**: ${mimeType}\n\n`
 
   output += formatRequestSection(request, isSuccess, isMinimal)
-  output += formatResponseSection(response, mimeType, isSuccess, isMinimal, includeResponseBodies)
+  output += formatResponseSection(
+    response,
+    mimeType,
+    isSuccess,
+    isMinimal,
+    includeResponseBodies,
+    truncateResponseBodies
+  )
 
   return output
 }
@@ -205,7 +212,7 @@ export function formatNetworkEntry(
  */
 export function formatConsolidatedNetworkEntry(
   group: ConsolidatedNetworkEntry,
-  options: { includeResponseBodies: boolean }
+  options: { includeResponseBodies: boolean; truncateResponseBodies?: boolean }
 ): string {
   if (group.count === 1) {
     return formatNetworkEntry(group.entries[0], options)
@@ -213,7 +220,7 @@ export function formatConsolidatedNetworkEntry(
 
   const representative = group.entries[0]
   const { request, response, time } = representative
-  const { includeResponseBodies } = options
+  const { includeResponseBodies, truncateResponseBodies = true } = options
   const size = response?.content?.size ? formatBytes(response.content.size) : 'N/A'
   const mimeType = response?.content?.mimeType || 'unknown'
   const isSuccess = response.status >= 200 && response.status < 300
@@ -227,7 +234,8 @@ export function formatConsolidatedNetworkEntry(
     response,
     isSuccess,
     isMinimal,
-    includeResponseBodies
+    includeResponseBodies,
+    truncateResponseBodies
   )
 
   return output
