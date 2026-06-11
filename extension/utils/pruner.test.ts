@@ -1002,6 +1002,62 @@ describe('truncate', () => {
     const result = pruneConsole(logs)
     expect(result[0].message).toBe('')
   })
+
+  test('should preserve full response body when truncateResponseBodies is false', () => {
+    const longBody = `{"data":"${'x'.repeat(20000)}"}`
+    const entries: HAREntry[] = [
+      {
+        startedDateTime: '2024-01-15T10:30:00Z',
+        request: {
+          url: 'https://api.example.com/large',
+          method: 'GET',
+        },
+        response: {
+          status: 200,
+          statusText: 'OK',
+          content: {
+            size: longBody.length,
+            mimeType: 'application/json',
+            text: longBody,
+          },
+        },
+      },
+    ]
+    const result = pruneNetwork(entries, {
+      truncateResponseBodies: false,
+      redactSensitiveInfo: false,
+    })
+    expect(result[0].response.content?.text).toBe(longBody)
+    expect(result[0].response.content?.text).not.toContain('[truncated]')
+  })
+
+  test('should truncate response body when truncateResponseBodies is true', () => {
+    const longBody = `{"data":"${'x'.repeat(20000)}"}`
+    const entries: HAREntry[] = [
+      {
+        startedDateTime: '2024-01-15T10:30:00Z',
+        request: {
+          url: 'https://api.example.com/large',
+          method: 'GET',
+        },
+        response: {
+          status: 200,
+          statusText: 'OK',
+          content: {
+            size: longBody.length,
+            mimeType: 'application/json',
+            text: longBody,
+          },
+        },
+      },
+    ]
+    const result = pruneNetwork(entries, {
+      truncateResponseBodies: true,
+      redactSensitiveInfo: false,
+    })
+    expect(result[0].response.content?.text).toContain('[truncated]')
+    expect(result[0].response.content?.text?.length).toBeLessThan(longBody.length)
+  })
 })
 
 describe('Token-efficient pruning', () => {
