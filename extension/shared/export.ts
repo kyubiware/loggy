@@ -30,6 +30,7 @@ export async function buildExportMarkdown(state: LoggyState): Promise<string> {
     includeAgentContext: state.includeAgentContext,
     includeResponseBodies: state.includeResponseBodies,
     truncateConsoleLogs: state.truncateConsoleLogs,
+    truncateResponseBodies: state.truncateResponseBodies,
     deduplicateApiCalls: state.deduplicateApiCalls,
     consoleLogs: pruneConsole(filteredData.consoleLogs, {
       truncateConsoleLogs: state.truncateConsoleLogs,

@@ -32,6 +32,8 @@ export interface ExportData {
   includeResponseBodies?: boolean
   /** Whether to truncate console log messages (default: true) */
   truncateConsoleLogs?: boolean
+  /** Whether to truncate response bodies in network entries (default: true) */
+  truncateResponseBodies?: boolean
   /** Whether to deduplicate identical API calls in the export */
   deduplicateApiCalls?: boolean
   /** Captured console messages */
@@ -149,23 +151,24 @@ function formatNetworkSection(data: ExportData): string {
     return `### Network Requests\n\nNo network requests captured.\n\n`
   }
 
+  const formatOptions = {
+    includeResponseBodies: data.includeResponseBodies ?? false,
+    truncateResponseBodies: data.truncateResponseBodies ?? true,
+  }
+
   let output = ''
   if (data.deduplicateApiCalls) {
     const consolidated = consolidateNetworkEntries(data.networkEntries)
     output += `### Network Requests\n\n`
     output += `- **Unique Routes**: ${consolidated.length} (from ${data.networkEntries.length} total)\n\n`
     consolidated.forEach((group) => {
-      output += formatConsolidatedNetworkEntry(group, {
-        includeResponseBodies: data.includeResponseBodies ?? false,
-      })
+      output += formatConsolidatedNetworkEntry(group, formatOptions)
       output += '---\n\n'
     })
   } else {
     output += `### Network Requests\n\n`
     data.networkEntries.forEach((entry) => {
-      output += formatNetworkEntry(entry, {
-        includeResponseBodies: data.includeResponseBodies ?? false,
-      })
+      output += formatNetworkEntry(entry, formatOptions)
       output += '---\n\n'
     })
   }
