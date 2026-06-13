@@ -169,7 +169,8 @@ export function usePopupActions() {
   }
 
   const isLoading = loadingStatus || loadingSettings || loadingData
-  const isLoggingActive = status?.mode === 'debugger'
+  const isLoggingActive =
+    status?.mode === 'debugger' || status?.mode === 'content-script'
   const showConsentView = status?.mode === 'inactive'
 
   return {
