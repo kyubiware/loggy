@@ -26,7 +26,7 @@ const mocks = vi.hoisted(() => ({
     includeAgentContext: true,
     includeResponseBodies: false,
     truncateConsoleLogs: true,
-    truncateResponseBodies: true,
+    responseBodyMode: 'smart',
     redactSensitiveInfo: true,
     networkExportEnabled: true,
     autoServerSync: false,

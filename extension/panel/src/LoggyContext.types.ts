@@ -19,7 +19,7 @@ export interface SettingsContextValue {
   includeAgentContext: boolean
   includeResponseBodies: boolean
   truncateConsoleLogs: boolean
-  truncateResponseBodies: boolean
+  responseBodyMode: 'smart' | 'full'
   redactSensitiveInfo: boolean
   networkExportEnabled: boolean
   autoServerSync: boolean

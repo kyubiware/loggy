@@ -29,7 +29,7 @@ function buildPseudoState(
     includeAgentContext: settings.includeAgentContext,
     includeResponseBodies: settings.includeResponseBodies,
     truncateConsoleLogs: settings.truncateConsoleLogs,
-    truncateResponseBodies: settings.truncateResponseBodies,
+    responseBodyMode: settings.responseBodyMode,
     redactSensitiveInfo: settings.redactSensitiveInfo,
     networkExportEnabled: settings.networkExportEnabled,
     autoServerSync: settings.autoServerSync,

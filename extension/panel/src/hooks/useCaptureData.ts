@@ -24,7 +24,7 @@ export function buildExportFingerprint(s: LoggyState): string {
       ac: s.includeAgentContext,
       rb: s.includeResponseBodies,
       tc: s.truncateConsoleLogs,
-      trb: s.truncateResponseBodies,
+      rbm: s.responseBodyMode,
       ri: s.redactSensitiveInfo,
       ne: s.networkExportEnabled,
       cf: s.consoleFilter,
@@ -45,7 +45,6 @@ export type Action =
   | { type: 'TOGGLE_AGENT_CONTEXT' }
   | { type: 'TOGGLE_RESPONSE_BODIES' }
   | { type: 'TOGGLE_CONSOLE_TRUNCATION' }
-  | { type: 'TOGGLE_RESPONSE_BODY_TRUNCATION' }
   | { type: 'TOGGLE_REDACT_SENSITIVE' }
   | { type: 'TOGGLE_NETWORK_EXPORT' }
   | { type: 'TOGGLE_AUTO_SERVER_SYNC' }
@@ -60,7 +59,7 @@ const TOGGLE_FLAG_KEY: Record<string, keyof LoggyState> = {
   TOGGLE_AGENT_CONTEXT: 'includeAgentContext',
   TOGGLE_RESPONSE_BODIES: 'includeResponseBodies',
   TOGGLE_CONSOLE_TRUNCATION: 'truncateConsoleLogs',
-  TOGGLE_RESPONSE_BODY_TRUNCATION: 'truncateResponseBodies',
+
   TOGGLE_REDACT_SENSITIVE: 'redactSensitiveInfo',
   TOGGLE_NETWORK_EXPORT: 'networkExportEnabled',
   TOGGLE_AUTO_SERVER_SYNC: 'autoServerSync',
@@ -84,7 +83,7 @@ function hydrateSettings(state: LoggyState, settings: PersistedLoggySettings): L
     includeAgentContext: state.includeAgentContext,
     includeResponseBodies: state.includeResponseBodies,
     truncateConsoleLogs: state.truncateConsoleLogs,
-    truncateResponseBodies: state.truncateResponseBodies,
+    responseBodyMode: state.responseBodyMode,
     redactSensitiveInfo: state.redactSensitiveInfo,
     networkExportEnabled: state.networkExportEnabled,
     autoServerSync: state.autoServerSync,

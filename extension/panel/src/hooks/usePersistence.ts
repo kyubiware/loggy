@@ -20,7 +20,7 @@ function getDefaultSettings() {
     includeAgentContext: d.includeAgentContext,
     includeResponseBodies: d.includeResponseBodies,
     truncateConsoleLogs: d.truncateConsoleLogs,
-    truncateResponseBodies: d.truncateResponseBodies,
+    responseBodyMode: d.responseBodyMode,
     redactSensitiveInfo: d.redactSensitiveInfo,
     networkExportEnabled: d.networkExportEnabled,
     autoServerSync: d.autoServerSync,

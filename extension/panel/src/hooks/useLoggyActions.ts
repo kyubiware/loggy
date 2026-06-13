@@ -17,7 +17,6 @@ export type ToggleSettingKey =
   | 'includeAgentContext'
   | 'includeResponseBodies'
   | 'truncateConsoleLogs'
-  | 'truncateResponseBodies'
   | 'redactSensitiveInfo'
   | 'networkExportEnabled'
   | 'autoServerSync'
@@ -32,7 +31,7 @@ const TOGGLE_ACTION_MAP: Record<ToggleSettingKey, Action['type']> = {
   includeAgentContext: 'TOGGLE_AGENT_CONTEXT',
   includeResponseBodies: 'TOGGLE_RESPONSE_BODIES',
   truncateConsoleLogs: 'TOGGLE_CONSOLE_TRUNCATION',
-  truncateResponseBodies: 'TOGGLE_RESPONSE_BODY_TRUNCATION',
+
   redactSensitiveInfo: 'TOGGLE_REDACT_SENSITIVE',
   networkExportEnabled: 'TOGGLE_NETWORK_EXPORT',
   autoServerSync: 'TOGGLE_AUTO_SERVER_SYNC',
@@ -52,7 +51,7 @@ export const TOGGLE_CONFIGS: Array<{
   { key: 'includeAgentContext', label: 'Include LLM guidance', icon: Brain },
   { key: 'includeResponseBodies', label: 'Include response bodies', icon: FileText },
   { key: 'truncateConsoleLogs', label: 'Truncate console logs', icon: Scissors },
-  { key: 'truncateResponseBodies', label: 'Truncate response bodies', icon: Scissors },
+
   { key: 'redactSensitiveInfo', label: 'Redact sensitive info', icon: Shield },
   { key: 'networkExportEnabled', label: 'Network export to server', icon: Upload },
   { key: 'autoServerSync', label: 'Auto sync to server', icon: RefreshCw },
