@@ -24,8 +24,8 @@ export interface LoggyState {
   includeResponseBodies: boolean
   /** Whether to truncate console log messages in export */
   truncateConsoleLogs: boolean
-  /** Whether to truncate network response bodies in export */
-  truncateResponseBodies: boolean
+  /** Response body output mode: 'smart' (elide non-elevated bodies) or 'full' (never truncate) */
+  responseBodyMode: 'smart' | 'full'
   /** Whether to deduplicate repeated API calls in export */
   deduplicateApiCalls: boolean
   /** Whether to redact sensitive information in exports */
@@ -66,7 +66,7 @@ export const PERSISTED_SETTINGS_KEYS = [
   'includeAgentContext',
   'includeResponseBodies',
   'truncateConsoleLogs',
-  'truncateResponseBodies',
+  'responseBodyMode',
   'deduplicateApiCalls',
   'redactSensitiveInfo',
   'networkExportEnabled',
@@ -101,7 +101,7 @@ export function createInitialState(): LoggyState {
     includeAgentContext: true,
     includeResponseBodies: false,
     truncateConsoleLogs: true,
-    truncateResponseBodies: true,
+    responseBodyMode: 'smart',
     deduplicateApiCalls: true,
     redactSensitiveInfo: true,
     networkExportEnabled: false,
