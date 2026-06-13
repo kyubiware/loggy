@@ -352,7 +352,7 @@ function popupMockScript(statusMode, settings) {
           url: e.request.url,
           method: e.request.method,
           status: e.response.status,
-          responseBodyPreview: e.response.content?.text,
+          responseBody: e.response.content?.text,
           contentType: e.response.content?.mimeType,
           duration: e.time,
         }))
