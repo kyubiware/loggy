@@ -20,11 +20,6 @@ const FILTER_ICONS: Array<{
   label: string
 }> = [
   { key: 'truncateConsoleLogs', icon: <Scissors size={14} />, label: 'Truncate console logs' },
-  {
-    key: 'truncateResponseBodies',
-    icon: <Scissors size={14} className='rotate-90' />,
-    label: 'Truncate response bodies',
-  },
 ]
 
 export function FiltersAccordion({

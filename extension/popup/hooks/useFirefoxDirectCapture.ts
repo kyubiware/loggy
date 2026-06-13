@@ -23,7 +23,7 @@ interface RawBufferData {
     url: string
     method: string
     status: number
-    responseBodyPreview?: string
+    responseBody?: string
     contentType?: string
     duration?: number
   }>
@@ -55,9 +55,9 @@ function toHAREntry(entry: RawBufferData['networkLogs'][number]): HAREntry {
       status: entry.status,
       statusText: '',
       content:
-        typeof entry.responseBodyPreview === 'string' || typeof entry.contentType === 'string'
+        typeof entry.responseBody === 'string' || typeof entry.contentType === 'string'
           ? {
-              text: entry.responseBodyPreview,
+              text: entry.responseBody,
               mimeType: entry.contentType,
             }
           : undefined,

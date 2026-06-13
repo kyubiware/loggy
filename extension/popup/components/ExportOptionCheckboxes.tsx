@@ -18,7 +18,6 @@ export type ToggleSettingKey =
   | 'includeAgentContext'
   | 'includeResponseBodies'
   | 'truncateConsoleLogs'
-  | 'truncateResponseBodies'
   | 'redactSensitiveInfo'
   | 'deduplicateApiCalls'
   | 'networkExportEnabled'
@@ -43,11 +42,6 @@ const TOGGLE_CONFIGS: Array<[ToggleSettingKey, string, React.JSX.Element]> = [
 
 export const TRUNCATE_CONFIGS: Array<[ToggleSettingKey, string, React.JSX.Element]> = [
   ['truncateConsoleLogs', 'Truncate console logs', <Scissors size={13} />],
-  [
-    'truncateResponseBodies',
-    'Truncate response bodies',
-    <Scissors size={13} className='rotate-90' />,
-  ],
 ]
 
 export function ExportOptionCheckboxes({
@@ -96,6 +90,44 @@ export function ExportOptionCheckboxes({
           </button>
         </div>
       </div>
+    </div>
+  )
+}
+
+export interface ResponseBodyModeSelectProps {
+  value: 'smart' | 'full'
+  onChange: (value: 'smart' | 'full') => void
+}
+
+export function ResponseBodyModeSelect({
+  value,
+  onChange,
+}: ResponseBodyModeSelectProps): React.JSX.Element {
+  return (
+    <div className='flex flex-col gap-1'>
+      <span className='text-xs text-stone-500 dark:text-stone-400 font-medium ml-1'>
+        Response body mode
+      </span>
+      <label className='flex items-center gap-2 text-xs text-stone-700 dark:text-stone-300'>
+        <input
+          type='radio'
+          className='h-3.5 w-3.5 border-stone-300 text-blue-600 focus:ring-blue-500'
+          checked={value === 'smart'}
+          onChange={() => onChange('smart')}
+        />
+        <Scissors size={13} />
+        Smart truncation (recommended)
+      </label>
+      <label className='flex items-center gap-2 text-xs text-stone-700 dark:text-stone-300'>
+        <input
+          type='radio'
+          className='h-3.5 w-3.5 border-stone-300 text-blue-600 focus:ring-blue-500'
+          checked={value === 'full'}
+          onChange={() => onChange('full')}
+        />
+        <FileText size={13} />
+        Full response bodies
+      </label>
     </div>
   )
 }

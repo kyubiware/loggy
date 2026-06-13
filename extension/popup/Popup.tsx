@@ -3,6 +3,7 @@ import { Globe, Terminal } from 'lucide-react'
 import { ConsentView } from '../shared/components/ConsentView'
 import {
   ExportOptionCheckboxes,
+  ResponseBodyModeSelect,
   TRUNCATE_CONFIGS,
   type ToggleSettingKey,
 } from './components/ExportOptionCheckboxes'
@@ -133,6 +134,10 @@ export default function Popup() {
                   onChange={() => setSetting(key, !settings[key])}
                 />
               ))}
+              <ResponseBodyModeSelect
+                value={settings.responseBodyMode}
+                onChange={(value) => setSetting('responseBodyMode', value)}
+              />
             </div>
             <div className='flex flex-col gap-2'>
               <FilterInput
