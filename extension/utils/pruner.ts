@@ -84,14 +84,11 @@ export function pruneConsole(
  * @param entries - Array of HAR entries to prune
  * @param options - Options to control redaction behavior
  * @param options.redactSensitiveInfo - Whether to redact sensitive data (default: true)
- * @param options.truncateResponseBodies - Deprecated: no-op. Body truncation
- *   moved to formatter-network-sections.ts. Kept in the signature for
- *   backward compatibility with callers that still pass it.
  * @returns New array with pruned entries (original not mutated)
  */
 export function pruneNetwork(
   entries: HAREntry[],
-  options?: { redactSensitiveInfo?: boolean; truncateResponseBodies?: boolean }
+  options?: { redactSensitiveInfo?: boolean }
 ): HAREntry[] {
   const shouldRedact = options?.redactSensitiveInfo !== false
 

@@ -181,13 +181,20 @@ export function formatNetworkEntry(
   entry: HAREntry,
   options: {
     includeResponseBodies: boolean
-    truncateResponseBodies?: boolean
+    responseBodyMode?: 'smart' | 'full'
+    elevatedUrlPaths?: Set<string>
     index: number
     anchor?: number
   }
 ): string {
   const { request, response, startedDateTime, time } = entry
-  const { includeResponseBodies, truncateResponseBodies = true, index, anchor } = options
+  const {
+    includeResponseBodies,
+    responseBodyMode = 'smart',
+    elevatedUrlPaths,
+    index,
+    anchor,
+  } = options
   // Size reflects the body we actually emit downstream. Bodies are truncated
   // at MAX_BODY_LENGTH in formatter-network-sections.ts, so this never
   // exceeds the configured ceiling.
@@ -210,6 +217,10 @@ export function formatNetworkEntry(
   }
   output += `- **MIME Type**: ${mimeType}\n\n`
 
+  const isElevated = elevatedUrlPaths
+    ? Array.from(elevatedUrlPaths).some((p) => entry.request.url.includes(p))
+    : false
+
   output += formatRequestSection(request, isSuccess, isMinimal)
   output += formatResponseSection(
     response,
@@ -217,7 +228,8 @@ export function formatNetworkEntry(
     isSuccess,
     isMinimal,
     includeResponseBodies,
-    truncateResponseBodies
+    responseBodyMode,
+    isElevated
   )
 
   return output
@@ -237,7 +249,8 @@ export function formatConsolidatedNetworkEntry(
   group: ConsolidatedNetworkEntry,
   options: {
     includeResponseBodies: boolean
-    truncateResponseBodies?: boolean
+    responseBodyMode?: 'smart' | 'full'
+    elevatedUrlPaths?: Set<string>
     index: number
     anchor?: number
   }
@@ -248,7 +261,13 @@ export function formatConsolidatedNetworkEntry(
 
   const representative = group.entries[0]
   const { request, response, time } = representative
-  const { includeResponseBodies, truncateResponseBodies = true, index, anchor } = options
+  const {
+    includeResponseBodies,
+    responseBodyMode = 'smart',
+    elevatedUrlPaths,
+    index,
+    anchor,
+  } = options
   const emittedBytes = response?.content?.text?.length ?? 0
   const mimeType = response?.content?.mimeType || 'unknown'
   const isSuccess = response.status >= 200 && response.status < 300
@@ -256,6 +275,11 @@ export function formatConsolidatedNetworkEntry(
 
   let output = `### #${index} ${escapeMarkdown(request.method)} ${escapeMarkdown(request.url)} (×${group.count} calls)\n\n`
   output += formatConsolidatedMeta(group, response, time, emittedBytes, mimeType, index, anchor)
+  const firstUrl = request.url
+  const isElevated = elevatedUrlPaths
+    ? Array.from(elevatedUrlPaths).some((p) => firstUrl.includes(p))
+    : false
+
   output += formatRequestSection(request, isSuccess, isMinimal)
   output += formatConsolidatedResponseSection(
     group,
@@ -263,7 +287,8 @@ export function formatConsolidatedNetworkEntry(
     isSuccess,
     isMinimal,
     includeResponseBodies,
-    truncateResponseBodies
+    responseBodyMode,
+    isElevated
   )
 
   return output

@@ -30,7 +30,7 @@ export async function buildExportMarkdown(state: LoggyState): Promise<string> {
     includeAgentContext: state.includeAgentContext,
     includeResponseBodies: state.includeResponseBodies,
     truncateConsoleLogs: state.truncateConsoleLogs,
-    truncateResponseBodies: state.truncateResponseBodies,
+    responseBodyMode: state.responseBodyMode,
     deduplicateApiCalls: state.deduplicateApiCalls,
     consoleLogs: pruneConsole(filteredData.consoleLogs, {
       truncateConsoleLogs: state.truncateConsoleLogs,
@@ -38,7 +38,6 @@ export async function buildExportMarkdown(state: LoggyState): Promise<string> {
     }),
     networkEntries: pruneNetwork(filteredData.networkEntries, {
       redactSensitiveInfo: state.redactSensitiveInfo,
-      truncateResponseBodies: state.truncateResponseBodies,
     }),
     ...(DEBUG ? { debugEntries: getDebugEntries() } : {}),
   }

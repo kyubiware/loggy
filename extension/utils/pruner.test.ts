@@ -1005,7 +1005,7 @@ describe('truncate', () => {
     expect(result[0].message).toBe('')
   })
 
-  test('should preserve full response body when truncateResponseBodies is false', () => {
+  test('should preserve full response body (pruneNetwork is body-truncation free)', () => {
     const longBody = `{"data":"${'x'.repeat(20000)}"}`
     const entries: HAREntry[] = [
       {
@@ -1026,39 +1026,10 @@ describe('truncate', () => {
       },
     ]
     const result = pruneNetwork(entries, {
-      truncateResponseBodies: false,
       redactSensitiveInfo: false,
     })
-    expect(result[0].response.content?.text).toBe(longBody)
-    expect(result[0].response.content?.text).not.toContain('[truncated]')
-  })
-
-  test('should pass through full body when truncateResponseBodies is true (deprecated no-op)', () => {
-    const longBody = `{"data":"${'x'.repeat(20000)}"}`
-    const entries: HAREntry[] = [
-      {
-        startedDateTime: '2024-01-15T10:30:00Z',
-        request: {
-          url: 'https://api.example.com/large',
-          method: 'GET',
-        },
-        response: {
-          status: 200,
-          statusText: 'OK',
-          content: {
-            size: longBody.length,
-            mimeType: 'application/json',
-            text: longBody,
-          },
-        },
-      },
-    ]
-    const result = pruneNetwork(entries, {
-      truncateResponseBodies: true,
-      redactSensitiveInfo: false,
-    })
-    // pruneNetwork no longer truncates bodies; that lives in formatter-network-sections.
-    // The truncateResponseBodies flag is preserved as a deprecated no-op for back-compat.
+    // pruneNetwork only removes binary content; body truncation lives in
+    // formatter-network-sections.
     expect(result[0].response.content?.text).toBe(longBody)
     expect(result[0].response.content?.text).not.toContain('[truncated]')
   })

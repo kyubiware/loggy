@@ -2,6 +2,7 @@ import type { HAREntry } from '../types/har'
 import type { ConsolidatedNetworkEntry } from './consolidation-network'
 import { formatFilteredHeaders, getLanguageFromMime, shouldUseCodeBlock } from './formatter-network'
 import { formatBytes, formatRelativeOffset, truncate, truncateJSON } from './formatter-strings'
+import { sketchJsonBody } from './schema-sketch'
 
 /**
  * Maximum length of a request or response body in the rendered Markdown export.
@@ -69,7 +70,8 @@ export function formatResponseSection(
   isSuccess: boolean,
   isMinimal: boolean,
   includeResponseBodies: boolean,
-  truncateResponseBodies: boolean = true
+  responseBodyMode: 'smart' | 'full' = 'smart',
+  isElevated: boolean = false
 ): string {
   let output = ''
 
@@ -84,15 +86,18 @@ export function formatResponseSection(
 
     if (includeResponseBodies && response.content?.text && shouldUseCodeBlock(mimeType)) {
       const lang = getLanguageFromMime(mimeType)
-      const contentText = truncateResponseBodies
-        ? truncateBody(response.content.text, mimeType)
-        : response.content.text
-      output += `#### Response Content\n`
-      output += `\`\`\`${lang}\n`
-      // Body lives inside a fenced code block, so Markdown escaping is not
-      // needed (and would mangle the `*` in the `/* truncated */` marker).
-      output += contentText
-      output += '\n```\n\n'
+      const text = response.content.text
+
+      if (responseBodyMode === 'full' || isElevated) {
+        // Full mode or elevated entry — emit body unchanged (no MAX_BODY_LENGTH)
+        output += `#### Response Content\n`
+        output += `\`\`\`${lang}\n`
+        output += text
+        output += '\n```\n\n'
+      } else {
+        // Smart mode, non-elevated — elide body with schema sketch
+        output += `- **Body elided (smart mode)**: ${sketchJsonBody(text, mimeType)}\n\n`
+      }
     }
   }
 
@@ -109,7 +114,8 @@ export function formatConsolidatedResponseSection(
   isSuccess: boolean,
   isMinimal: boolean,
   includeResponseBodies: boolean,
-  truncateResponseBodies: boolean = true
+  responseBodyMode: 'smart' | 'full' = 'smart',
+  isElevated: boolean = false
 ): string {
   let output = ''
   const mimeType = response?.content?.mimeType || 'unknown'
@@ -125,25 +131,32 @@ export function formatConsolidatedResponseSection(
 
     if (includeResponseBodies && response.content?.text && shouldUseCodeBlock(mimeType)) {
       const lang = getLanguageFromMime(mimeType)
-      const contentText = truncateResponseBodies
-        ? truncateBody(response.content.text, mimeType)
-        : response.content.text
-      if (group.identicalResponses) {
-        output += `#### Response Content\n`
-        output += `\`\`\`${lang}\n`
-        // Body lives inside a fenced code block, so Markdown escaping is not
-        // needed (and would mangle the `*` in the `/* truncated */` marker).
-        output += contentText
-        output += '\n```\n'
-        output += `(×${group.count} identical responses)\n\n`
-      } else {
-        output += `#### Response Content (first call)\n`
-        output += `\`\`\`${lang}\n`
-        // Body lives inside a fenced code block, so Markdown escaping is not
-        // needed (and would mangle the `*` in the `/* truncated */` marker).
-        output += contentText
-        output += '\n```\n\n'
+      const text = response.content.text
 
+      const showFullBody = responseBodyMode === 'full' || isElevated
+      const contentText = showFullBody ? text : ''
+
+      if (group.identicalResponses) {
+        if (showFullBody) {
+          output += `#### Response Content\n`
+          output += `\`\`\`${lang}\n`
+          output += contentText
+          output += '\n```\n'
+          output += `(×${group.count} identical responses)\n\n`
+        } else {
+          output += `- **Body elided (smart mode)**: ${sketchJsonBody(text, mimeType)}\n\n`
+        }
+      } else {
+        if (showFullBody) {
+          output += `#### Response Content (first call)\n`
+          output += `\`\`\`${lang}\n`
+          output += contentText
+          output += '\n```\n\n'
+        } else {
+          output += `- **Body elided (smart mode)**: ${sketchJsonBody(text, mimeType)}\n\n`
+        }
+
+        // Diffs are always rendered — they're compact and valuable even in smart mode
         for (const diff of group.bodyDiffs) {
           if (!diff.hasDiff || !diff.diffLines) continue
           output += `#### Response Diff — Call ${diff.entryIndex + 1} (${diff.timestamp})\n`

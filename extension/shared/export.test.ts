@@ -51,6 +51,7 @@ describe('buildExportMarkdown', () => {
   it('includes response bodies in export when includeResponseBodies is true', async () => {
     const state = createInitialState()
     state.includeResponseBodies = true
+    state.responseBodyMode = 'full'
     state.networkEntries = [
       {
         startedDateTime: '2024-01-15T10:30:00Z',
@@ -228,6 +229,7 @@ describe('buildExportMarkdown', () => {
     state.truncateConsoleLogs = false
     state.includeAgentContext = true
     state.includeResponseBodies = true
+    state.responseBodyMode = 'full'
     state.consoleLogs = [
       {
         timestamp: '2024-01-15T10:30:00Z',

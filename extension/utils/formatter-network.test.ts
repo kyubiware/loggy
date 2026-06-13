@@ -35,7 +35,11 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
 
   test('should include response content when includeResponseBodies is true', () => {
     const entry = createMockEntry()
-    const result = formatNetworkEntry(entry, { includeResponseBodies: true, index: 1 })
+    const result = formatNetworkEntry(entry, {
+      includeResponseBodies: true,
+      responseBodyMode: 'full',
+      index: 1,
+    })
 
     expect(result).toContain('#### Response Content')
     expect(result).toContain('```json')
@@ -55,6 +59,7 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
     const entry = createMockEntry()
     const resultWithBodies = formatNetworkEntry(entry, {
       includeResponseBodies: true,
+      responseBodyMode: 'full',
       index: 1,
     })
     const resultWithoutBodies = formatNetworkEntry(entry, {
@@ -130,7 +135,11 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
         },
       },
     })
-    const result = formatNetworkEntry(entry, { includeResponseBodies: true, index: 1 })
+    const result = formatNetworkEntry(entry, {
+      includeResponseBodies: true,
+      responseBodyMode: 'full',
+      index: 1,
+    })
 
     expect(result).toContain('#### Response Content')
     expect(result).toContain('```html')
@@ -150,7 +159,11 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
         },
       },
     })
-    const result = formatNetworkEntry(entry, { includeResponseBodies: true, index: 1 })
+    const result = formatNetworkEntry(entry, {
+      includeResponseBodies: true,
+      responseBodyMode: 'full',
+      index: 1,
+    })
 
     expect(result).toContain('#### Response Content')
     expect(result).toContain('```javascript')
@@ -170,7 +183,11 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
         },
       },
     })
-    const result = formatNetworkEntry(entry, { includeResponseBodies: true, index: 1 })
+    const result = formatNetworkEntry(entry, {
+      includeResponseBodies: true,
+      responseBodyMode: 'full',
+      index: 1,
+    })
 
     expect(result).toContain('#### Response Content')
     expect(result).toContain('```css')
@@ -432,10 +449,10 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
     })
   })
 
-  describe('formatResponseSection - truncateResponseBodies flag', () => {
+  describe('formatResponseSection - responseBodyMode flag', () => {
     const longBody = `{"data":"${'x'.repeat(8000)}"}`
 
-    test('should NOT truncate response body when truncateResponseBodies is false', () => {
+    test('full mode: shows full body', () => {
       const response = {
         status: 200,
         statusText: 'OK',
@@ -446,13 +463,13 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
           text: longBody,
         },
       }
-      const result = formatResponseSection(response, 'application/json', true, false, true, false)
+      const result = formatResponseSection(response, 'application/json', true, false, true, 'full')
 
       expect(result).toContain(longBody)
-      expect(result).not.toContain('/* truncated')
+      expect(result).not.toContain('Body elided')
     })
 
-    test('should truncate response body when truncateResponseBodies is true', () => {
+    test('smart mode + elevated: shows full body', () => {
       const response = {
         status: 200,
         statusText: 'OK',
@@ -463,15 +480,46 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
           text: longBody,
         },
       }
-      const result = formatResponseSection(response, 'application/json', true, false, true, true)
+      const result = formatResponseSection(
+        response,
+        'application/json',
+        true,
+        false,
+        true,
+        'smart',
+        true
+      )
 
-      // JSON bodies use the truncateJSON marker: `/* truncated: showed N of M bytes */`
-      expect(result).toContain('/* truncated')
-      expect(result).toContain('bytes */')
+      expect(result).toContain(longBody)
+      expect(result).not.toContain('Body elided')
+    })
+
+    test('smart mode + not elevated: elides body with sketch', () => {
+      const response = {
+        status: 200,
+        statusText: 'OK',
+        headers: [{ name: 'Content-Type', value: 'application/json' }],
+        content: {
+          size: longBody.length,
+          mimeType: 'application/json',
+          text: longBody,
+        },
+      }
+      const result = formatResponseSection(
+        response,
+        'application/json',
+        true,
+        false,
+        true,
+        'smart',
+        false
+      )
+
+      expect(result).toContain('- **Body elided (smart mode)**:')
       expect(result).not.toContain(longBody)
     })
 
-    test('should preserve full response body in formatNetworkEntry when truncateResponseBodies is false', () => {
+    test('full mode in formatNetworkEntry: shows full body', () => {
       const entry = createMockEntry({
         response: {
           status: 200,
@@ -486,15 +534,15 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
       })
       const result = formatNetworkEntry(entry, {
         includeResponseBodies: true,
-        truncateResponseBodies: false,
+        responseBodyMode: 'full',
         index: 1,
       })
 
       expect(result).toContain(longBody)
-      expect(result).not.toContain('/* truncated')
+      expect(result).not.toContain('Body elided')
     })
 
-    test('should truncate response body in formatNetworkEntry when truncateResponseBodies is true', () => {
+    test('smart mode + elevated in formatNetworkEntry: shows full body', () => {
       const entry = createMockEntry({
         response: {
           status: 200,
@@ -509,12 +557,35 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
       })
       const result = formatNetworkEntry(entry, {
         includeResponseBodies: true,
-        truncateResponseBodies: true,
+        responseBodyMode: 'smart',
+        elevatedUrlPaths: new Set(['/data']),
         index: 1,
       })
 
-      expect(result).toContain('/* truncated')
-      expect(result).toContain('bytes */')
+      expect(result).toContain(longBody)
+      expect(result).not.toContain('Body elided')
+    })
+
+    test('smart mode + non-elevated in formatNetworkEntry: elides body', () => {
+      const entry = createMockEntry({
+        response: {
+          status: 200,
+          statusText: 'OK',
+          headers: [{ name: 'Content-Type', value: 'application/json' }],
+          content: {
+            size: longBody.length,
+            mimeType: 'application/json',
+            text: longBody,
+          },
+        },
+      })
+      const result = formatNetworkEntry(entry, {
+        includeResponseBodies: true,
+        responseBodyMode: 'smart',
+        index: 1,
+      })
+
+      expect(result).toContain('- **Body elided (smart mode)**:')
       expect(result).not.toContain(longBody)
     })
   })

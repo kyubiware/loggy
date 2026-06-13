@@ -573,6 +573,7 @@ describe('formatMarkdown - Network Requests Section', () => {
       url: 'https://example.com',
       timestamp: '2024-01-15T10:30:00Z',
       includeResponseBodies: true,
+      responseBodyMode: 'full',
       consoleLogs: [],
       networkEntries: [
         {
@@ -608,6 +609,7 @@ describe('formatMarkdown - Network Requests Section', () => {
       url: 'https://example.com',
       timestamp: '2024-01-15T10:30:00Z',
       includeResponseBodies: true,
+      responseBodyMode: 'full',
       consoleLogs: [],
       networkEntries: [
         {
@@ -685,6 +687,7 @@ describe('formatMarkdown - Network Requests Section', () => {
       url: 'https://example.com',
       timestamp: '2024-01-15T10:30:00Z',
       includeResponseBodies: true,
+      responseBodyMode: 'full',
       consoleLogs: [],
       networkEntries: [
         {
@@ -715,6 +718,7 @@ describe('formatMarkdown - Network Requests Section', () => {
       url: 'https://example.com',
       timestamp: '2024-01-15T10:30:00Z',
       includeResponseBodies: true,
+      responseBodyMode: 'full',
       consoleLogs: [],
       networkEntries: [
         {
@@ -833,6 +837,7 @@ describe('formatMarkdown - Integration', () => {
       url: 'https://example.com|test',
       timestamp: '2024-01-15T10:30:00Z',
       includeResponseBodies: true,
+      responseBodyMode: 'full',
       consoleLogs: [{ timestamp: '10:30:00', level: 'log', message: 'Message with *asterisks*' }],
       networkEntries: [
         {

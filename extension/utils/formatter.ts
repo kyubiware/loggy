@@ -9,6 +9,7 @@ import type { ConsolidatedLog } from './consolidation'
 import type { ConsolidatedNetworkEntry } from './consolidation-network'
 import { consolidateNetworkEntries } from './consolidation-network'
 import type { DebugEntry } from './debug-logger'
+import { computeElevatedUrlPaths } from './elevated-paths'
 import {
   bySeverityThenCount,
   consolidateConsoleLogs,
@@ -33,8 +34,8 @@ export interface ExportData {
   includeResponseBodies?: boolean
   /** Whether to truncate console log messages (default: true) */
   truncateConsoleLogs?: boolean
-  /** Whether to truncate response bodies in network entries (default: true) */
-  truncateResponseBodies?: boolean
+  /** Response body output mode: 'smart' (elide non-elevated bodies) or 'full' (default: 'smart') */
+  responseBodyMode?: 'smart' | 'full'
   /** Whether to deduplicate identical API calls in the export */
   deduplicateApiCalls?: boolean
   /** Captured console messages */
@@ -180,9 +181,13 @@ function formatNetworkSection(data: ExportData, anchor: number | undefined): str
     return `### Network Requests\n\nNo network requests captured.\n\n`
   }
 
+  const responseBodyMode = data.responseBodyMode ?? 'smart'
+  const elevatedUrlPaths = computeElevatedUrlPaths(data.consoleLogs, data.networkEntries)
+
   const formatOptionsBase = {
     includeResponseBodies: data.includeResponseBodies ?? false,
-    truncateResponseBodies: data.truncateResponseBodies ?? true,
+    responseBodyMode,
+    elevatedUrlPaths,
   }
 
   let output = `### Network Requests\n\n`
