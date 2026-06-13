@@ -467,7 +467,7 @@ describe('pruneNetwork', () => {
     expect(result[0].response.content?.text).toBe('console.log("hello");')
   })
 
-  test('should truncate response body over 10KB', () => {
+  test('should pass through response body at full length (no longer truncates bodies)', () => {
     const largeBody = 'x'.repeat(11000)
     const entries: HAREntry[] = [
       {
@@ -488,11 +488,12 @@ describe('pruneNetwork', () => {
       },
     ]
     const result = pruneNetwork(entries)
-    expect(result[0].response.content?.text).toBe(`${'x'.repeat(10000)}... [truncated]`)
-    expect(result[0].response.content?.text?.length).toBe(10015) // 10000 + 15 for truncation message
+    expect(result[0].response.content?.text).toBe(largeBody)
+    expect(result[0].response.content?.text?.length).toBe(11000)
+    expect(result[0].response.content?.text).not.toContain('[truncated]')
   })
 
-  test('should not truncate response body at exactly 10KB', () => {
+  test('should pass through response body at exactly 10KB', () => {
     const exactBody = 'x'.repeat(10000)
     const entries: HAREntry[] = [
       {
@@ -517,7 +518,7 @@ describe('pruneNetwork', () => {
     expect(result[0].response.content?.text?.length).toBe(10000)
   })
 
-  test('should not truncate response body under 10KB', () => {
+  test('should pass through response body under 10KB', () => {
     const smallBody = 'x'.repeat(5000)
     const entries: HAREntry[] = [
       {
@@ -541,7 +542,7 @@ describe('pruneNetwork', () => {
     expect(result[0].response.content?.text).toBe(smallBody)
   })
 
-  test('should truncate request body over 10KB', () => {
+  test('should pass through request body at full length (no longer truncates bodies)', () => {
     const largeBody = 'y'.repeat(11000)
     const entries: HAREntry[] = [
       {
@@ -561,11 +562,12 @@ describe('pruneNetwork', () => {
       },
     ]
     const result = pruneNetwork(entries)
-    expect(result[0].request.postData?.text).toBe(`${'y'.repeat(10000)}... [truncated]`)
-    expect(result[0].request.postData?.text?.length).toBe(10015)
+    expect(result[0].request.postData?.text).toBe(largeBody)
+    expect(result[0].request.postData?.text?.length).toBe(11000)
+    expect(result[0].request.postData?.text).not.toContain('[truncated]')
   })
 
-  test('should not truncate request body at exactly 10KB', () => {
+  test('should pass through request body at exactly 10KB', () => {
     const exactBody = 'y'.repeat(10000)
     const entries: HAREntry[] = [
       {
@@ -589,7 +591,7 @@ describe('pruneNetwork', () => {
     expect(result[0].request.postData?.text?.length).toBe(10000)
   })
 
-  test('should not truncate request body under 10KB', () => {
+  test('should pass through request body under 10KB', () => {
     const smallBody = 'y'.repeat(5000)
     const entries: HAREntry[] = [
       {
@@ -754,7 +756,7 @@ describe('pruneNetwork', () => {
     const result = pruneNetwork(entries)
     expect(result[0].response.content?.text).toBe('[Binary content removed]')
     expect(result[1].response.content?.text).toBe('{"data": "value"}')
-    expect(result[2].request.postData?.text).toBe(`${'x'.repeat(10000)}... [truncated]`)
+    expect(result[2].request.postData?.text).toBe('x'.repeat(11000))
   })
 })
 
@@ -1031,7 +1033,7 @@ describe('truncate', () => {
     expect(result[0].response.content?.text).not.toContain('[truncated]')
   })
 
-  test('should truncate response body when truncateResponseBodies is true', () => {
+  test('should pass through full body when truncateResponseBodies is true (deprecated no-op)', () => {
     const longBody = `{"data":"${'x'.repeat(20000)}"}`
     const entries: HAREntry[] = [
       {
@@ -1055,8 +1057,10 @@ describe('truncate', () => {
       truncateResponseBodies: true,
       redactSensitiveInfo: false,
     })
-    expect(result[0].response.content?.text).toContain('[truncated]')
-    expect(result[0].response.content?.text?.length).toBeLessThan(longBody.length)
+    // pruneNetwork no longer truncates bodies; that lives in formatter-network-sections.
+    // The truncateResponseBodies flag is preserved as a deprecated no-op for back-compat.
+    expect(result[0].response.content?.text).toBe(longBody)
+    expect(result[0].response.content?.text).not.toContain('[truncated]')
   })
 })
 

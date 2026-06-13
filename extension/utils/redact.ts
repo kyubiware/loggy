@@ -4,10 +4,14 @@ const JWT_PATTERN = /eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g
 const AUTH_TOKEN_PATTERN = /(Bearer|Basic)\s+\S+/gi
 const IPV4_PATTERN = /\b\d{1,3}(?:\.\d{1,3}){3}\b/g
 const EMAIL_PATTERN = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g
-const UUID_PATTERN = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi
 
 /**
  * Redacts sensitive patterns from arbitrary text.
+ *
+ * UUIDs are intentionally NOT redacted — they are random identifiers needed
+ * for cross-request correlation. Only true PII (JWT, Bearer tokens, emails,
+ * internal IPs) is redacted.
+ *
  * @param text - Input text to redact
  * @returns Redacted text with sensitive values replaced
  */
@@ -17,7 +21,6 @@ export function redactString(text: string): string {
     .replace(JWT_PATTERN, '[REDACTED_JWT]')
     .replace(IPV4_PATTERN, '[REDACTED_IP]')
     .replace(EMAIL_PATTERN, '[REDACTED_EMAIL]')
-    .replace(UUID_PATTERN, '[REDACTED_UUID]')
 }
 
 /**

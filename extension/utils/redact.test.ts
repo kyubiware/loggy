@@ -49,16 +49,17 @@ describe('redactString', () => {
     expect(redactString('admin@mail.company.co.uk')).toBe('[REDACTED_EMAIL]')
   })
 
-  it('redacts UUIDs', () => {
-    const result = redactString('card_id: 802ed3eb-9f2c-4257-8f34-b1a7cfb02374')
-    expect(result).toBe('card_id: [REDACTED_UUID]')
+  it('preserves UUIDs (not redacted — random identifiers, not PII)', () => {
+    const input = 'card_id: 802ed3eb-9f2c-4257-8f34-b1a7cfb02374'
+    const result = redactString(input)
+    expect(result).toBe(input)
   })
 
-  it('redacts multiple UUIDs', () => {
-    const result = redactString(
+  it('preserves multiple UUIDs', () => {
+    const input =
       'id: 802ed3eb-9f2c-4257-8f34-b1a7cfb02374 parent: 03f35754-cd76-449c-96d3-eca5dd7eb538'
-    )
-    expect(result).toBe('id: [REDACTED_UUID] parent: [REDACTED_UUID]')
+    const result = redactString(input)
+    expect(result).toBe(input)
   })
 
   it('redacts all patterns in a single string', () => {
@@ -68,11 +69,11 @@ describe('redactString', () => {
     expect(result).not.toContain('user@test.com')
     expect(result).not.toContain('10.0.0.1')
     expect(result).not.toContain('eyJhbGci')
-    expect(result).not.toContain('802ed3eb')
     expect(result).toContain('[REDACTED_EMAIL]')
     expect(result).toContain('[REDACTED_IP]')
     expect(result).toContain('[REDACTED_JWT]')
-    expect(result).toContain('[REDACTED_UUID]')
+    // UUID is NOT redacted — random identifiers needed for cross-request correlation
+    expect(result).toContain('802ed3eb')
   })
 
   it('returns unchanged string when nothing matches', () => {
@@ -173,11 +174,11 @@ describe('redactHAREntry', () => {
     // Response headers should be preserved when no sensitive data
     expect(result.response.headers?.[0]?.value).toBe('application/json')
 
-    // Response body should have email and UUID redacted
+    // Response body should have email redacted, UUID preserved
     expect(result.response.content?.text).not.toContain('user@test.com')
-    expect(result.response.content?.text).not.toContain('802ed3eb')
     expect(result.response.content?.text).toContain('[REDACTED_EMAIL]')
-    expect(result.response.content?.text).toContain('[REDACTED_UUID]')
+    // UUID is NOT redacted — random identifiers needed for cross-request correlation
+    expect(result.response.content?.text).toContain('802ed3eb')
 
     // Non-sensitive fields preserved
     expect(result.response.status).toBe(200)
@@ -209,7 +210,10 @@ describe('redactHAREntry', () => {
     const result = redactHAREntry(entry)
 
     expect(result.request.url).toBe('http://[REDACTED_IP]:4001/api/srs/schedule')
-    expect(result.request.postData?.text).toBe('{"card_id":"[REDACTED_UUID]","rating":2}')
+    // UUID is NOT redacted in request bodies — random identifiers needed for cross-request correlation
+    expect(result.request.postData?.text).toBe(
+      '{"card_id":"802ed3eb-9f2c-4257-8f34-b1a7cfb02374","rating":2}'
+    )
   })
 
   it('handles entry with no headers or bodies', () => {
@@ -246,5 +250,45 @@ describe('redactHAREntry', () => {
 
     expect(entry.request.url).toBe('http://10.0.0.1/api')
     expect(entry.request.headers?.[0]?.value).toBe('Bearer secret-token')
+  })
+
+  it('preserves UUIDs in URL paths, bodies, headers, and console messages', () => {
+    const uuid = '56524c33-1234-4321-abcd-123456789abc'
+    const entry: HAREntry = {
+      startedDateTime: '2026-06-13T10:00:00.000Z',
+      request: {
+        url: `http://100.99.151.71:4001/api/text-sessions/${uuid}`,
+        method: 'GET',
+        headers: [{ name: 'X-Request-Id', value: uuid }],
+        postData: {
+          mimeType: 'application/json',
+          text: `{"session_id":"${uuid}","query":"test"}`,
+        },
+      },
+      response: {
+        status: 200,
+        statusText: 'OK',
+        headers: [{ name: 'X-Session-Id', value: uuid }],
+        content: {
+          size: 100,
+          mimeType: 'application/json',
+          text: `{"session_id":"${uuid}","result":"ok"}`,
+        },
+      },
+      time: 10,
+    }
+
+    const result = redactHAREntry(entry)
+
+    // URL: UUID survives (IP still redacted)
+    expect(result.request.url).toBe(`http://[REDACTED_IP]:4001/api/text-sessions/${uuid}`)
+    // Request body: UUID survives
+    expect(result.request.postData?.text).toContain(uuid)
+    // Request header: UUID survives
+    expect(result.request.headers?.[0]?.value).toBe(uuid)
+    // Response body: UUID survives
+    expect(result.response.content?.text).toContain(uuid)
+    // Response header: UUID survives
+    expect(result.response.headers?.[0]?.value).toBe(uuid)
   })
 })

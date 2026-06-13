@@ -12,8 +12,6 @@ import { redactHAREntry, redactString } from './redact'
  */
 const PRUNE_CONFIG = {
   MAX_LOG_LENGTH: 500,
-  MAX_REQUEST_BODY: 10000,
-  MAX_RESPONSE_BODY: 10000,
   MAX_STACK_DEPTH: 10,
   BINARY_MIME_TYPES: [
     'image/',
@@ -79,10 +77,16 @@ export function pruneConsole(
 }
 
 /**
- * Prunes network HAR entries by removing binary content and truncating large text
+ * Prunes network HAR entries by removing binary content. Bodies are passed
+ * through untouched — body truncation now lives in
+ * `formatter-network-sections.ts` (see `MAX_BODY_LENGTH`) as a single layer
+ * that is JSON-aware.
  * @param entries - Array of HAR entries to prune
  * @param options - Options to control redaction behavior
  * @param options.redactSensitiveInfo - Whether to redact sensitive data (default: true)
+ * @param options.truncateResponseBodies - Deprecated: no-op. Body truncation
+ *   moved to formatter-network-sections.ts. Kept in the signature for
+ *   backward compatibility with callers that still pass it.
  * @returns New array with pruned entries (original not mutated)
  */
 export function pruneNetwork(
@@ -90,7 +94,6 @@ export function pruneNetwork(
   options?: { redactSensitiveInfo?: boolean; truncateResponseBodies?: boolean }
 ): HAREntry[] {
   const shouldRedact = options?.redactSensitiveInfo !== false
-  const shouldTruncateResponse = options?.truncateResponseBodies !== false
 
   return entries.map((entry) => {
     const pruned = { ...entry }
@@ -106,25 +109,24 @@ export function pruneNetwork(
         },
       }
     } else {
-      // Truncate text content
+      // Pass text content through unchanged; the formatter applies the
+      // JSON-aware single-layer truncation at MAX_BODY_LENGTH.
       pruned.response = {
         ...entry.response,
         content: {
           ...entry.response?.content,
-          text: shouldTruncateResponse
-            ? truncate(entry.response?.content?.text, PRUNE_CONFIG.MAX_RESPONSE_BODY)
-            : (entry.response?.content?.text ?? ''),
+          text: entry.response?.content?.text ?? '',
         },
       }
     }
 
-    // Truncate request body
+    // Request body is passed through unchanged for the same reason.
     if (pruned.request?.postData?.text) {
       pruned.request = {
         ...pruned.request,
         postData: {
           ...pruned.request.postData,
-          text: truncate(pruned.request.postData.text, PRUNE_CONFIG.MAX_REQUEST_BODY),
+          text: pruned.request.postData.text,
         },
       }
     }
