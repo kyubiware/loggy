@@ -1,7 +1,26 @@
 import type { HAREntry } from '../types/har'
 import type { ConsolidatedNetworkEntry } from './consolidation-network'
 import { formatFilteredHeaders, getLanguageFromMime, shouldUseCodeBlock } from './formatter-network'
-import { escapeMarkdown, truncate } from './formatter-strings'
+import { formatBytes, formatRelativeOffset, truncate, truncateJSON } from './formatter-strings'
+
+/**
+ * Maximum length of a request or response body in the rendered Markdown export.
+ * Bodies are truncated once, at the formatter layer, with JSON-aware boundary
+ * detection (see `truncateJSON`).
+ */
+export const MAX_BODY_LENGTH = 8000
+
+/**
+ * Picks the right truncation function for a body given its MIME type.
+ * JSON bodies get a structurally-safe cut at a closed container; everything
+ * else falls through to the byte-count truncate.
+ */
+function truncateBody(text: string, mimeType: string | undefined): string {
+  if (getLanguageFromMime(mimeType) === 'json') {
+    return truncateJSON(text, MAX_BODY_LENGTH)
+  }
+  return truncate(text, MAX_BODY_LENGTH)
+}
 
 /**
  * Formats request headers and body section (shared between regular and consolidated entries)
@@ -14,24 +33,28 @@ export function formatRequestSection(
   let output = ''
 
   if (!isMinimal) {
-    output += `#### Request Headers\n`
-    output += '```\n'
-    output += formatFilteredHeaders(request.headers, { side: 'request', isSuccess })
-    output += '\n```\n\n'
+    const formatted = formatFilteredHeaders(request.headers, { side: 'request', isSuccess })
+    if (formatted) {
+      output += `#### Request Headers\n`
+      output += '```\n'
+      output += formatted
+      output += '\n```\n\n'
+    }
   }
 
   if (request.postData?.text) {
+    const mimeType = request.postData.mimeType
+    const lang = getLanguageFromMime(mimeType)
     output += `#### Request Body\n`
-    if (shouldUseCodeBlock(request.postData.mimeType)) {
-      const lang = getLanguageFromMime(request.postData.mimeType)
+    if (shouldUseCodeBlock(mimeType)) {
       output += `\`\`\`${lang}\n`
-      output += escapeMarkdown(truncate(request.postData.text, 5000))
-      output += '\n```\n\n'
     } else {
       output += '```\n'
-      output += escapeMarkdown(truncate(request.postData.text, 5000))
-      output += '\n```\n\n'
     }
+    // Body lives inside a fenced code block, so Markdown escaping is not
+    // needed (and would mangle the `*` in the `/* truncated */` marker).
+    output += truncateBody(request.postData.text, mimeType)
+    output += '\n```\n\n'
   }
 
   return output
@@ -51,19 +74,24 @@ export function formatResponseSection(
   let output = ''
 
   if (!isMinimal) {
-    output += `#### Response Headers\n`
-    output += '```\n'
-    output += formatFilteredHeaders(response.headers, { side: 'response', isSuccess })
-    output += '\n```\n\n'
+    const formatted = formatFilteredHeaders(response.headers, { side: 'response', isSuccess })
+    if (formatted) {
+      output += `#### Response Headers\n`
+      output += '```\n'
+      output += formatted
+      output += '\n```\n\n'
+    }
 
     if (includeResponseBodies && response.content?.text && shouldUseCodeBlock(mimeType)) {
       const lang = getLanguageFromMime(mimeType)
       const contentText = truncateResponseBodies
-        ? truncate(response.content.text, 5000)
+        ? truncateBody(response.content.text, mimeType)
         : response.content.text
       output += `#### Response Content\n`
       output += `\`\`\`${lang}\n`
-      output += escapeMarkdown(contentText)
+      // Body lives inside a fenced code block, so Markdown escaping is not
+      // needed (and would mangle the `*` in the `/* truncated */` marker).
+      output += contentText
       output += '\n```\n\n'
     }
   }
@@ -87,26 +115,33 @@ export function formatConsolidatedResponseSection(
   const mimeType = response?.content?.mimeType || 'unknown'
 
   if (!isMinimal) {
-    output += `#### Response Headers\n`
-    output += '```\n'
-    output += formatFilteredHeaders(response.headers, { side: 'response', isSuccess })
-    output += '\n```\n\n'
+    const formatted = formatFilteredHeaders(response.headers, { side: 'response', isSuccess })
+    if (formatted) {
+      output += `#### Response Headers\n`
+      output += '```\n'
+      output += formatted
+      output += '\n```\n\n'
+    }
 
     if (includeResponseBodies && response.content?.text && shouldUseCodeBlock(mimeType)) {
       const lang = getLanguageFromMime(mimeType)
       const contentText = truncateResponseBodies
-        ? truncate(response.content.text, 5000)
+        ? truncateBody(response.content.text, mimeType)
         : response.content.text
       if (group.identicalResponses) {
         output += `#### Response Content\n`
         output += `\`\`\`${lang}\n`
-        output += escapeMarkdown(contentText)
+        // Body lives inside a fenced code block, so Markdown escaping is not
+        // needed (and would mangle the `*` in the `/* truncated */` marker).
+        output += contentText
         output += '\n```\n'
         output += `(×${group.count} identical responses)\n\n`
       } else {
         output += `#### Response Content (first call)\n`
         output += `\`\`\`${lang}\n`
-        output += escapeMarkdown(contentText)
+        // Body lives inside a fenced code block, so Markdown escaping is not
+        // needed (and would mangle the `*` in the `/* truncated */` marker).
+        output += contentText
         output += '\n```\n\n'
 
         for (const diff of group.bodyDiffs) {
@@ -124,19 +159,28 @@ export function formatConsolidatedResponseSection(
 }
 
 /**
- * Formats consolidated group metadata (time, timestamps, calls, duration, status, size, mime)
+ * Formats consolidated group metadata (time, timestamps, calls, duration, status, size, mime).
+ * The Time bullet gets a relative offset against the session anchor for the
+ * FIRST-SEEN timestamp only; subsequent timestamps stay ISO-only to keep the
+ * compact range readable.
  */
 export function formatConsolidatedMeta(
   group: ConsolidatedNetworkEntry,
   response: HAREntry['response'],
   time: number | undefined,
-  size: string,
-  mimeType: string
+  emittedBytes: number,
+  mimeType: string,
+  index: number,
+  anchor: number | undefined
 ): string {
   const firstTime = group.timestamps[0]
   const lastTime = group.timestamps[group.timestamps.length - 1]
+  const firstOffset = formatRelativeOffset(firstTime, anchor)
 
   let output = `- **Time**: ${firstTime}`
+  if (firstOffset) {
+    output += ` (${firstOffset})`
+  }
   if (firstTime !== lastTime) {
     output += ` -> ${lastTime}`
   }
@@ -144,10 +188,19 @@ export function formatConsolidatedMeta(
 
   output += `- **Calls**: ${group.count}\n`
   output += `- **Timestamps**: ${group.timestamps.join(', ')}\n`
-  output += `- **Duration**: ${time ? `${time}ms (first call)` : 'N/A'}\n`
+  if (time) {
+    output += `- **Duration**: ${time}ms (first call)\n`
+  }
   output += `- **Status**: ${response.status} ${response.statusText}\n`
-  output += `- **Size**: ${size}\n`
+  if (emittedBytes > 0) {
+    output += `- **Size**: ${formatBytes(emittedBytes)}\n`
+  }
   output += `- **MIME Type**: ${mimeType}\n\n`
+  // `index` is currently used by callers to align headings; the consolidated
+  // heading is emitted by formatConsolidatedNetworkEntry, so this function
+  // accepts the param for symmetry and future use without warning about an
+  // unused binding.
+  void index
 
   return output
 }

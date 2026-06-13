@@ -6,6 +6,7 @@
 import type { ConsoleMessage } from '../types/console'
 import type { HAREntry } from '../types/har'
 import type { ConsolidatedLog } from './consolidation'
+import type { ConsolidatedNetworkEntry } from './consolidation-network'
 import { consolidateNetworkEntries } from './consolidation-network'
 import type { DebugEntry } from './debug-logger'
 import {
@@ -16,7 +17,7 @@ import {
   isLikelyFailureSignal,
 } from './formatter-console'
 import { formatConsolidatedNetworkEntry, formatNetworkEntry } from './formatter-network'
-import { escapeMarkdown, formatBytes, truncate } from './formatter-strings'
+import { escapeMarkdown, formatBytes, truncate, truncateJSON } from './formatter-strings'
 
 /**
  * Complete export data structure for Markdown generation
@@ -44,7 +45,7 @@ export interface ExportData {
   debugEntries?: DebugEntry[]
 }
 
-export { formatBytes, truncate }
+export { formatBytes, truncate, truncateJSON }
 
 /**
  * Formats complete export data as structured Markdown document
@@ -70,14 +71,38 @@ export function formatMarkdown(data: ExportData): string {
     { error: 0, warn: 0, log: 0, info: 0, debug: 0 } as Record<ConsoleMessage['level'], number>
   )
 
+  // Session anchor = earliest observed timestamp across console + network.
+  // Computed once at the top so every offset downstream is relative to the
+  // same instant. Threads through `formatConsoleSection` and
+  // `formatNetworkSection` to the per-entry formatters.
+  const anchor = computeAnchor(data)
+
   return (
     formatHeaderSection(data) +
     formatEnvironmentSection(data, consolidatedLogs.length, repeatedLogCount) +
     formatDebugSignalsSection(data, failureSignals, levelCount, consolidatedLevelCount) +
-    formatConsoleSection(data, consolidatedLogs) +
-    formatNetworkSection(data) +
+    formatConsoleSection(data, consolidatedLogs, anchor) +
+    formatNetworkSection(data, anchor) +
     formatDebugSection(data)
   )
+}
+
+/**
+ * Computes the earliest observed timestamp across all console logs and
+ * network entries. Returns `undefined` when no parseable timestamps are
+ * available — callers must then render ISO timestamps only (no offset).
+ */
+function computeAnchor(data: ExportData): number | undefined {
+  const candidates: string[] = []
+  for (const log of data.consoleLogs) {
+    if (log.timestamp) candidates.push(log.timestamp)
+  }
+  for (const entry of data.networkEntries) {
+    if (entry.startedDateTime) candidates.push(entry.startedDateTime)
+  }
+  const validMs = candidates.map((t) => Date.parse(t)).filter((n) => !Number.isNaN(n))
+  if (validMs.length === 0) return undefined
+  return Math.min(...validMs)
 }
 
 function formatHeaderSection(data: ExportData): string {
@@ -130,7 +155,11 @@ function formatDebugSignalsSection(
   return output
 }
 
-function formatConsoleSection(data: ExportData, consolidatedLogs: ConsolidatedLog[]): string {
+function formatConsoleSection(
+  data: ExportData,
+  consolidatedLogs: ConsolidatedLog[],
+  anchor: number | undefined
+): string {
   if (consolidatedLogs.length === 0) {
     return `### Console Logs\n\nNo console logs captured.\n\n`
   }
@@ -140,40 +169,110 @@ function formatConsoleSection(data: ExportData, consolidatedLogs: ConsolidatedLo
   output += `|------------|-----------|-------|-------|---------|\n`
   const shouldTruncate = data.truncateConsoleLogs ?? true
   consolidatedLogs.forEach((log) => {
-    output += `${formatConsoleLog(log, shouldTruncate)}\n`
+    output += `${formatConsoleLog(log, shouldTruncate, anchor)}\n`
   })
   output += '\n'
   return output
 }
 
-function formatNetworkSection(data: ExportData): string {
+function formatNetworkSection(data: ExportData, anchor: number | undefined): string {
   if (data.networkEntries.length === 0) {
     return `### Network Requests\n\nNo network requests captured.\n\n`
   }
 
-  const formatOptions = {
+  const formatOptionsBase = {
     includeResponseBodies: data.includeResponseBodies ?? false,
     truncateResponseBodies: data.truncateResponseBodies ?? true,
   }
 
-  let output = ''
+  let output = `### Network Requests\n\n`
   if (data.deduplicateApiCalls) {
     const consolidated = consolidateNetworkEntries(data.networkEntries)
-    output += `### Network Requests\n\n`
     output += `- **Unique Routes**: ${consolidated.length} (from ${data.networkEntries.length} total)\n\n`
-    consolidated.forEach((group) => {
-      output += formatConsolidatedNetworkEntry(group, formatOptions)
+    output += formatNetworkSummaryTable(consolidated)
+    consolidated.forEach((group, i) => {
+      output += formatConsolidatedNetworkEntry(group, {
+        ...formatOptionsBase,
+        index: i + 1,
+        anchor,
+      })
       output += '---\n\n'
     })
   } else {
-    output += `### Network Requests\n\n`
-    data.networkEntries.forEach((entry) => {
-      output += formatNetworkEntry(entry, formatOptions)
+    output += formatNetworkSummaryTableFromEntries(data.networkEntries)
+    data.networkEntries.forEach((entry, i) => {
+      output += formatNetworkEntry(entry, {
+        ...formatOptionsBase,
+        index: i + 1,
+        anchor,
+      })
       output += '---\n\n'
     })
   }
 
   return output
+}
+
+/**
+ * Renders the network summary table. The 1-based row index in column #1
+ * matches the `### #N` prefix on the per-entry heading emitted below —
+ * agents can jump from a summary row straight to the full entry.
+ *
+ * The `host + path` cell is normalized: protocol stripped, query string
+ * collapsed to `?…` when non-empty, and path truncated to ~60 chars.
+ * Consolidated groups suffix the cell with ` (×N)` for multiplicity.
+ */
+function formatNetworkSummaryTable(groups: ConsolidatedNetworkEntry[]): string {
+  let output = `| # | method | host + path | status | dur | size |\n`
+  output += `|---|--------|-------------|--------|-----|------|\n`
+  groups.forEach((group, i) => {
+    const first = group.entries[0]
+    const hostPath = normalizeHostPath(first.request.url)
+    const cell = group.count > 1 ? `${hostPath} (×${group.count})` : hostPath
+    output += `| ${i + 1} | ${first.request.method} | ${cell} | ${first.response.status} | ${formatDurationCell(first.time)} | ${formatSizeCell(first.response?.content?.text?.length ?? 0)} |\n`
+  })
+  output += '\n'
+  return output
+}
+
+function formatNetworkSummaryTableFromEntries(entries: HAREntry[]): string {
+  let output = `| # | method | host + path | status | dur | size |\n`
+  output += `|---|--------|-------------|--------|-----|------|\n`
+  entries.forEach((entry, i) => {
+    const hostPath = normalizeHostPath(entry.request.url)
+    output += `| ${i + 1} | ${entry.request.method} | ${hostPath} | ${entry.response.status} | ${formatDurationCell(entry.time)} | ${formatSizeCell(entry.response?.content?.text?.length ?? 0)} |\n`
+  })
+  output += '\n'
+  return output
+}
+
+function formatDurationCell(time: number | undefined): string {
+  return time ? `${time}ms` : ''
+}
+
+function formatSizeCell(emittedBytes: number): string {
+  return emittedBytes > 0 ? formatBytes(emittedBytes) : ''
+}
+
+/**
+ * Normalizes a URL for the summary table: protocol stripped, query string
+ * collapsed to `?…` when non-empty, and path truncated to ~60 chars with a
+ * `…` ellipsis suffix when longer.
+ */
+function normalizeHostPath(url: string): string {
+  const stripped = url.replace(/^https?:\/\//, '')
+  const qIndex = stripped.indexOf('?')
+  let hostPath: string
+  if (qIndex >= 0) {
+    const path = stripped.substring(0, qIndex)
+    hostPath = `${path}?…`
+  } else {
+    hostPath = stripped
+  }
+  if (hostPath.length > 60) {
+    return `${hostPath.substring(0, 60)}…`
+  }
+  return hostPath
 }
 
 function formatDebugSection(data: ExportData): string {

@@ -6,7 +6,7 @@ import {
   formatRequestSection,
   formatResponseSection,
 } from './formatter-network-sections'
-import { escapeMarkdown, formatBytes } from './formatter-strings'
+import { escapeMarkdown, formatBytes, formatRelativeOffset } from './formatter-strings'
 
 /** HTTP/2 pseudo-headers that duplicate info already in the URL/method line */
 const SUPPRESSED_PSEUDO_HEADERS = new Set([':authority', ':method', ':path', ':scheme'])
@@ -92,7 +92,7 @@ export function formatFilteredHeaders(
   headers: { name: string; value: string }[] | undefined,
   context: { side: 'request' | 'response'; isSuccess: boolean }
 ): string {
-  if (!headers || headers.length === 0) return 'None'
+  if (!headers || headers.length === 0) return ''
 
   const { side, isSuccess } = context
   const result: string[] = []
@@ -127,7 +127,7 @@ export function formatFilteredHeaders(
     result.push(`  ${escapeMarkdown(h.name)}: ${escapeMarkdown(h.value)}`)
   }
 
-  return result.length > 0 ? result.join('\n') : 'None'
+  return result.length > 0 ? result.join('\n') : ''
 }
 
 /**
@@ -170,24 +170,44 @@ export function shouldUseCodeBlock(mimeType: string | undefined): boolean {
  * Formats a single network entry as detailed section
  * @param entry - HAR entry to format
  * @param options - Formatting options
+ * @param options.index - 1-based row index used to prefix the heading
+ *   (`### #N ...`) and align with the Network summary table
+ * @param options.anchor - Epoch ms of the session anchor; when set, a
+ *   `t+<offset>` is appended to the Time bullet. Omit when the caller
+ *   cannot compute one.
  * @returns Markdown section string
  */
 export function formatNetworkEntry(
   entry: HAREntry,
-  options: { includeResponseBodies: boolean; truncateResponseBodies?: boolean }
+  options: {
+    includeResponseBodies: boolean
+    truncateResponseBodies?: boolean
+    index: number
+    anchor?: number
+  }
 ): string {
   const { request, response, startedDateTime, time } = entry
-  const { includeResponseBodies, truncateResponseBodies = true } = options
-  const size = response?.content?.size ? formatBytes(response.content.size) : 'N/A'
+  const { includeResponseBodies, truncateResponseBodies = true, index, anchor } = options
+  // Size reflects the body we actually emit downstream. Bodies are truncated
+  // at MAX_BODY_LENGTH in formatter-network-sections.ts, so this never
+  // exceeds the configured ceiling.
+  const emittedBytes = response?.content?.text?.length ?? 0
   const mimeType = response?.content?.mimeType || 'unknown'
   const isSuccess = response.status >= 200 && response.status < 300
   const isMinimal = response.status === 204
 
-  let output = `### ${escapeMarkdown(request.method)} ${escapeMarkdown(request.url)}\n\n`
-  output += `- **Time**: ${startedDateTime}\n`
-  output += `- **Duration**: ${time ? `${time}ms` : 'N/A'}\n`
+  let output = `### #${index} ${escapeMarkdown(request.method)} ${escapeMarkdown(request.url)}\n\n`
+  const timeOffset = formatRelativeOffset(startedDateTime, anchor)
+  output += timeOffset
+    ? `- **Time**: ${startedDateTime} (${timeOffset})\n`
+    : `- **Time**: ${startedDateTime}\n`
+  if (time) {
+    output += `- **Duration**: ${time}ms\n`
+  }
   output += `- **Status**: ${response.status} ${response.statusText}\n`
-  output += `- **Size**: ${size}\n`
+  if (emittedBytes > 0) {
+    output += `- **Size**: ${formatBytes(emittedBytes)}\n`
+  }
   output += `- **MIME Type**: ${mimeType}\n\n`
 
   output += formatRequestSection(request, isSuccess, isMinimal)
@@ -208,11 +228,19 @@ export function formatNetworkEntry(
  * Deduplicated calls sharing the same method+URL+body are grouped together.
  * @param group - Consolidated network entry group
  * @param options - Formatting options
+ * @param options.index - 1-based row index used to prefix the heading
+ * @param options.anchor - Epoch ms of the session anchor; threaded into the
+ *   Time bullet as a `t+<offset>` suffix
  * @returns Markdown section string
  */
 export function formatConsolidatedNetworkEntry(
   group: ConsolidatedNetworkEntry,
-  options: { includeResponseBodies: boolean; truncateResponseBodies?: boolean }
+  options: {
+    includeResponseBodies: boolean
+    truncateResponseBodies?: boolean
+    index: number
+    anchor?: number
+  }
 ): string {
   if (group.count === 1) {
     return formatNetworkEntry(group.entries[0], options)
@@ -220,14 +248,14 @@ export function formatConsolidatedNetworkEntry(
 
   const representative = group.entries[0]
   const { request, response, time } = representative
-  const { includeResponseBodies, truncateResponseBodies = true } = options
-  const size = response?.content?.size ? formatBytes(response.content.size) : 'N/A'
+  const { includeResponseBodies, truncateResponseBodies = true, index, anchor } = options
+  const emittedBytes = response?.content?.text?.length ?? 0
   const mimeType = response?.content?.mimeType || 'unknown'
   const isSuccess = response.status >= 200 && response.status < 300
   const isMinimal = response.status === 204
 
-  let output = `### ${escapeMarkdown(request.method)} ${escapeMarkdown(request.url)} (×${group.count} calls)\n\n`
-  output += formatConsolidatedMeta(group, response, time, size, mimeType)
+  let output = `### #${index} ${escapeMarkdown(request.method)} ${escapeMarkdown(request.url)} (×${group.count} calls)\n\n`
+  output += formatConsolidatedMeta(group, response, time, emittedBytes, mimeType, index, anchor)
   output += formatRequestSection(request, isSuccess, isMinimal)
   output += formatConsolidatedResponseSection(
     group,

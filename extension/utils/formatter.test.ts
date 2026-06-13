@@ -294,7 +294,8 @@ describe('formatMarkdown - Console Logs Section', () => {
 
     const result = formatMarkdown(data)
 
-    expect(result).toContain('... [truncated]')
+    expect(result).toContain('[truncated,')
+    expect(result).toContain('bytes]')
     expect(result).not.toContain(longMessage)
   })
 
@@ -310,7 +311,7 @@ describe('formatMarkdown - Console Logs Section', () => {
 
     const result = formatMarkdown(data)
 
-    expect(result).not.toContain('... [truncated]')
+    expect(result).not.toContain('[truncated,')
     expect(result).toContain(longMessage)
   })
 
@@ -326,7 +327,7 @@ describe('formatMarkdown - Console Logs Section', () => {
 
     const result = formatMarkdown(data)
 
-    expect(result).not.toContain('... [truncated]')
+    expect(result).not.toContain('[truncated,')
     expect(result).toContain(longMessage)
   })
 
@@ -342,7 +343,8 @@ describe('formatMarkdown - Console Logs Section', () => {
 
     const result = formatMarkdown(data)
 
-    expect(result).toContain('... [truncated]')
+    expect(result).toContain('[truncated,')
+    expect(result).toContain('bytes]')
     expect(result).not.toContain(longMessage)
   })
 
@@ -357,7 +359,8 @@ describe('formatMarkdown - Console Logs Section', () => {
 
     const result = formatMarkdown(data)
 
-    expect(result).toContain('... [truncated]')
+    expect(result).toContain('[truncated,')
+    expect(result).toContain('bytes]')
     expect(result).not.toContain(longMessage)
   })
 })
@@ -395,7 +398,7 @@ describe('formatMarkdown - Network Requests Section', () => {
     const result = formatMarkdown(data)
 
     expect(result).toContain('### Network Requests')
-    expect(result).toContain('### GET https://api.example.com/data')
+    expect(result).toContain('### #1 GET https://api.example.com/data')
     expect(result).toContain('- **Time**: 2024-01-15T10:30:00Z')
     expect(result).toContain('- **Duration**: 100ms')
     expect(result).toContain('- **Status**: 200 OK')
@@ -418,7 +421,7 @@ describe('formatMarkdown - Network Requests Section', () => {
 
     const result = formatMarkdown(data)
 
-    expect(result).toContain('### GET\\|CUSTOM https://api.example.com\\|test')
+    expect(result).toContain('### #1 GET\\|CUSTOM https://api.example.com\\|test')
   })
 
   test('should format request headers', () => {
@@ -471,9 +474,9 @@ describe('formatMarkdown - Network Requests Section', () => {
 
     const result = formatMarkdown(data)
 
-    expect(result).toContain('#### Request Headers')
-    expect(result).toContain('```')
-    expect(result).toContain('None')
+    // Empty header block omits the section entirely (no more "None" placeholder).
+    expect(result).not.toContain('#### Request Headers')
+    expect(result).not.toContain('None')
   })
 
   test('should format request body with code block for JSON', () => {
@@ -505,7 +508,7 @@ describe('formatMarkdown - Network Requests Section', () => {
     expect(result).toContain('{"key":"value"}')
   })
 
-  test('should escape markdown in request body', () => {
+  test('does NOT escape markdown inside request body code block', () => {
     const data: ExportData = {
       url: 'https://example.com',
       timestamp: '2024-01-15T10:30:00Z',
@@ -529,7 +532,10 @@ describe('formatMarkdown - Network Requests Section', () => {
 
     const result = formatMarkdown(data)
 
-    expect(result).toContain('text with \\| pipes')
+    // Bodies are emitted inside fenced code blocks where Markdown
+    // special characters (|, *, `) have no meaning and are not escaped.
+    expect(result).toContain('text with | pipes')
+    expect(result).not.toContain('text with \\| pipes')
   })
 
   test('should format response headers', () => {
@@ -591,7 +597,9 @@ describe('formatMarkdown - Network Requests Section', () => {
     expect(result).toContain('#### Response Content')
     expect(result).toContain('```json')
     expect(result).toContain('{"result":"success"}')
-    expect(result).toContain('- **Size**: 1 KB')
+    // Size now reflects the emitted body length (text.length), not the
+    // original `content.size` field.
+    expect(result).toContain('- **Size**: 20 B')
     expect(result).toContain('- **MIME Type**: application/json')
   })
 
@@ -646,7 +654,8 @@ describe('formatMarkdown - Network Requests Section', () => {
 
     const result = formatMarkdown(data)
 
-    expect(result).toContain('- **Size**: N/A')
+    // No emitted body → Size bullet is omitted entirely (not N/A).
+    expect(result).not.toContain('**Size**')
     expect(result).toContain('- **MIME Type**: unknown')
     expect(result).not.toContain('#### Response Content')
   })
@@ -667,7 +676,8 @@ describe('formatMarkdown - Network Requests Section', () => {
 
     const result = formatMarkdown(data)
 
-    expect(result).toContain('- **Duration**: N/A')
+    // Missing duration → Duration bullet is omitted entirely (not N/A).
+    expect(result).not.toContain('**Duration**')
   })
 
   test('should format code block for JavaScript MIME type', () => {
@@ -755,7 +765,9 @@ describe('formatMarkdown - Network Requests Section', () => {
     const result = formatMarkdown(data)
 
     expect(result).not.toContain('#### Response Content')
-    expect(result).toContain('- **Size**: 10 KB')
+    // Binary content has no `text` field on this entry, so Size is omitted
+    // (post-truncation emitted body length is 0).
+    expect(result).not.toContain('**Size**')
     expect(result).toContain('- **MIME Type**: image/png')
   })
 
@@ -813,7 +825,7 @@ describe('formatMarkdown - Integration', () => {
     expect(result).toContain('### Console Logs')
     expect(result).toContain('### Network Requests')
     expect(result).toContain('| First Seen | Last Seen | Level | Count | Message |')
-    expect(result).toContain('### GET https://api.example.com/data')
+    expect(result).toContain('### #1 GET https://api.example.com/data')
   })
 
   test('should handle markdown escaping throughout entire output', () => {
@@ -861,14 +873,15 @@ describe('formatMarkdown - Integration', () => {
     // Request headers
     expect(result).toContain('X-Custom\\|Header: value\\|1')
 
-    // Request body
-    expect(result).toContain('value\\|with\\|pipes')
+    // Request body — bodies live inside fenced code blocks, so Markdown
+    // special characters (|, *, `) are NOT escaped there.
+    expect(result).toContain('value|with|pipes')
 
     // Response headers
     expect(result).toContain('X-Response\\|Header: response\\|value')
 
-    // Response content
-    expect(result).toContain('ok\\|data')
+    // Response content — also in a code block, no escaping needed.
+    expect(result).toContain('ok|data')
   })
 })
 

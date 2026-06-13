@@ -35,7 +35,7 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
 
   test('should include response content when includeResponseBodies is true', () => {
     const entry = createMockEntry()
-    const result = formatNetworkEntry(entry, { includeResponseBodies: true })
+    const result = formatNetworkEntry(entry, { includeResponseBodies: true, index: 1 })
 
     expect(result).toContain('#### Response Content')
     expect(result).toContain('```json')
@@ -44,7 +44,7 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
 
   test('should omit response content when includeResponseBodies is false', () => {
     const entry = createMockEntry()
-    const result = formatNetworkEntry(entry, { includeResponseBodies: false })
+    const result = formatNetworkEntry(entry, { includeResponseBodies: false, index: 1 })
 
     expect(result).not.toContain('#### Response Content')
     expect(result).not.toContain('```json')
@@ -55,9 +55,11 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
     const entry = createMockEntry()
     const resultWithBodies = formatNetworkEntry(entry, {
       includeResponseBodies: true,
+      index: 1,
     })
     const resultWithoutBodies = formatNetworkEntry(entry, {
       includeResponseBodies: false,
+      index: 1,
     })
 
     expect(resultWithBodies).toContain('#### Response Headers')
@@ -70,9 +72,13 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
     const entry = createMockEntry()
     const resultWithoutBodies = formatNetworkEntry(entry, {
       includeResponseBodies: false,
+      index: 1,
     })
 
-    expect(resultWithoutBodies).toContain('- **Size**: 1 KB')
+    // Size reflects the emitted body length (text.length), so the small
+    // 'success' payload shows up as raw bytes rather than the original 1 KB
+    // `content.size` value. MIME Type is always emitted.
+    expect(resultWithoutBodies).toContain('- **Size**: 20 B')
     expect(resultWithoutBodies).toContain('- **MIME Type**: application/json')
   })
 
@@ -88,7 +94,7 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
         },
       },
     })
-    const result = formatNetworkEntry(entry, { includeResponseBodies: false })
+    const result = formatNetworkEntry(entry, { includeResponseBodies: false, index: 1 })
 
     expect(result).toContain('#### Request Body')
     expect(result).toContain('```json')
@@ -103,10 +109,11 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
         headers: [{ name: 'Content-Type', value: 'application/json' }],
       },
     })
-    const result = formatNetworkEntry(entry, { includeResponseBodies: true })
+    const result = formatNetworkEntry(entry, { includeResponseBodies: true, index: 1 })
 
     expect(result).not.toContain('#### Response Content')
-    expect(result).toContain('- **Size**: N/A')
+    // No emitted body, so the Size bullet is omitted entirely (not N/A).
+    expect(result).not.toContain('**Size**')
     expect(result).toContain('- **MIME Type**: unknown')
   })
 
@@ -123,7 +130,7 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
         },
       },
     })
-    const result = formatNetworkEntry(entry, { includeResponseBodies: true })
+    const result = formatNetworkEntry(entry, { includeResponseBodies: true, index: 1 })
 
     expect(result).toContain('#### Response Content')
     expect(result).toContain('```html')
@@ -143,7 +150,7 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
         },
       },
     })
-    const result = formatNetworkEntry(entry, { includeResponseBodies: true })
+    const result = formatNetworkEntry(entry, { includeResponseBodies: true, index: 1 })
 
     expect(result).toContain('#### Response Content')
     expect(result).toContain('```javascript')
@@ -163,7 +170,7 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
         },
       },
     })
-    const result = formatNetworkEntry(entry, { includeResponseBodies: true })
+    const result = formatNetworkEntry(entry, { includeResponseBodies: true, index: 1 })
 
     expect(result).toContain('#### Response Content')
     expect(result).toContain('```css')
@@ -183,10 +190,11 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
         },
       },
     })
-    const result = formatNetworkEntry(entry, { includeResponseBodies: true })
+    const result = formatNetworkEntry(entry, { includeResponseBodies: true, index: 1 })
 
     expect(result).not.toContain('#### Response Content')
-    expect(result).toContain('- **Size**: 10 KB')
+    // Size now reflects text.length (the post-truncation emitted bytes).
+    expect(result).toContain('- **Size**: 11 B')
     expect(result).toContain('- **MIME Type**: image/png')
   })
 
@@ -202,7 +210,7 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
           ],
         },
       })
-      const result = formatNetworkEntry(entry, { includeResponseBodies: false })
+      const result = formatNetworkEntry(entry, { includeResponseBodies: false, index: 1 })
       expect(result).toContain('[3 cookies,')
       expect(result).not.toContain('a=1; b=2')
       expect(result).toContain('Content-Type: application/json')
@@ -221,7 +229,7 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
           content: { size: 100, mimeType: 'text/html' },
         },
       })
-      const result = formatNetworkEntry(entry, { includeResponseBodies: false })
+      const result = formatNetworkEntry(entry, { includeResponseBodies: false, index: 1 })
       expect(result).toContain('set-cookie')
       expect(result).toContain('[2 cookies set,')
       expect(result).not.toContain('session=abc123')
@@ -241,7 +249,7 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
           ],
         },
       })
-      const result = formatNetworkEntry(entry, { includeResponseBodies: false })
+      const result = formatNetworkEntry(entry, { includeResponseBodies: false, index: 1 })
       expect(result).not.toContain('sec-ch-ua')
       expect(result).not.toContain('"Chrome"')
       expect(result).toContain('Content-Type: application/json')
@@ -261,7 +269,7 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
           ],
         },
       })
-      const result = formatNetworkEntry(entry, { includeResponseBodies: false })
+      const result = formatNetworkEntry(entry, { includeResponseBodies: false, index: 1 })
       expect(result).not.toContain(':authority')
       expect(result).not.toContain(':method')
       expect(result).not.toContain(':path')
@@ -283,7 +291,7 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
           ],
         },
       })
-      const result = formatNetworkEntry(entry, { includeResponseBodies: false })
+      const result = formatNetworkEntry(entry, { includeResponseBodies: false, index: 1 })
       expect(result).not.toContain('accept:')
       expect(result).not.toContain('accept-encoding')
       expect(result).not.toContain('x-browser-channel')
@@ -306,7 +314,7 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
           content: { size: 100, mimeType: 'application/json' },
         },
       })
-      const result = formatNetworkEntry(entry, { includeResponseBodies: false })
+      const result = formatNetworkEntry(entry, { includeResponseBodies: false, index: 1 })
       expect(result).toContain('Content-Type: application/json')
       expect(result).not.toContain('alt-svc')
       expect(result).not.toContain('content-security-policy')
@@ -328,7 +336,7 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
           content: { size: 50, mimeType: 'application/json' },
         },
       })
-      const result = formatNetworkEntry(entry, { includeResponseBodies: false })
+      const result = formatNetworkEntry(entry, { includeResponseBodies: false, index: 1 })
       expect(result).toContain('Content-Type: application/json')
       expect(result).toContain('content-security-policy')
       expect(result).toContain('date:')
@@ -347,8 +355,8 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
           content: { size: 0, mimeType: 'text/html' },
         },
       })
-      const result = formatNetworkEntry(entry, { includeResponseBodies: false })
-      expect(result).toContain('### GET')
+      const result = formatNetworkEntry(entry, { includeResponseBodies: false, index: 1 })
+      expect(result).toContain('### #1 GET')
       expect(result).toContain('- **Status**: 204')
       expect(result).not.toContain('#### Request Headers')
       expect(result).not.toContain('#### Response Headers')
@@ -373,14 +381,14 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
           content: { size: 0, mimeType: 'text/html' },
         },
       })
-      const result = formatNetworkEntry(entry, { includeResponseBodies: false })
+      const result = formatNetworkEntry(entry, { includeResponseBodies: false, index: 1 })
       expect(result).not.toContain('#### Request Headers')
       expect(result).not.toContain('#### Response Headers')
       expect(result).toContain('#### Request Body')
       expect(result).toContain('{"action":"ping"}')
     })
 
-    test('should show None when all request headers are suppressed', () => {
+    test('should omit Request Headers section when all headers are suppressed', () => {
       const entry = createMockEntry({
         request: {
           url: 'https://example.com/data',
@@ -392,8 +400,10 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
           ],
         },
       })
-      const result = formatNetworkEntry(entry, { includeResponseBodies: false })
-      expect(result).toContain('None')
+      const result = formatNetworkEntry(entry, { includeResponseBodies: false, index: 1 })
+      // Empty header block now omits the section entirely (no more "None" placeholder).
+      expect(result).not.toContain('#### Request Headers')
+      expect(result).not.toContain('None')
       expect(result).not.toContain(':authority')
       expect(result).not.toContain('accept:')
       expect(result).not.toContain('sec-ch-ua')
@@ -413,7 +423,7 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
           ],
         },
       })
-      const result = formatNetworkEntry(entry, { includeResponseBodies: false })
+      const result = formatNetworkEntry(entry, { includeResponseBodies: false, index: 1 })
       expect(result).not.toContain('Accept:')
       expect(result).not.toContain('ACCEPT-ENCODING')
       expect(result).not.toContain('Sec-CH-UA')
@@ -439,7 +449,7 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
       const result = formatResponseSection(response, 'application/json', true, false, true, false)
 
       expect(result).toContain(longBody)
-      expect(result).not.toContain('[truncated]')
+      expect(result).not.toContain('/* truncated')
     })
 
     test('should truncate response body when truncateResponseBodies is true', () => {
@@ -455,7 +465,9 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
       }
       const result = formatResponseSection(response, 'application/json', true, false, true, true)
 
-      expect(result).toContain('[truncated]')
+      // JSON bodies use the truncateJSON marker: `/* truncated: showed N of M bytes */`
+      expect(result).toContain('/* truncated')
+      expect(result).toContain('bytes */')
       expect(result).not.toContain(longBody)
     })
 
@@ -475,10 +487,11 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
       const result = formatNetworkEntry(entry, {
         includeResponseBodies: true,
         truncateResponseBodies: false,
+        index: 1,
       })
 
       expect(result).toContain(longBody)
-      expect(result).not.toContain('[truncated]')
+      expect(result).not.toContain('/* truncated')
     })
 
     test('should truncate response body in formatNetworkEntry when truncateResponseBodies is true', () => {
@@ -497,9 +510,11 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
       const result = formatNetworkEntry(entry, {
         includeResponseBodies: true,
         truncateResponseBodies: true,
+        index: 1,
       })
 
-      expect(result).toContain('[truncated]')
+      expect(result).toContain('/* truncated')
+      expect(result).toContain('bytes */')
       expect(result).not.toContain(longBody)
     })
   })
