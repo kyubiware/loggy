@@ -146,7 +146,8 @@ describe('buildExportMarkdown', () => {
     expect(filteredData.routeOptions).toEqual(['/orders', '/users'])
     expect(filteredData.networkEntries).toHaveLength(1)
     expect(filteredData.networkEntries[0]?.request.url).toBe('https://api.example.com/orders')
-    expect(markdown).toContain('### GET https://api.example.com/orders')
+    // Network entry headings now carry a 1-based index prefix.
+    expect(markdown).toContain('### #1 GET https://api.example.com/orders')
     expect(markdown).not.toContain('### GET https://api.example.com/users')
   })
 
@@ -195,8 +196,9 @@ describe('buildExportMarkdown', () => {
 
     const markdown = await buildExportMarkdown(state)
 
-    // Should contain truncation indicator
-    expect(markdown).toContain('... [truncated]')
+    // Should contain truncation indicator (new format with byte counts)
+    expect(markdown).toContain('[truncated,')
+    expect(markdown).toContain('bytes]')
     // Should not contain full message
     expect(markdown).not.toContain('A'.repeat(600))
   })
@@ -216,7 +218,7 @@ describe('buildExportMarkdown', () => {
     const markdown = await buildExportMarkdown(state)
 
     // Should NOT contain truncation indicator
-    expect(markdown).not.toContain('... [truncated]')
+    expect(markdown).not.toContain('[truncated,')
     // Should contain full message
     expect(markdown).toContain(longMessage)
   })
