@@ -18,7 +18,6 @@ import { usePopupActions } from './hooks/usePopupActions'
 export default function Popup() {
   const {
     status,
-    isFirefox,
     isLoading,
     isLoggingActive,
     showConsentView,
@@ -40,7 +39,7 @@ export default function Popup() {
     handleStopLogging,
     handleClearLogs,
     handleAlwaysLog,
-    handleToggleDebugger,
+    handleToggleLogging,
     handlePreview,
     copyToClipboard,
   } = usePopupActions()
@@ -69,9 +68,9 @@ export default function Popup() {
           copyStatus={copyStatus}
           onCopy={copyToClipboard}
           hasData={hasData}
-          showLoggingToggle={!isFirefox}
+          showLoggingToggle
           isLoggingActive={isLoggingActive}
-          onToggleLogging={handleToggleDebugger}
+          onToggleLogging={handleToggleLogging}
           onStopLogging={status.mode !== 'devtools' ? handleStopLogging : undefined}
         />
       )}

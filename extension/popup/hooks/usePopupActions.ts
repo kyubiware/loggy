@@ -173,6 +173,21 @@ export function usePopupActions() {
     status?.mode === 'debugger' || status?.mode === 'content-script'
   const showConsentView = status?.mode === 'inactive'
 
+  // Firefox lacks chrome.debugger, so the header Play/Pause toggle
+  // routes through the consent-based start/stop flow instead of the
+  // Chrome-only toggle-debugger path.
+  const handleToggleLogging = () => {
+    if (isFirefox) {
+      if (isLoggingActive) {
+        handleStopLogging()
+      } else {
+        handleStartLogging()
+      }
+      return
+    }
+    handleToggleDebugger()
+  }
+
   return {
     // State
     status,
@@ -202,7 +217,7 @@ export function usePopupActions() {
     handleStopLogging,
     handleClearLogs,
     handleAlwaysLog,
-    handleToggleDebugger,
+    handleToggleLogging,
     handlePreview,
     copyToClipboard,
   }
