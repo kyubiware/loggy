@@ -413,7 +413,7 @@ function bootstrapConsoleCapture() {
                   url: responseUrl,
                   method: responseMethod,
                   status: status,
-                  responseBodyPreview: String(body || '').slice(0, 1024),
+                  responseBody: String(body || ''),
                   contentType: contentType,
                   duration: Date.now() - startTime
                 });
@@ -423,7 +423,7 @@ function bootstrapConsoleCapture() {
                   url: responseUrl,
                   method: responseMethod,
                   status: status,
-                  responseBodyPreview: String(body || '').slice(0, 1024),
+                  responseBody: String(body || ''),
                   contentType: contentType,
                   duration: Date.now() - startTime
                 });
@@ -435,7 +435,7 @@ function bootstrapConsoleCapture() {
                   url: responseUrl,
                   method: responseMethod,
                   status: status,
-                  responseBodyPreview: '',
+                  responseBody: '',
                   contentType: contentType,
                   duration: Date.now() - startTime
                 });
@@ -445,7 +445,7 @@ function bootstrapConsoleCapture() {
                   url: responseUrl,
                   method: responseMethod,
                   status: status,
-                  responseBodyPreview: '',
+                  responseBody: '',
                   contentType: contentType,
                   duration: Date.now() - startTime
                 });
@@ -457,7 +457,7 @@ function bootstrapConsoleCapture() {
               url: responseUrl,
               method: responseMethod,
               status: status,
-              responseBodyPreview: '',
+              responseBody: '',
               contentType: contentType,
               duration: Date.now() - startTime
             });
@@ -467,7 +467,7 @@ function bootstrapConsoleCapture() {
               url: responseUrl,
               method: responseMethod,
               status: status,
-              responseBodyPreview: '',
+              responseBody: '',
               contentType: contentType,
               duration: Date.now() - startTime
             });
@@ -482,7 +482,7 @@ function bootstrapConsoleCapture() {
             url: url,
             method: method,
             status: 0,
-            responseBodyPreview: '',
+            responseBody: '',
             error: error && error.message ? String(error.message) : String(error || 'Fetch failed'),
             duration: Date.now() - startTime
           });
@@ -492,7 +492,7 @@ function bootstrapConsoleCapture() {
             url: url,
             method: method,
             status: 0,
-            responseBodyPreview: '',
+            responseBody: '',
             error: error && error.message ? String(error.message) : String(error || 'Fetch failed'),
             duration: Date.now() - startTime
           });

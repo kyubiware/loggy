@@ -125,7 +125,7 @@ describe('console bootstrap network buffer', () => {
       method: 'POST',
       status: 201,
       contentType: 'application/json',
-      responseBodyPreview: '{"ok":true}',
+      responseBody: '{"ok":true}',
     })
   })
 

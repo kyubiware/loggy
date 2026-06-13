@@ -23,7 +23,7 @@ export interface RawBufferData {
     url: string
     method: string
     status: number
-    responseBodyPreview?: string
+    responseBody?: string
     contentType?: string
     duration?: number
     error?: string
@@ -128,7 +128,7 @@ export async function pollAndSyncTab(tabId: number): Promise<void> {
           url: net.url,
           method: net.method,
           status: net.status,
-          responseBody: net.responseBodyPreview,
+          responseBody: net.responseBody,
           contentType: net.contentType,
           duration: net.duration,
         },
