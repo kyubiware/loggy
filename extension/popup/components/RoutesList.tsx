@@ -62,7 +62,7 @@ export function RoutesList({
             onChange={() => onToggleRoute(route)}
             className='w-3.5 h-3.5 rounded border-stone-300 dark:border-stone-600 bg-white dark:bg-stone-800 text-stone-600 focus:ring-stone-500 focus:ring-offset-stone-50 dark:focus:ring-offset-stone-950'
           />
-          <span className='font-mono truncate'>{route}</span>
+          <span className='font-mono truncate' title={route}>{route}</span>
         </label>
       ))}
     </div>

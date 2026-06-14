@@ -1,14 +1,18 @@
 import type React from 'react'
 
-import { Check, Copy, Pause, Play, Square } from 'lucide-react'
+import { Check, Coins, Copy, Pause, Play, Square, Trash2 } from 'lucide-react'
 
 import iconUrl from '../../icons/icon48.png'
+import { Tooltip } from '../../shared/components/Tooltip'
+import { formatTokenCount } from '../constants'
 
 export interface PopupHeaderProps {
   connected: boolean
   copyStatus?: 'idle' | 'success' | 'error' | 'no-data'
   onCopy?: () => void
   hasData?: boolean
+  tokenCount?: number
+  onClear?: () => void
   showLoggingToggle?: boolean
   isLoggingActive?: boolean
   onToggleLogging?: () => void
@@ -20,6 +24,8 @@ export function PopupHeader({
   copyStatus = 'idle',
   onCopy,
   hasData = false,
+  tokenCount = 0,
+  onClear,
   showLoggingToggle = false,
   isLoggingActive = false,
   onToggleLogging,
@@ -32,6 +38,34 @@ export function PopupHeader({
         Loggy
       </h1>
       <div className='flex items-center gap-2'>
+        {hasData ? (
+          <Tooltip content='Estimated token count for export'>
+            <span className='flex items-center gap-1 text-[11px] uppercase tracking-wider text-stone-500 dark:text-stone-400 font-semibold'>
+              <Coins size={14} />
+              ≈{formatTokenCount(tokenCount)}
+            </span>
+          </Tooltip>
+        ) : (
+          <span className='text-xs text-stone-500 dark:text-stone-400'>
+            No captured data
+          </span>
+        )}
+        {onClear && (
+          <Tooltip content='Clear Logs'>
+            <button
+              type='button'
+              onClick={onClear}
+              disabled={!hasData}
+              className={`flex items-center justify-center p-1.5 rounded text-xs transition-colors ${
+                hasData
+                  ? 'text-stone-400 hover:text-red-500 hover:bg-red-50 dark:text-stone-500 dark:hover:text-red-400 dark:hover:bg-red-950'
+                  : 'text-stone-300 cursor-not-allowed dark:text-stone-700'
+              }`}
+            >
+              <Trash2 size={14} />
+            </button>
+          </Tooltip>
+        )}
         {showLoggingToggle && (
           <button
             type='button'

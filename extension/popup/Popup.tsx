@@ -75,6 +75,8 @@ export default function Popup() {
           copyStatus={copyStatus}
           onCopy={copyToClipboard}
           hasData={hasData}
+          tokenCount={tokenCount}
+          onClear={handleClearLogs}
           showLoggingToggle
           isLoggingActive={isLoggingActive}
           onToggleLogging={handleToggleLogging}
@@ -185,10 +187,8 @@ export default function Popup() {
           </FiltersAccordion>
           <TokenCountAndCopy
             hasData={hasData}
-            tokenCount={tokenCount}
             markdown={markdown}
             onPreview={handlePreview}
-            onClear={handleClearLogs}
           />
         </>
       )}
