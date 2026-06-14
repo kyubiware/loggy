@@ -17,6 +17,8 @@ export interface GetTabExportDataMessage {
   type: 'get-tab-export-data'
   /** Target tab identifier. */
   tabId: number
+  /** Optional route filter from the popup — filters network entries by pathname. */
+  selectedRoutes?: string[]
 }
 
 /**

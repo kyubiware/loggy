@@ -17,11 +17,15 @@ import {
   mergePersistedSettings,
 } from '../../types/state'
 
-export async function handleGetTabExportData(tabId: number): Promise<{
+export async function handleGetTabExportData(
+  tabId: number,
+  selectedRoutes?: string[],
+): Promise<{
   tokenCount: number
   markdown: string
   hasData: boolean
   logCount: number
+  routeOptions: string[]
 }> {
   const entries = await readStoredEntries(tabId)
   const consoleLogs: ConsoleMessage[] = []
@@ -49,6 +53,7 @@ export async function handleGetTabExportData(tabId: number): Promise<{
   const state = {
     ...defaults,
     ...persistedSettings,
+    selectedRoutes: selectedRoutes ?? defaults.selectedRoutes,
     consoleLogs,
     networkEntries,
   }
@@ -62,6 +67,7 @@ export async function handleGetTabExportData(tabId: number): Promise<{
     markdown,
     hasData: filteredData.consoleLogs.length > 0 || filteredData.networkEntries.length > 0,
     logCount: filteredData.consoleLogs.length + filteredData.networkEntries.length,
+    routeOptions: filteredData.routeOptions,
   }
 }
 

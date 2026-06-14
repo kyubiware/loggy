@@ -48,6 +48,8 @@ export interface TabExportDataResponse {
   hasData: boolean
   /** Number of logs included in the export. */
   logCount: number
+  /** Available route pathnames extracted from captured network entries. */
+  routeOptions: string[]
 }
 
 /**
