@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { probeServer } from '../../panel/server-probe'
+import { useRouteActions } from '../../panel/src/hooks/useRouteActions'
 import { useConsentActions } from '../../shared/hooks/useConsentActions'
 import { useDebouncedFilter } from '../../shared/hooks/useDebouncedFilter'
 import type { StatusResponse } from '../../types/messages'
@@ -14,9 +15,17 @@ export function usePopupActions() {
   const [isFirefox, setIsFirefox] = useState(false)
   const [tabId, setTabId] = useState<number | undefined>(undefined)
   const [tabUrl, setTabUrl] = useState<string>('')
+  const [selectedRoutes, setSelectedRoutes] = useState<string[]>([])
 
   const { settings, setSetting, loading: loadingSettings } = usePopupSettings()
-  const { tokenCount, markdown, hasData, loading: loadingData, refresh: refreshData } = usePopupData(tabId)
+  const {
+    tokenCount,
+    markdown,
+    hasData,
+    routeOptions,
+    loading: loadingData,
+    refresh: refreshData,
+  } = usePopupData(tabId, selectedRoutes)
   const [serverConnected, setServerConnected] = useState(false)
   const serverPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastProbedUrlRef = useRef<string | null>(null)
@@ -121,6 +130,11 @@ export function usePopupActions() {
     onStateChanged: refreshStatus,
   })
 
+  const { toggleRoute, selectAllRoutes, deselectAllRoutes } = useRouteActions({
+    setSelectedRoutes,
+    routeOptions,
+  })
+
   const handleToggleDebugger = () => {
     chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
       const tabId = tabs[0]?.id
@@ -212,6 +226,12 @@ export function usePopupActions() {
     tokenCount,
     hasData,
     copyStatus,
+    // Routes
+    routeOptions,
+    selectedRoutes,
+    toggleRoute,
+    selectAllRoutes,
+    deselectAllRoutes,
     // Actions
     handleStartLogging,
     handleStopLogging,

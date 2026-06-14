@@ -10,19 +10,29 @@ const createDefaultPopupData = (): PopupDataState => ({
   markdown: '',
   hasData: false,
   logCount: 0,
+  routeOptions: [],
 })
 
 /**
  * Reads exported tab data for the active browser tab.
  */
-export function usePopupData(tabId?: number): PopupDataState & {
+export function usePopupData(
+  tabId?: number,
+  selectedRoutes?: string[],
+): PopupDataState & {
   loading: boolean
   refresh: () => void
 } {
   const isFirefox = typeof chrome.debugger === 'undefined'
-  const firefoxData = useFirefoxDirectCapture(tabId ?? -1)
+  const firefoxData = useFirefoxDirectCapture(tabId ?? -1, selectedRoutes)
   const [data, setData] = useState<PopupDataState>(createDefaultPopupData)
   const [loading, setLoading] = useState(true)
+  const [debouncedRoutes, setDebouncedRoutes] = useState<string[] | undefined>(selectedRoutes)
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedRoutes(selectedRoutes), 300)
+    return () => clearTimeout(timer)
+  }, [selectedRoutes])
 
   const refresh = useCallback(() => {
     setLoading(true)
@@ -44,6 +54,7 @@ export function usePopupData(tabId?: number): PopupDataState & {
       const message: GetTabExportDataMessage = {
         type: 'get-tab-export-data',
         tabId,
+        selectedRoutes: debouncedRoutes,
       }
 
       chrome.runtime.sendMessage(message, (response: TabExportDataResponse | undefined) => {
@@ -58,11 +69,12 @@ export function usePopupData(tabId?: number): PopupDataState & {
           markdown: response.markdown,
           hasData: response.hasData,
           logCount: response.logCount,
+          routeOptions: response.routeOptions,
         })
         setLoading(false)
       })
     })
-  }, [isFirefox])
+  }, [isFirefox, debouncedRoutes])
 
   useEffect(() => {
     if (!isFirefox) {

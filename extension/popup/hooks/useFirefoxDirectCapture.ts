@@ -34,6 +34,7 @@ type FirefoxDirectCaptureState = {
   markdown: string
   hasData: boolean
   logCount: number
+  routeOptions: string[]
 }
 
 const createDefaultData = (): FirefoxDirectCaptureState => ({
@@ -41,6 +42,7 @@ const createDefaultData = (): FirefoxDirectCaptureState => ({
   markdown: '',
   hasData: false,
   logCount: 0,
+  routeOptions: [],
 })
 
 function toHAREntry(entry: RawBufferData['networkLogs'][number]): HAREntry {
@@ -65,11 +67,15 @@ function toHAREntry(entry: RawBufferData['networkLogs'][number]): HAREntry {
   }
 }
 
-export function useFirefoxDirectCapture(tabId: number): {
+export function useFirefoxDirectCapture(
+  tabId: number,
+  selectedRoutes?: string[],
+): {
   tokenCount: number
   markdown: string
   hasData: boolean
   logCount: number
+  routeOptions: string[]
   loading: boolean
   refresh: () => void
 } {
@@ -134,6 +140,7 @@ export function useFirefoxDirectCapture(tabId: number): {
       const state: LoggyState = {
         ...defaults,
         ...persistedSettings,
+        selectedRoutes: selectedRoutes ?? defaults.selectedRoutes,
         consoleLogs,
         networkEntries,
       }
@@ -147,13 +154,14 @@ export function useFirefoxDirectCapture(tabId: number): {
         markdown,
         hasData: filteredData.consoleLogs.length > 0 || filteredData.networkEntries.length > 0,
         logCount: filteredData.consoleLogs.length + filteredData.networkEntries.length,
+        routeOptions: filteredData.routeOptions,
       })
     } catch (_error) {
       setData(createDefaultData())
     } finally {
       setLoading(false)
     }
-  }, [tabId])
+  }, [tabId, selectedRoutes])
 
   const refresh = useCallback(() => {
     setLoading(true)
