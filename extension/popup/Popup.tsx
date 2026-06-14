@@ -8,9 +8,10 @@ import {
   type ToggleSettingKey,
 } from './components/ExportOptionCheckboxes'
 import { FilterInput } from './components/FilterInput'
-import { PopupHeader } from './components/PopupHeader'
-import { ServerConnection } from './components/ServerConnection'
 import { FiltersAccordion } from './components/FiltersAccordion'
+import { PopupHeader } from './components/PopupHeader'
+import { RoutesList } from './components/RoutesList'
+import { ServerConnection } from './components/ServerConnection'
 import { SettingsAccordion } from './components/SettingsAccordion'
 import { TokenCountAndCopy } from './components/TokenCountAndCopy'
 import { OptionCheckbox } from '../shared/components/OptionCheckbox'
@@ -36,6 +37,11 @@ export default function Popup() {
     tokenCount,
     hasData,
     copyStatus,
+    routeOptions,
+    selectedRoutes,
+    toggleRoute,
+    selectAllRoutes,
+    deselectAllRoutes,
     handleStartLogging,
     handleStopLogging,
     handleClearLogs,
@@ -167,6 +173,15 @@ export default function Popup() {
                 hiddenLabel='Show Network Filter'
               />
             </div>
+            {routeOptions.length > 0 && (
+              <RoutesList
+                routeOptions={routeOptions}
+                selectedRoutes={selectedRoutes}
+                onToggleRoute={toggleRoute}
+                onSelectAll={selectAllRoutes}
+                onDeselectAll={deselectAllRoutes}
+              />
+            )}
           </FiltersAccordion>
           <TokenCountAndCopy
             hasData={hasData}
