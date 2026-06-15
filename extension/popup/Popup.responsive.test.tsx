@@ -28,6 +28,7 @@ const mockUsePopupActions = vi.hoisted(() => ({
   routeOptions: [],
   selectedRoutes: [],
   toggleRoute: vi.fn(),
+  toggleRoutes: vi.fn(),
   selectAllRoutes: vi.fn(),
   deselectAllRoutes: vi.fn(),
   handleStartLogging: vi.fn(),
@@ -81,7 +82,7 @@ describe('Popup responsive classes', () => {
     expect(mainContainer.className).toContain('w-80')
     expect(mainContainer.className).toContain('min-h-50')
 
-    const popupHeader = screen.getByText('Loggy').closest('div') as HTMLElement
+    const popupHeader = screen.getByAltText('Loggy').closest('div') as HTMLElement
     expect(popupHeader.className).toContain('max-sm:sticky')
 
     const details = container.querySelector('details')
@@ -113,7 +114,7 @@ describe('Popup responsive classes', () => {
     expect(iconButtonToggle.className).toContain('h-3.5')
     expect(iconButtonToggle.className).toContain('w-3.5')
 
-    const popupHeader = screen.getByText('Loggy').closest('div') as HTMLElement
+    const popupHeader = screen.getByAltText('Loggy').closest('div') as HTMLElement
     const headerClasses = popupHeader.className.split(' ')
     expect(headerClasses).not.toContain('sticky')
   })
