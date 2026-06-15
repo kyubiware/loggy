@@ -26,6 +26,23 @@ export function useRouteActions({ setSelectedRoutes, routeOptions }: UseRouteAct
     setSelectedRoutes([])
   }, [setSelectedRoutes])
 
+  const toggleRoutes = useCallback(
+    (routes: string[], select: boolean) => {
+      const targets = new Set(routes)
+      setSelectedRoutes((previous) => {
+        if (select) {
+          const additions = routes.filter((route) => !previous.includes(route))
+          if (additions.length === 0) return previous
+          return [...previous, ...additions]
+        }
+        const filtered = previous.filter((route) => !targets.has(route))
+        if (filtered.length === previous.length) return previous
+        return filtered
+      })
+    },
+    [setSelectedRoutes]
+  )
+
   const routeOptionsKey = routeOptions.join(',')
   const routeOptionsRef = useRef(routeOptions)
   routeOptionsRef.current = routeOptions
@@ -42,7 +59,7 @@ export function useRouteActions({ setSelectedRoutes, routeOptions }: UseRouteAct
   }, [routeOptionsKey, setSelectedRoutes])
 
   return useMemo(
-    () => ({ toggleRoute, selectAllRoutes, deselectAllRoutes }),
-    [toggleRoute, selectAllRoutes, deselectAllRoutes]
+    () => ({ toggleRoute, selectAllRoutes, deselectAllRoutes, toggleRoutes }),
+    [toggleRoute, selectAllRoutes, deselectAllRoutes, toggleRoutes]
   )
 }

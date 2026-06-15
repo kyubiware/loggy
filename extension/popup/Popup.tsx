@@ -40,6 +40,7 @@ export default function Popup() {
     routeOptions,
     selectedRoutes,
     toggleRoute,
+    toggleRoutes,
     selectAllRoutes,
     deselectAllRoutes,
     handleStartLogging,
@@ -180,6 +181,7 @@ export default function Popup() {
                 routeOptions={routeOptions}
                 selectedRoutes={selectedRoutes}
                 onToggleRoute={toggleRoute}
+                onToggleRoutes={toggleRoutes}
                 onSelectAll={selectAllRoutes}
                 onDeselectAll={deselectAllRoutes}
               />

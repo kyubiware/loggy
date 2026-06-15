@@ -130,7 +130,7 @@ export function usePopupActions() {
     onStateChanged: refreshStatus,
   })
 
-  const { toggleRoute, selectAllRoutes, deselectAllRoutes } = useRouteActions({
+  const { toggleRoute, selectAllRoutes, deselectAllRoutes, toggleRoutes } = useRouteActions({
     setSelectedRoutes,
     routeOptions,
   })
@@ -230,6 +230,7 @@ export function usePopupActions() {
     routeOptions,
     selectedRoutes,
     toggleRoute,
+    toggleRoutes,
     selectAllRoutes,
     deselectAllRoutes,
     // Actions
