@@ -45,6 +45,7 @@ export interface ActionsContextValue {
   toggleSetting: (key: import('./hooks/useLoggyActions').ToggleSettingKey) => void
   setServerUrl: (url: string) => void
   toggleRoute: (route: string) => void
+  toggleRoutes: (routes: string[], select: boolean) => void
   selectAllRoutes: () => void
   deselectAllRoutes: () => void
   toggleFiltersVisible: () => void
