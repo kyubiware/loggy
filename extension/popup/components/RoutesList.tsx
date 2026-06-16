@@ -1,5 +1,6 @@
 import type React from 'react'
 import { useEffect, useMemo, useRef } from 'react'
+import { OptionCheckbox } from '../../shared/components/OptionCheckbox'
 import { groupRoutesByPattern, type RouteGroup } from '../../utils/route-patterns'
 
 interface RoutesListProps {
@@ -9,6 +10,8 @@ interface RoutesListProps {
   onToggleRoutes: (routes: string[], select: boolean) => void
   onSelectAll: () => void
   onDeselectAll: () => void
+  autoIncludeRoutes: boolean
+  onToggleAutoIncludeRoutes: () => void
 }
 
 /**
@@ -77,6 +80,8 @@ export function RoutesList({
   onToggleRoutes,
   onSelectAll,
   onDeselectAll,
+  autoIncludeRoutes,
+  onToggleAutoIncludeRoutes,
 }: RoutesListProps): React.JSX.Element {
   const allSelected = routeOptions.length > 0 && selectedRoutes.length === routeOptions.length
   const noneSelected = selectedRoutes.length === 0
@@ -93,23 +98,31 @@ export function RoutesList({
         The text-based network filter above limits which routes appear.
       </p>
 
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={onSelectAll}
-          disabled={allSelected}
-          className="text-xs px-2 py-1 rounded bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-300 dark:hover:bg-stone-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-        >
-          Select All
-        </button>
-        <button
-          type="button"
-          onClick={onDeselectAll}
-          disabled={noneSelected}
-          className="text-xs px-2 py-1 rounded bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-300 dark:hover:bg-stone-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-        >
-          Deselect All
-        </button>
+      <div className="flex flex-col gap-2 pb-2 border-b border-stone-200 dark:border-stone-700">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onSelectAll}
+            disabled={allSelected}
+            className="text-xs px-2 py-1 rounded bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-300 dark:hover:bg-stone-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            Select All
+          </button>
+          <button
+            type="button"
+            onClick={onDeselectAll}
+            disabled={noneSelected}
+            className="text-xs px-2 py-1 rounded bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-300 dark:hover:bg-stone-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            Deselect All
+          </button>
+        </div>
+        <OptionCheckbox
+          testId="popup-auto-include-routes"
+          label="Auto-include new routes"
+          checked={autoIncludeRoutes}
+          onChange={onToggleAutoIncludeRoutes}
+        />
       </div>
 
       {groups.map((group) => {

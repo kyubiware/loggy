@@ -1,7 +1,8 @@
 import type React from 'react'
 import { useEffect, useMemo, useRef } from 'react'
+import { OptionCheckbox } from '../../../shared/components/OptionCheckbox'
 import { groupRoutesByPattern, type RouteGroup } from '../../../utils/route-patterns'
-import { useActions, useLogData } from '../LoggyContext'
+import { useActions, useLogData, useSettings } from '../LoggyContext'
 
 /**
  * Native HTML checkboxes can't express the `indeterminate` state through JSX
@@ -62,7 +63,8 @@ function RouteGroupRow({
 
 export default function RoutesList(): React.JSX.Element {
   const { routeOptions, selectedRoutes } = useLogData()
-  const { toggleRoutes, selectAllRoutes, deselectAllRoutes } = useActions()
+  const { toggleRoutes, selectAllRoutes, deselectAllRoutes, toggleSetting } = useActions()
+  const { autoIncludeRoutes } = useSettings()
 
   const selectedSet = useMemo(() => new Set(selectedRoutes), [selectedRoutes])
   const groups = useMemo(() => groupRoutesByPattern(routeOptions), [routeOptions])
@@ -83,23 +85,31 @@ export default function RoutesList(): React.JSX.Element {
         <div className="text-sm text-stone-500 dark:text-stone-400">No routes available</div>
       ) : (
         <div className="flex flex-col gap-2">
-          <div className="flex gap-2 mb-2">
-            <button
-              type="button"
-              onClick={selectAllRoutes}
-              disabled={allSelected}
-              className="text-xs px-2 py-1 rounded bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-300 dark:hover:bg-stone-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              Select All
-            </button>
-            <button
-              type="button"
-              onClick={deselectAllRoutes}
-              disabled={noneSelected}
-              className="text-xs px-2 py-1 rounded bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-300 dark:hover:bg-stone-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-            >
-              Deselect All
-            </button>
+          <div className="flex flex-col gap-2 pb-2 border-b border-stone-200 dark:border-stone-700">
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={selectAllRoutes}
+                disabled={allSelected}
+                className="text-xs px-2 py-1 rounded bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-300 dark:hover:bg-stone-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Select All
+              </button>
+              <button
+                type="button"
+                onClick={deselectAllRoutes}
+                disabled={noneSelected}
+                className="text-xs px-2 py-1 rounded bg-stone-200 dark:bg-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-300 dark:hover:bg-stone-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                Deselect All
+              </button>
+            </div>
+            <OptionCheckbox
+              testId="panel-auto-include-routes"
+              label="Auto-include new routes"
+              checked={autoIncludeRoutes}
+              onChange={() => toggleSetting('autoIncludeRoutes')}
+            />
           </div>
           {groups.map((group) => {
             const selectedCount = group.routes.reduce(
