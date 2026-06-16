@@ -83,31 +83,58 @@ export async function storeCapturedData(tabId: number, data: CaptureMessage): Pr
       ? { kind: 'console', entry: data.payload as CapturedConsoleEntry }
       : { kind: 'network', entry: data.payload as CapturedNetworkEntry }
 
-  let next = [...entries, nextEntry]
-
-  // Apply entry count cap
-  if (next.length > MAX_ENTRIES_PER_TAB) {
-    next = next.slice(-MAX_ENTRIES_PER_TAB)
-  }
-
-  // Apply token limit purge
-  const tokenLimit = await getTokenLimit()
-  if (tokenLimit > 0) {
-    let totalTokens = 0
-    for (const entry of next) {
-      totalTokens += estimateEntryTokenCount(entry)
-    }
-
-    while (totalTokens > tokenLimit && next.length > 0) {
-      const removed = next.shift()
-      if (removed) {
-        totalTokens -= estimateEntryTokenCount(removed)
-      }
-    }
-  }
+  const next = await applyStorageLimits([...entries, nextEntry])
 
   await writeStoredEntries(tabId, next)
   return next.length
+}
+
+/**
+ * Applies the entry-count cap and the optional token-limit purge to an
+ * in-memory array of stored entries. Pure aside from reading the
+ * configured token limit from settings; returns a new array (never
+ * mutates the input).
+ */
+export async function applyStorageLimits(entries: StoredCapturedEntry[]): Promise<StoredCapturedEntry[]> {
+  let result = entries
+  if (result.length > MAX_ENTRIES_PER_TAB) {
+    result = result.slice(-MAX_ENTRIES_PER_TAB)
+  }
+
+  const tokenLimit = await getTokenLimit()
+  if (tokenLimit <= 0) {
+    return result
+  }
+
+  let totalTokens = 0
+  for (const entry of result) {
+    totalTokens += estimateEntryTokenCount(entry)
+  }
+
+  let working = result
+  while (totalTokens > tokenLimit && working.length > 0) {
+    const removed = working[0]
+    working = working.slice(1)
+    if (removed) {
+      totalTokens -= estimateEntryTokenCount(removed)
+    }
+  }
+  return working
+}
+
+/**
+ * Deterministic key used to deduplicate stored entries across writers
+ * (per-message `storeCapturedData` and the polling delta-append path).
+ * The key combines a kind prefix with stable fields the two writers
+ * always see identically for the same event.
+ */
+export function getEntryKey(entry: StoredCapturedEntry): string {
+  if (entry.kind === 'console') {
+    const e = entry.entry
+    return `c:${e.timestamp}:${e.level}:${e.message.slice(0, 100)}`
+  }
+  const e = entry.entry
+  return `n:${e.timestamp}:${e.url}:${e.method}`
 }
 
 export async function getTokenLimit(): Promise<number> {

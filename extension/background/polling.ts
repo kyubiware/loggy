@@ -3,7 +3,8 @@ import {
   readStoredEntries,
   writeStoredEntries,
   storeCapturedData,
-  MAX_ENTRIES_PER_TAB,
+  applyStorageLimits,
+  getEntryKey,
 } from './entry-storage'
 import type { StoredCapturedEntry } from './entry-storage'
 import { getAutoServerSync, exportTabToServer, lastExportFingerprintByTab } from './server-sync'
@@ -11,7 +12,7 @@ import type { CapturedConsoleEntry, TabCaptureState } from '../types/messages'
 import { debugLog } from '../utils/debug-logger'
 
 export const AUTO_SYNC_ALARM_NAME = 'loggy-auto-sync'
-export const POLL_FINGERPRINT_KEY_PREFIX = 'loggy_poll_fp_'
+export const POLL_COUNT_KEY_PREFIX = 'loggy_poll_count_'
 
 /**
  * Raw data shape returned from the MAIN world capture arrays.
@@ -30,27 +31,41 @@ export interface RawBufferData {
   }>
 }
 
-export async function getPollFingerprint(tabId: number): Promise<string> {
-  const key = `${POLL_FINGERPRINT_KEY_PREFIX}${tabId}`
+/**
+ * Returns the last polled entry count for the tab, used to compute the
+ * delta between the current MAIN-world array length and what we
+ * previously persisted. Defaults to 0 when unset (first poll or after
+ * storage reset).
+ */
+export async function getPolledCount(tabId: number): Promise<number> {
+  const key = `${POLL_COUNT_KEY_PREFIX}${tabId}`
   const result = (await chrome.storage.session.get(key)) as Record<string, unknown>
-  return typeof result[key] === 'string' ? (result[key] as string) : ''
+  return typeof result[key] === 'number' ? (result[key] as number) : 0
 }
 
-export async function setPollFingerprint(tabId: number, fingerprint: string): Promise<void> {
-  const key = `${POLL_FINGERPRINT_KEY_PREFIX}${tabId}`
-  await chrome.storage.session.set({ [key]: fingerprint })
-}
-
-export async function restorePollFingerprints(): Promise<void> {
-  // Fingerprints are stored individually in chrome.storage.session
-  // keyed by POLL_FINGERPRINT_KEY_PREFIX + tabId. They are read on demand
-  // by getPollFingerprint, so no bulk restore is needed.
+/**
+ * Persists the total MAIN-world entry count observed during the most
+ * recent successful poll. Used by `getPolledCount` to compute the
+ * delta on the next poll.
+ */
+export async function setPolledCount(tabId: number, count: number): Promise<void> {
+  const key = `${POLL_COUNT_KEY_PREFIX}${tabId}`
+  await chrome.storage.session.set({ [key]: count })
 }
 
 /**
  * Polls the MAIN world capture arrays for a tab and auto-syncs to the
  * server when new data is detected. This is the primary data path for
  * background auto-sync when the DevTools panel is not open.
+ *
+ * Uses a per-tab `lastPolledCount` tracker in `chrome.storage.session`
+ * to compute a delta between the current MAIN-world array length and
+ * what we previously persisted. New entries are deduplicated against
+ * entries already stored by the concurrent `storeCapturedData` path
+ * using entry keys, then merged and written in a single batched
+ * append. This preserves pre-reload entries on page reload (the
+ * MAIN-world arrays reset, so the count shrinks — we reset the
+ * counter to 0 and append all new entries).
  */
 export async function pollAndSyncTab(tabId: number): Promise<void> {
   const current = getOrCreateTabState(tabId)
@@ -86,8 +101,6 @@ export async function pollAndSyncTab(tabId: number): Promise<void> {
       return
     }
 
-    // Compute a lightweight fingerprint from the raw arrays.
-    // Only hash the length + last entry to avoid O(n) serialization on every poll.
     const consoleLogs = Array.isArray(raw.consoleLogs) ? raw.consoleLogs : []
     const networkLogs = Array.isArray(raw.networkLogs) ? raw.networkLogs : []
     const totalEntries = consoleLogs.length + networkLogs.length
@@ -96,21 +109,21 @@ export async function pollAndSyncTab(tabId: number): Promise<void> {
       return
     }
 
-    const fingerprint = `${totalEntries}:${consoleLogs.length > 0 ? JSON.stringify(consoleLogs[consoleLogs.length - 1]) : ''}:${networkLogs.length > 0 ? JSON.stringify(networkLogs[networkLogs.length - 1]) : ''}`
-    const lastFingerprint = await getPollFingerprint(tabId)
+    const lastCount = await getPolledCount(tabId)
 
-    if (fingerprint === lastFingerprint) {
-      debugLog('capture', 'background', `pollAndSyncTab: no new data (fingerprint unchanged, ${totalEntries} entries)`, { tabId })
+    // Nothing changed since the last poll.
+    if (totalEntries === lastCount) {
+      debugLog('capture', 'background', `pollAndSyncTab: no new data (count unchanged, ${totalEntries} entries)`, { tabId })
       return
     }
 
-    debugLog('capture', 'background', `pollAndSyncTab: new data detected (${totalEntries} entries)`, { tabId })
+    debugLog('capture', 'background', `pollAndSyncTab: new data detected (${totalEntries} entries, last=${lastCount})`, { tabId })
 
-    // Convert raw entries to the stored format and replace stored data
-    const storedEntries: StoredCapturedEntry[] = []
+    // Convert raw entries to the stored format
+    const allEntries: StoredCapturedEntry[] = []
 
     for (const log of consoleLogs) {
-      storedEntries.push({
+      allEntries.push({
         kind: 'console',
         entry: {
           timestamp: log.timestamp,
@@ -121,7 +134,7 @@ export async function pollAndSyncTab(tabId: number): Promise<void> {
     }
 
     for (const net of networkLogs) {
-      storedEntries.push({
+      allEntries.push({
         kind: 'network',
         entry: {
           timestamp: net.timestamp,
@@ -135,28 +148,51 @@ export async function pollAndSyncTab(tabId: number): Promise<void> {
       })
     }
 
-    // Cap to MAX_ENTRIES_PER_TAB (keep the latest)
-    const capped = storedEntries.length > MAX_ENTRIES_PER_TAB
-      ? storedEntries.slice(-MAX_ENTRIES_PER_TAB)
-      : storedEntries
+    // Read existing stored entries (preserved across reloads by the
+    // onUpdated loading guard) and build a set of their entry keys.
+    const existingEntries = await readStoredEntries(tabId)
+    const existingKeySet = new Set(existingEntries.map((e) => getEntryKey(e)))
 
-    await writeStoredEntries(tabId, capped)
+    // Reload detection: if the MAIN-world array shrank, the page
+    // reloaded. Reset the counter to 0 and append ALL polled entries.
+    const effectiveLastCount = totalEntries < lastCount ? 0 : lastCount
+
+    // Compute the candidate delta: the new tail of the polled arrays.
+    const candidates = allEntries.slice(effectiveLastCount)
+
+    // Deduplicate against entries already stored by the concurrent
+    // `storeCapturedData` path (or by a previous poll cycle).
+    const genuinelyNew = candidates.filter((entry) => !existingKeySet.has(getEntryKey(entry)))
+
+    // Update the counter to reflect what we've now observed. Even if
+    // no new entries are appended (all already in storage), we still
+    // want the counter to match `totalEntries` so subsequent polls
+    // correctly detect "nothing new".
+    await setPolledCount(tabId, totalEntries)
+
+    if (genuinelyNew.length === 0) {
+      debugLog('capture', 'background', `pollAndSyncTab: no genuinely new entries (all already stored)`, { tabId })
+      return
+    }
+
+    // Merge stored entries with the genuinely new ones, then apply caps.
+    const merged = [...existingEntries, ...genuinelyNew]
+    const result = await applyStorageLimits(merged)
+
+    await writeStoredEntries(tabId, result)
 
     // Update tab state with new log count
     const next: TabCaptureState = {
       ...current,
       connected: true,
-      logCount: capped.length,
+      logCount: result.length,
     }
     await setTabState(next)
-
-    // Persist the poll fingerprint
-    await setPollFingerprint(tabId, fingerprint)
 
     // Clear the export fingerprint so exportTabToServer won't skip
     lastExportFingerprintByTab.delete(tabId)
 
-    debugLog('capture', 'background', `pollAndSyncTab: stored ${capped.length} entries, triggering export`, { tabId })
+    debugLog('capture', 'background', `pollAndSyncTab: stored ${result.length} entries (${genuinelyNew.length} new), triggering export`, { tabId })
     await exportTabToServer(tabId)
   } catch (error) {
     debugLog('capture', 'background', `pollAndSyncTab: executeScript failed`, { tabId, error: String(error) })

@@ -32,7 +32,7 @@ import {
   getPreserveLogs,
   lastExportFingerprintByTab,
 } from './server-sync'
-import { AUTO_SYNC_ALARM_NAME, pollAllActiveTabs, setPollFingerprint } from './polling'
+import { AUTO_SYNC_ALARM_NAME, pollAllActiveTabs, setPolledCount } from './polling'
 import {
   handleCaptureMessage,
   handleControlMessage,
@@ -188,7 +188,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
         if (!preserveLogs) {
           debugLog('capture', 'background', `Tab loading: clearing stored entries (preserveLogs=false)`, { tabId })
           await chrome.storage.session.remove(getStorageKeyForTab(tabId))
-          await setPollFingerprint(tabId, '')
+          await setPolledCount(tabId, 0)
           lastExportFingerprintByTab.delete(tabId)
           const current = getOrCreateTabState(tabId)
           await setTabState({ ...current, logCount: 0 })
