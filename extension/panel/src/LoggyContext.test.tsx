@@ -38,6 +38,7 @@ const mocks = vi.hoisted(() => ({
     deduplicateApiCalls: true,
     maxTokenLimit: 50000,
     preserveLogs: false,
+    autoIncludeRoutes: true,
     consoleLogs: [],
     networkEntries: [],
   } as LoggyState,
