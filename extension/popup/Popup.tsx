@@ -184,6 +184,8 @@ export default function Popup() {
                 onToggleRoutes={toggleRoutes}
                 onSelectAll={selectAllRoutes}
                 onDeselectAll={deselectAllRoutes}
+                autoIncludeRoutes={settings.autoIncludeRoutes}
+                onToggleAutoIncludeRoutes={() => setSetting('autoIncludeRoutes', !settings.autoIncludeRoutes)}
               />
             )}
           </FiltersAccordion>
