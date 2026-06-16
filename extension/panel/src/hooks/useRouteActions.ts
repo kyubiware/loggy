@@ -4,9 +4,14 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 interface UseRouteActionsParams {
   setSelectedRoutes: Dispatch<SetStateAction<string[]>>
   routeOptions: string[]
+  autoIncludeRoutes: boolean
 }
 
-export function useRouteActions({ setSelectedRoutes, routeOptions }: UseRouteActionsParams) {
+export function useRouteActions({
+  setSelectedRoutes,
+  routeOptions,
+  autoIncludeRoutes,
+}: UseRouteActionsParams) {
   const toggleRoute = useCallback(
     (route: string) => {
       setSelectedRoutes((previous) =>
@@ -52,11 +57,15 @@ export function useRouteActions({ setSelectedRoutes, routeOptions }: UseRouteAct
     const currentRouteOptions = routeOptionsRef.current
     setSelectedRoutes((previous) => {
       const staleRemoved = previous.filter((route) => currentRouteOptions.includes(route))
+      if (!autoIncludeRoutes) {
+        // Only prune stale routes; never auto-add new ones
+        return staleRemoved.length === previous.length ? previous : staleRemoved
+      }
       const newRoutes = currentRouteOptions.filter((route) => !previous.includes(route))
       const next = [...staleRemoved, ...newRoutes]
       return next.length === previous.length && newRoutes.length === 0 ? previous : next
     })
-  }, [routeOptionsKey, setSelectedRoutes])
+  }, [routeOptionsKey, autoIncludeRoutes, setSelectedRoutes])
 
   return useMemo(
     () => ({ toggleRoute, selectAllRoutes, deselectAllRoutes, toggleRoutes }),

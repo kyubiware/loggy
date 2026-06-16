@@ -277,6 +277,7 @@ describe('useCaptureData', () => {
         maxTokenLimit: defaults.maxTokenLimit,
         deduplicateApiCalls: defaults.deduplicateApiCalls,
         preserveLogs: defaults.preserveLogs,
+        autoIncludeRoutes: defaults.autoIncludeRoutes,
       },
     })
   })

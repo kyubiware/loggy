@@ -54,6 +54,7 @@ export type Action =
   | { type: 'SET_MAX_TOKEN_LIMIT'; value: number }
   | { type: 'TOGGLE_PRESERVE_LOGS' }
   | { type: 'TOGGLE_DEDUPLICATE_API_CALLS' }
+  | { type: 'TOGGLE_AUTO_INCLUDE_ROUTES' }
 
 const TOGGLE_FLAG_KEY: Record<string, keyof LoggyState> = {
   TOGGLE_AGENT_CONTEXT: 'includeAgentContext',
@@ -65,6 +66,7 @@ const TOGGLE_FLAG_KEY: Record<string, keyof LoggyState> = {
   TOGGLE_AUTO_SERVER_SYNC: 'autoServerSync',
   TOGGLE_PRESERVE_LOGS: 'preserveLogs',
   TOGGLE_DEDUPLICATE_API_CALLS: 'deduplicateApiCalls',
+  TOGGLE_AUTO_INCLUDE_ROUTES: 'autoIncludeRoutes',
 }
 
 const SET_VALUE_KEY: Record<string, keyof LoggyState> = {
@@ -93,6 +95,7 @@ function hydrateSettings(state: LoggyState, settings: PersistedLoggySettings): L
     maxTokenLimit: state.maxTokenLimit,
     deduplicateApiCalls: state.deduplicateApiCalls,
     preserveLogs: state.preserveLogs,
+    autoIncludeRoutes: state.autoIncludeRoutes,
   })
   return { ...state, ...hydratedSettings }
 }

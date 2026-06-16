@@ -35,6 +35,7 @@ export interface SettingsContextValue {
   deduplicateApiCalls: boolean
   maxTokenLimit: number
   preserveLogs: boolean
+  autoIncludeRoutes: boolean
 }
 
 export interface ActionsContextValue {

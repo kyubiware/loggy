@@ -14,6 +14,8 @@ export interface LoggyState {
   networkFilter: string
   /** Selected route paths to include in filtered network data */
   selectedRoutes: string[]
+  /** Whether newly detected routes are automatically included in the selection */
+  autoIncludeRoutes: boolean
   /** Whether console logs are visible in the preview */
   consoleVisible: boolean
   /** Whether network entries are visible in the preview */
@@ -61,6 +63,7 @@ export interface LoggyState {
 export const PERSISTED_SETTINGS_KEYS = [
   'consoleFilter',
   'networkFilter',
+  'autoIncludeRoutes',
   'consoleVisible',
   'networkVisible',
   'includeAgentContext',
@@ -96,6 +99,7 @@ export function createInitialState(): LoggyState {
     consoleFilter: '',
     networkFilter: '',
     selectedRoutes: [],
+    autoIncludeRoutes: true,
     consoleVisible: true,
     networkVisible: true,
     includeAgentContext: true,

@@ -22,6 +22,7 @@ export type ToggleSettingKey =
   | 'autoServerSync'
   | 'preserveLogs'
   | 'deduplicateApiCalls'
+  | 'autoIncludeRoutes'
 
 /**
  * Maps toggle setting keys to their reducer action types.
@@ -37,6 +38,7 @@ const TOGGLE_ACTION_MAP: Record<ToggleSettingKey, Action['type']> = {
   autoServerSync: 'TOGGLE_AUTO_SERVER_SYNC',
   preserveLogs: 'TOGGLE_PRESERVE_LOGS',
   deduplicateApiCalls: 'TOGGLE_DEDUPLICATE_API_CALLS',
+  autoIncludeRoutes: 'TOGGLE_AUTO_INCLUDE_ROUTES',
 }
 
 /**
@@ -69,6 +71,7 @@ interface UseLoggyActionsParams {
   setFiltersVisible: Dispatch<SetStateAction<boolean>>
   setSelectedRoutes: Dispatch<SetStateAction<string[]>>
   routeOptions: string[]
+  autoIncludeRoutes: boolean
 }
 
 export function useLoggyActions({
@@ -81,9 +84,10 @@ export function useLoggyActions({
   setFiltersVisible,
   setSelectedRoutes,
   routeOptions,
+  autoIncludeRoutes,
 }: UseLoggyActionsParams): ActionsContextValue {
   const filterActions = useFilterActions({ dispatch, setFiltersVisible })
-  const routeActions = useRouteActions({ setSelectedRoutes, routeOptions })
+  const routeActions = useRouteActions({ setSelectedRoutes, routeOptions, autoIncludeRoutes })
   const dataActions = useDataActions({
     captureData,
     clearData,

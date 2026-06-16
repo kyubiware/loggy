@@ -30,6 +30,7 @@ function getDefaultSettings() {
     maxTokenLimit: d.maxTokenLimit,
     deduplicateApiCalls: d.deduplicateApiCalls,
     preserveLogs: d.preserveLogs,
+    autoIncludeRoutes: d.autoIncludeRoutes,
   }
 }
 

@@ -67,6 +67,7 @@ export function LoggyProvider({ children }: { children: ReactNode }): ReactNode 
     setFiltersVisible,
     setSelectedRoutes,
     routeOptions,
+    autoIncludeRoutes: state.autoIncludeRoutes,
   })
 
   const logDataValue = useMemo<LogDataContextValue>(
@@ -99,6 +100,7 @@ export function LoggyProvider({ children }: { children: ReactNode }): ReactNode 
       maxTokenLimit: state.maxTokenLimit,
       deduplicateApiCalls: state.deduplicateApiCalls,
       preserveLogs: state.preserveLogs,
+      autoIncludeRoutes: state.autoIncludeRoutes,
     }),
     [state, filtersVisible, toastState]
   )
