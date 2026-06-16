@@ -133,6 +133,7 @@ export function usePopupActions() {
   const { toggleRoute, selectAllRoutes, deselectAllRoutes, toggleRoutes } = useRouteActions({
     setSelectedRoutes,
     routeOptions,
+    autoIncludeRoutes: settings.autoIncludeRoutes,
   })
 
   const handleToggleDebugger = () => {

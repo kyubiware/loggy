@@ -298,10 +298,10 @@ describe('PreviewPane', () => {
         fireEvent.click(screen.getByTestId('tab-routes'))
 
         const checkboxes = screen.getAllByRole('checkbox')
-        expect(checkboxes).toHaveLength(3)
+        expect(checkboxes).toHaveLength(4)
 
         const labels = checkboxes.map((cb) => cb.parentElement?.textContent?.trim())
-        expect(labels).toEqual(['/orders', '/products', '/users'])
+        expect(labels).toEqual(['Auto-include new routes', '/orders', '/products', '/users'])
       })
 
       it('shows empty state message when no route options exist', () => {
