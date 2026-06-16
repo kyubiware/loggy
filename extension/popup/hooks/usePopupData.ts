@@ -34,9 +34,13 @@ export function usePopupData(
     return () => clearTimeout(timer)
   }, [selectedRoutes])
 
+  // NOTE: We intentionally do NOT call `setLoading(true)` here. The initial
+  // `useState(true)` already covers the first load, and flipping loading back
+  // to true on subsequent refreshes (filter/route changes) would unmount the
+  // entire Popup content tree via the `if (isLoading)` gate in Popup.tsx —
+  // destroying scroll position. See usePopupData.test.ts "preserves scroll"
+  // regression test.
   const refresh = useCallback(() => {
-    setLoading(true)
-
     if (isFirefox) {
       setLoading(false)
       return

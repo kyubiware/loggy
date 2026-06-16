@@ -164,7 +164,9 @@ export function useFirefoxDirectCapture(
   }, [tabId, selectedRoutes])
 
   const refresh = useCallback(() => {
-    setLoading(true)
+    // NOTE: Do not call setLoading(true) here — see usePopupData.ts for the
+    // rationale (flipping loading on refresh unmounts the Popup tree and
+    // destroys scroll position).
     void captureData()
   }, [captureData])
 
