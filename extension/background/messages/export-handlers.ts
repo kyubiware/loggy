@@ -3,8 +3,14 @@ import {
   getOrCreateTabState,
   setTabState,
 } from '../tab-state'
-import { readStoredEntries, toConsoleMessage, toHAREntry } from '../entry-storage'
+import {
+  readStoredEntries,
+  storePanelSnapshot,
+  toConsoleMessage,
+  toHAREntry,
+} from '../entry-storage'
 import { clearFailedExportBuffer } from '../server-sync'
+import { debugLog } from '../../utils/debug-logger'
 import { buildExportMarkdown } from '../../shared/export'
 import { getFilteredPanelData } from '../../utils/filtered-data'
 import { estimateTokenCount } from '../../utils/token-estimate'
@@ -71,6 +77,34 @@ export async function handleGetTabExportData(
     logCount: filteredData.consoleLogs.length + filteredData.networkEntries.length,
     routeOptions: filteredData.routeOptions,
   }
+}
+
+/**
+ * Receives a snapshot of the DevTools panel's current captured data and writes
+ * it to background session storage (full per-tab replace).
+ *
+ * In devtools mode the panel captures directly via chrome.devtools into React
+ * state and never routes through storeCapturedData, so the popup (which reads
+ * exclusively from storage) would otherwise be blind to those logs. This
+ * handler makes the panel's view available to the popup. Idempotent.
+ */
+export async function handleSyncPanelData(
+  tabId: number,
+  consoleLogs: ConsoleMessage[],
+  networkEntries: HAREntry[],
+): Promise<{ ok: true }> {
+  debugLog('capture', 'background', `sync-panel-data: storing panel snapshot`, {
+    tabId,
+    consoleCount: consoleLogs.length,
+    networkCount: networkEntries.length,
+  })
+
+  await storePanelSnapshot(tabId, consoleLogs, networkEntries)
+
+  const current = getOrCreateTabState(tabId)
+  await setTabState({ ...current, connected: true, logCount: consoleLogs.length + networkEntries.length })
+
+  return { ok: true }
 }
 
 export async function handleClearTabData(tabId: number): Promise<{ ok: true }> {

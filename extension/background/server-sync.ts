@@ -65,7 +65,7 @@ export async function getPreserveLogs(): Promise<boolean> {
   >
   const settings = result[LOGGY_PANEL_SETTINGS_STORAGE_KEY] as { preserveLogs?: unknown } | undefined
 
-  return typeof settings?.preserveLogs === 'boolean' ? settings.preserveLogs : false
+  return typeof settings?.preserveLogs === 'boolean' ? settings.preserveLogs : true
 }
 
 export async function getTabUrl(tabId: number): Promise<string> {

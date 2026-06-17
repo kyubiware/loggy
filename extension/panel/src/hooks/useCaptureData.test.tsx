@@ -434,6 +434,13 @@ describe('useCaptureData', () => {
 
     expect(result.current.state.consoleFilter).toBe('error')
 
+    // preserveLogs now defaults to true; explicitly disable it to verify the
+    // reset-on-navigation behavior (the feature still exists, it's just opt-in).
+    await act(async () => {
+      result.current.dispatch({ type: 'TOGGLE_PRESERVE_LOGS' })
+    })
+    expect(result.current.state.preserveLogs).toBe(false)
+
     // Trigger navigation reset
     await act(async () => {
       navigationListener?.()

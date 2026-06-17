@@ -14,7 +14,7 @@ import {
   handleRemoveAlwaysLog,
   handleGetAlwaysLogHosts,
 } from './always-log'
-import { handleGetTabExportData, handleClearTabData } from './export-handlers'
+import { handleGetTabExportData, handleClearTabData, handleSyncPanelData } from './export-handlers'
 import {
   handleProbeServer,
   handlePushToServer,
@@ -48,6 +48,9 @@ export async function handleControlMessage(
 
     case 'panel-closed':
       return handlePanelClosed(message.tabId)
+
+    case 'sync-panel-data':
+      return handleSyncPanelData(message.tabId, message.consoleLogs, message.networkEntries)
 
     case 'get-tab-export-data':
       return handleGetTabExportData(message.tabId, message.selectedRoutes, message.routesFilterEnabled)
@@ -115,6 +118,7 @@ export function isControlMessage(message: unknown): message is CaptureControlMes
     type === 'content-relay-ready' ||
     type === 'panel-opened' ||
     type === 'panel-closed' ||
+    type === 'sync-panel-data' ||
     type === 'get-tab-export-data' ||
     type === 'request-consent' ||
     type === 'consent-response' ||

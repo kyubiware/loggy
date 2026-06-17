@@ -9,8 +9,30 @@ import {
   clearCapturedConsoleLogs,
   enrichWithResponseBodies,
 } from '../../capture'
+import { panelDataFingerprint, syncPanelDataToBackground } from '../../sync-to-background'
 import type { Action } from './useCaptureData'
 import { isAfterCutoff } from './useLifecycle'
+
+/**
+ * Syncs the panel's captured data to background storage when it changes, so
+ * the popup (which reads exclusively from storage) can see logs captured in
+ * devtools mode. No-op when the fingerprint is unchanged or the tabId is unset.
+ */
+function syncCapturedToBackground(
+  lastSyncFingerprintRef: React.MutableRefObject<string>,
+  consoleLogs: ConsoleMessage[],
+  networkEntries: HAREntry[]
+): void {
+  const fingerprint = panelDataFingerprint(consoleLogs, networkEntries)
+  if (fingerprint === lastSyncFingerprintRef.current) {
+    return
+  }
+  lastSyncFingerprintRef.current = fingerprint
+  const tabId = chrome.devtools.inspectedWindow.tabId
+  if (typeof tabId === 'number') {
+    syncPanelDataToBackground(tabId, consoleLogs, networkEntries)
+  }
+}
 
 export function useCaptureActions(
   dispatch: React.Dispatch<Action>,
@@ -26,6 +48,7 @@ export function useCaptureActions(
   const networkClearCutoffMs = useRef<number | null>(null)
   const preservedConsoleLogsRef = useRef<ConsoleMessage[]>([])
   const latestStateRef = useRef(state)
+  const lastSyncFingerprintRef = useRef('')
   const filterAfter = useCallback(
     (entries: HAREntry[]): HAREntry[] =>
       entries.filter((e) => isAfterCutoff(e, networkClearCutoffMs.current)),
@@ -57,6 +80,10 @@ export function useCaptureActions(
         preservedConsoleLogsRef.current = []
       }
       dispatch({ type: 'SET_DATA', consoleLogs, networkEntries })
+
+      // Mirror the panel's view into background storage so the popup can see
+      // logs captured in devtools mode (no-op when data hasn't changed).
+      syncCapturedToBackground(lastSyncFingerprintRef, consoleLogs, networkEntries)
     } catch (error) {
       console.error('Error capturing data:', error)
     } finally {

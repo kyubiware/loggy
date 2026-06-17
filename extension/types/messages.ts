@@ -33,6 +33,7 @@ export type {
   RequestConsentMessage,
   StartLoggingMessage,
   StopLoggingMessage,
+  SyncPanelDataMessage,
   ToggleDebuggerMessage,
 } from './control.ts'
 

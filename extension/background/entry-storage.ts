@@ -59,6 +59,53 @@ export function toHAREntry(entry: CapturedNetworkEntry): HAREntry {
   }
 }
 
+/**
+ * Reverse of {@link toHeadersMap}: rebuilds a header map from HAR headers.
+ * Returns undefined for empty/missing input.
+ */
+export function fromHeadersMap(headers?: HARHeader[]): Record<string, string> | undefined {
+  if (!headers || headers.length === 0) {
+    return undefined
+  }
+
+  const map: Record<string, string> = {}
+  for (const header of headers) {
+    map[header.name] = header.value
+  }
+
+  return Object.keys(map).length > 0 ? map : undefined
+}
+
+/**
+ * Reverse of {@link toConsoleMessage}. ConsoleMessage and CapturedConsoleEntry
+ * share the same shape, so this is a direct (typed) copy.
+ */
+export function fromConsoleMessage(msg: ConsoleMessage): CapturedConsoleEntry {
+  return {
+    timestamp: msg.timestamp,
+    level: msg.level,
+    message: msg.message,
+  }
+}
+
+/**
+ * Reverse of {@link toHAREntry}: rebuilds a CapturedNetworkEntry from a HAR entry.
+ */
+export function fromHAREntry(har: HAREntry): CapturedNetworkEntry {
+  return {
+    timestamp: har.startedDateTime,
+    url: har.request.url,
+    method: har.request.method,
+    status: har.response.status,
+    requestHeaders: fromHeadersMap(har.request.headers),
+    requestBody: har.request.postData?.text,
+    responseHeaders: fromHeadersMap(har.response.headers),
+    responseBody: har.response.content?.text,
+    contentType: har.response.content?.mimeType ?? har.request.postData?.mimeType,
+    duration: har.time,
+  }
+}
+
 export async function readStoredEntries(tabId: number): Promise<StoredCapturedEntry[]> {
   const key = getStorageKeyForTab(tabId)
   const result = (await chrome.storage.session.get(key)) as Record<string, unknown>
@@ -87,6 +134,36 @@ export async function storeCapturedData(tabId: number, data: CaptureMessage): Pr
 
   await writeStoredEntries(tabId, next)
   return next.length
+}
+
+/**
+ * Full per-tab replace driven by the DevTools panel snapshot.
+ *
+ * The panel captures console/network directly via chrome.devtools into React
+ * state (devtools mode) and never routes those captures through
+ * {@link storeCapturedData}. This function lets the panel push its current
+ * view into background storage so the popup (which reads exclusively from
+ * storage) can see logs captured while the panel was open. Idempotent.
+ */
+export async function storePanelSnapshot(
+  tabId: number,
+  consoleLogs: ConsoleMessage[],
+  networkEntries: HAREntry[],
+): Promise<void> {
+  const entries: StoredCapturedEntry[] = [
+    ...consoleLogs.map(
+      (msg): StoredCapturedEntry => ({ kind: 'console', entry: fromConsoleMessage(msg) }),
+    ),
+    ...networkEntries.map(
+      (har): StoredCapturedEntry => ({ kind: 'network', entry: fromHAREntry(har) }),
+    ),
+  ]
+
+  // Chronological order so storage-limit purging drops the oldest entries.
+  entries.sort((a, b) => a.entry.timestamp.localeCompare(b.entry.timestamp))
+
+  const limited = await applyStorageLimits(entries)
+  await writeStoredEntries(tabId, limited)
 }
 
 /**

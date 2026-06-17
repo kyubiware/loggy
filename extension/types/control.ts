@@ -1,4 +1,6 @@
 import type { CaptureMode } from './capture.ts'
+import type { ConsoleMessage } from './console.ts'
+import type { HAREntry } from './har.ts'
 import type { AlwaysLogHostsResponse } from './responses.ts'
 
 /**
@@ -93,6 +95,25 @@ export interface PanelClosedMessage {
   type: 'panel-closed'
   /** Target tab identifier. */
   tabId: number
+}
+
+/**
+ * Snapshot of the DevTools panel's current captured data.
+ *
+ * Sent panel → background so that the popup (which reads exclusively
+ * from background storage) can see logs captured in devtools mode.
+ * The background converts these back to stored-entry format and does
+ * a full per-tab replace. Idempotent.
+ */
+export interface SyncPanelDataMessage {
+  /** Message type. */
+  type: 'sync-panel-data'
+  /** Target tab identifier. */
+  tabId: number
+  /** Captured console entries. */
+  consoleLogs: ConsoleMessage[]
+  /** Captured network entries. */
+  networkEntries: HAREntry[]
 }
 
 /**
@@ -225,6 +246,7 @@ export type CaptureControlMessage =
   | GetCachedPreviewMessage
   | PanelOpenedMessage
   | PanelClosedMessage
+  | SyncPanelDataMessage
   | ContentRelayReadyMessage
   | RequestConsentMessage
   | ConsentResponseMessage
