@@ -9,6 +9,7 @@ export interface LogDataContextValue {
   networkEntries: HAREntry[]
   routeOptions: string[]
   selectedRoutes: string[]
+  routesFilterEnabled: boolean
 }
 
 export interface SettingsContextValue {

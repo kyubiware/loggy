@@ -2,12 +2,12 @@ import type { LucideIcon } from 'lucide-react'
 import { Archive, Brain, Copy, FileText, RefreshCw, Scissors, Shield, Upload } from 'lucide-react'
 import type { Dispatch, RefObject, SetStateAction } from 'react'
 import { useCallback, useMemo } from 'react'
+import { useRouteActions } from '../../../shared/hooks/useRouteActions'
 import type { LoggyState } from '../../../types/state'
 import type { ActionsContextValue } from '../LoggyContext.types'
 import type { Action } from './useCaptureData'
 import { useDataActions } from './useDataActions'
 import { useFilterActions } from './useFilterActions'
-import { useRouteActions } from './useRouteActions'
 
 /**
  * Setting keys that have user-facing toggle controls.
@@ -70,6 +70,7 @@ interface UseLoggyActionsParams {
   selectedRoutesRef: RefObject<string[]>
   setFiltersVisible: Dispatch<SetStateAction<boolean>>
   setSelectedRoutes: Dispatch<SetStateAction<string[]>>
+  setRoutesFilterEnabled: Dispatch<SetStateAction<boolean>>
   routeOptions: string[]
   autoIncludeRoutes: boolean
 }
@@ -83,11 +84,17 @@ export function useLoggyActions({
   selectedRoutesRef,
   setFiltersVisible,
   setSelectedRoutes,
+  setRoutesFilterEnabled,
   routeOptions,
   autoIncludeRoutes,
 }: UseLoggyActionsParams): ActionsContextValue {
   const filterActions = useFilterActions({ dispatch, setFiltersVisible })
-  const routeActions = useRouteActions({ setSelectedRoutes, routeOptions, autoIncludeRoutes })
+  const routeActions = useRouteActions({
+    setSelectedRoutes,
+    setRoutesFilterEnabled,
+    routeOptions,
+    autoIncludeRoutes,
+  })
   const dataActions = useDataActions({
     captureData,
     clearData,

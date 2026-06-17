@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
     consoleFilter: '',
     networkFilter: '',
     selectedRoutes: [],
+    routesFilterEnabled: false,
     consoleVisible: true,
     networkVisible: true,
     includeAgentContext: true,

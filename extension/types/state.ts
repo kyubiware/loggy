@@ -14,6 +14,13 @@ export interface LoggyState {
   networkFilter: string
   /** Selected route paths to include in filtered network data */
   selectedRoutes: string[]
+  /**
+   * Whether the user has engaged route filtering this session.
+   * When false, empty selectedRoutes is treated as passthrough (show all).
+   * When true, empty selectedRoutes means "exclude all" (strict filter).
+   * Session-only — NOT persisted across popup/panel reloads.
+   */
+  routesFilterEnabled: boolean
   /** Whether newly detected routes are automatically included in the selection */
   autoIncludeRoutes: boolean
   /** Whether console logs are visible in the preview */
@@ -99,6 +106,7 @@ export function createInitialState(): LoggyState {
     consoleFilter: '',
     networkFilter: '',
     selectedRoutes: [],
+    routesFilterEnabled: false,
     autoIncludeRoutes: true,
     consoleVisible: true,
     networkVisible: true,

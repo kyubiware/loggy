@@ -29,9 +29,17 @@ export function getFilteredPanelData(state: LoggyState): FilteredPanelData {
   const routeOptions = getRouteOptions(textFilteredNetworkEntries)
   const validSelectedRoutes = state.selectedRoutes.filter((route) => routeOptions.includes(route))
 
+  // When route filtering is not engaged (initial session state), empty
+  // selectedRoutes is a passthrough — show all entries. Once the user
+  // interacts with route controls (routesFilterEnabled=true), empty
+  // selectedRoutes means "exclude all" (strict filter).
+  const routeFilteredEntries = state.routesFilterEnabled
+    ? filterByRoutes(textFilteredNetworkEntries, validSelectedRoutes)
+    : textFilteredNetworkEntries
+
   return {
     consoleLogs: state.consoleVisible ? filterConsole(state.consoleLogs, state.consoleFilter) : [],
-    networkEntries: filterByRoutes(textFilteredNetworkEntries, validSelectedRoutes),
+    networkEntries: routeFilteredEntries,
     routeOptions,
   }
 }

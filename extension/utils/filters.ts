@@ -140,13 +140,12 @@ export function getRouteOptions(entries: HAREntry[]): string[] {
  * Filter HAR entries by selected routes (OR semantics)
  *
  * @param entries - Array of HAR entries to filter
- * @param selectedRoutes - Array of route pathnames to include (empty = passthrough)
+ * @param selectedRoutes - Array of route pathnames to include (empty = no matches)
  * @returns Filtered array of HAR entries matching selected routes
  */
 export function filterByRoutes(entries: HAREntry[], selectedRoutes: string[]): HAREntry[] {
-  // Passthrough: no routes selected means return all entries
   if (!selectedRoutes || selectedRoutes.length === 0) {
-    return entries
+    return []
   }
 
   // Filter by pathname match (OR semantics)

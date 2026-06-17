@@ -70,6 +70,7 @@ function toHAREntry(entry: RawBufferData['networkLogs'][number]): HAREntry {
 export function useFirefoxDirectCapture(
   tabId: number,
   selectedRoutes?: string[],
+  routesFilterEnabled?: boolean,
 ): {
   tokenCount: number
   markdown: string
@@ -141,6 +142,7 @@ export function useFirefoxDirectCapture(
         ...defaults,
         ...persistedSettings,
         selectedRoutes: selectedRoutes ?? defaults.selectedRoutes,
+        routesFilterEnabled: routesFilterEnabled ?? defaults.routesFilterEnabled,
         consoleLogs,
         networkEntries,
       }
@@ -161,7 +163,7 @@ export function useFirefoxDirectCapture(
     } finally {
       setLoading(false)
     }
-  }, [tabId, selectedRoutes])
+  }, [tabId, selectedRoutes, routesFilterEnabled])
 
   const refresh = useCallback(() => {
     // NOTE: Do not call setLoading(true) here — see usePopupData.ts for the

@@ -410,9 +410,9 @@ describe('filterByRoutes', () => {
     },
   ]
 
-  test('should return all entries when selectedRoutes is empty (passthrough)', () => {
+  test('should return no entries when selectedRoutes is empty', () => {
     const result = filterByRoutes(routeTestEntries, [])
-    expect(result.length).toBe(3)
+    expect(result.length).toBe(0)
   })
 
   test('should filter by single selected route', () => {

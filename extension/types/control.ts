@@ -19,6 +19,8 @@ export interface GetTabExportDataMessage {
   tabId: number
   /** Optional route filter from the popup — filters network entries by pathname. */
   selectedRoutes?: string[]
+  /** Whether the user has engaged route filtering this session. */
+  routesFilterEnabled?: boolean
 }
 
 /**

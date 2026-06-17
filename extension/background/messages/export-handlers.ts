@@ -20,6 +20,7 @@ import {
 export async function handleGetTabExportData(
   tabId: number,
   selectedRoutes?: string[],
+  routesFilterEnabled?: boolean,
 ): Promise<{
   tokenCount: number
   markdown: string
@@ -54,6 +55,7 @@ export async function handleGetTabExportData(
     ...defaults,
     ...persistedSettings,
     selectedRoutes: selectedRoutes ?? defaults.selectedRoutes,
+    routesFilterEnabled: routesFilterEnabled ?? defaults.routesFilterEnabled,
     consoleLogs,
     networkEntries,
   }

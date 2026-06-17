@@ -43,10 +43,11 @@ export function LoggyProvider({ children }: { children: ReactNode }): ReactNode 
   const { toastState, showToast } = useToast()
   const [filtersVisible, setFiltersVisible] = useState(false)
   const [selectedRoutes, setSelectedRoutes] = useState<string[]>(state.selectedRoutes)
+  const [routesFilterEnabled, setRoutesFilterEnabled] = useState(false)
 
   const contextState = useMemo<LoggyState>(
-    () => ({ ...state, selectedRoutes }),
-    [selectedRoutes, state]
+    () => ({ ...state, selectedRoutes, routesFilterEnabled }),
+    [selectedRoutes, routesFilterEnabled, state]
   )
 
   const filteredPanelData = useMemo(() => getFilteredPanelData(contextState), [contextState])
@@ -66,6 +67,7 @@ export function LoggyProvider({ children }: { children: ReactNode }): ReactNode 
     selectedRoutesRef,
     setFiltersVisible,
     setSelectedRoutes,
+    setRoutesFilterEnabled,
     routeOptions,
     autoIncludeRoutes: state.autoIncludeRoutes,
   })
@@ -76,8 +78,9 @@ export function LoggyProvider({ children }: { children: ReactNode }): ReactNode 
       networkEntries: state.networkEntries,
       routeOptions,
       selectedRoutes,
+      routesFilterEnabled,
     }),
-    [state.consoleLogs, state.networkEntries, routeOptions, selectedRoutes]
+    [state.consoleLogs, state.networkEntries, routeOptions, selectedRoutes, routesFilterEnabled]
   )
   const settingsValue = useMemo<SettingsContextValue>(
     () => ({

@@ -19,12 +19,13 @@ const createDefaultPopupData = (): PopupDataState => ({
 export function usePopupData(
   tabId?: number,
   selectedRoutes?: string[],
+  routesFilterEnabled?: boolean,
 ): PopupDataState & {
   loading: boolean
   refresh: () => void
 } {
   const isFirefox = typeof chrome.debugger === 'undefined'
-  const firefoxData = useFirefoxDirectCapture(tabId ?? -1, selectedRoutes)
+  const firefoxData = useFirefoxDirectCapture(tabId ?? -1, selectedRoutes, routesFilterEnabled)
   const [data, setData] = useState<PopupDataState>(createDefaultPopupData)
   const [loading, setLoading] = useState(true)
   const [debouncedRoutes, setDebouncedRoutes] = useState<string[] | undefined>(selectedRoutes)
@@ -59,6 +60,7 @@ export function usePopupData(
         type: 'get-tab-export-data',
         tabId,
         selectedRoutes: debouncedRoutes,
+        routesFilterEnabled,
       }
 
       chrome.runtime.sendMessage(message, (response: TabExportDataResponse | undefined) => {
@@ -78,7 +80,7 @@ export function usePopupData(
         setLoading(false)
       })
     })
-  }, [isFirefox, debouncedRoutes])
+  }, [isFirefox, debouncedRoutes, routesFilterEnabled])
 
   useEffect(() => {
     if (!isFirefox) {

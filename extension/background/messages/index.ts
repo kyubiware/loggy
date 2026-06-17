@@ -50,7 +50,7 @@ export async function handleControlMessage(
       return handlePanelClosed(message.tabId)
 
     case 'get-tab-export-data':
-      return handleGetTabExportData(message.tabId, message.selectedRoutes)
+      return handleGetTabExportData(message.tabId, message.selectedRoutes, message.routesFilterEnabled)
 
     case 'request-consent':
       return handleRequestConsent(message, sender)

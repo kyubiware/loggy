@@ -140,6 +140,7 @@ describe('buildExportMarkdown', () => {
       },
     ]
     state.selectedRoutes = ['/orders']
+    state.routesFilterEnabled = true
 
     const filteredData = getFilteredPanelData(state)
     const markdown = await buildExportMarkdown(state)
@@ -167,6 +168,7 @@ describe('buildExportMarkdown', () => {
       },
     ]
     state.selectedRoutes = ['/users', '/orders']
+    state.routesFilterEnabled = true
 
     state.networkFilter = 'orders'
 

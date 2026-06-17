@@ -24,6 +24,7 @@ function buildPseudoState(
     consoleFilter: settings.consoleFilter,
     networkFilter: settings.networkFilter,
     selectedRoutes: logData.selectedRoutes,
+    routesFilterEnabled: logData.routesFilterEnabled,
     consoleVisible: settings.consoleVisible,
     networkVisible: settings.networkVisible,
     includeAgentContext: settings.includeAgentContext,

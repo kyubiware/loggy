@@ -3,36 +3,47 @@ import { useCallback, useEffect, useMemo, useRef } from 'react'
 
 interface UseRouteActionsParams {
   setSelectedRoutes: Dispatch<SetStateAction<string[]>>
+  /**
+   * Flipped to `true` on any explicit user interaction with route controls.
+   * NOT flipped by the autoInclude effect — that is ambient, not user intent.
+   * When true, empty selectedRoutes means "exclude all" instead of passthrough.
+   */
+  setRoutesFilterEnabled: Dispatch<SetStateAction<boolean>>
   routeOptions: string[]
   autoIncludeRoutes: boolean
 }
 
 export function useRouteActions({
   setSelectedRoutes,
+  setRoutesFilterEnabled,
   routeOptions,
   autoIncludeRoutes,
 }: UseRouteActionsParams) {
   const toggleRoute = useCallback(
     (route: string) => {
+      setRoutesFilterEnabled(true)
       setSelectedRoutes((previous) =>
         previous.includes(route)
           ? previous.filter((selectedRoute) => selectedRoute !== route)
           : [...previous, route]
       )
     },
-    [setSelectedRoutes]
+    [setSelectedRoutes, setRoutesFilterEnabled]
   )
 
   const selectAllRoutes = useCallback(() => {
+    setRoutesFilterEnabled(true)
     setSelectedRoutes(routeOptions)
-  }, [routeOptions, setSelectedRoutes])
+  }, [routeOptions, setSelectedRoutes, setRoutesFilterEnabled])
 
   const deselectAllRoutes = useCallback(() => {
+    setRoutesFilterEnabled(true)
     setSelectedRoutes([])
-  }, [setSelectedRoutes])
+  }, [setSelectedRoutes, setRoutesFilterEnabled])
 
   const toggleRoutes = useCallback(
     (routes: string[], select: boolean) => {
+      setRoutesFilterEnabled(true)
       const targets = new Set(routes)
       setSelectedRoutes((previous) => {
         if (select) {
@@ -45,7 +56,7 @@ export function useRouteActions({
         return filtered
       })
     },
-    [setSelectedRoutes]
+    [setSelectedRoutes, setRoutesFilterEnabled]
   )
 
   const routeOptionsKey = routeOptions.join(',')
