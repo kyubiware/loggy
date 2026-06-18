@@ -1,6 +1,6 @@
 import type React from 'react'
 
-import { Check, Coins, Copy, Pause, Play, Square, Trash2 } from 'lucide-react'
+import { Check, Coins, Copy, Monitor, Pause, Play, Square, Trash2 } from 'lucide-react'
 
 import iconUrl from '../../icons/icon48.png'
 import { Tooltip } from '../../shared/components/Tooltip'
@@ -15,6 +15,7 @@ export interface PopupHeaderProps {
   onClear?: () => void
   showLoggingToggle?: boolean
   isLoggingActive?: boolean
+  isDevtoolsMode?: boolean
   onToggleLogging?: () => void
   onStopLogging?: () => void
 }
@@ -28,6 +29,7 @@ export function PopupHeader({
   onClear,
   showLoggingToggle = false,
   isLoggingActive = false,
+  isDevtoolsMode = false,
   onToggleLogging,
   onStopLogging,
 }: PopupHeaderProps): React.JSX.Element {
@@ -65,7 +67,15 @@ export function PopupHeader({
             </button>
           </Tooltip>
         )}
-        {showLoggingToggle && (
+        {isDevtoolsMode ? (
+          <span
+            className='flex items-center gap-1 text-[11px] uppercase tracking-wider text-stone-500 dark:text-stone-400 font-semibold'
+            title='Panel Active'
+          >
+            <Monitor size={14} />
+            Panel Active
+          </span>
+        ) : showLoggingToggle ? (
           <button
             type='button'
             onClick={onToggleLogging}
@@ -78,8 +88,8 @@ export function PopupHeader({
           >
             {isLoggingActive ? <Pause size={16} /> : <Play size={16} />}
           </button>
-        )}
-        {onStopLogging && isLoggingActive && (
+        ) : null}
+        {onStopLogging && isLoggingActive && !isDevtoolsMode && (
           <button
             type='button'
             onClick={onStopLogging}

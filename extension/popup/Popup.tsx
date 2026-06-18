@@ -80,6 +80,7 @@ export default function Popup() {
           onClear={handleClearLogs}
           showLoggingToggle
           isLoggingActive={isLoggingActive}
+          isDevtoolsMode={status.mode === 'devtools'}
           onToggleLogging={handleToggleLogging}
           onStopLogging={status.mode !== 'devtools' ? handleStopLogging : undefined}
         />

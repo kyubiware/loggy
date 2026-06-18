@@ -40,9 +40,9 @@ const mockProbeServer = vi.mocked(serverProbe.probeServer)
 const mockPushToServer = vi.mocked(serverExport.pushToServer)
 
 // Store navigation listener so we can call it manually
-let navigationListener: (() => void) | null = null
+let navigationListener: ((url: string) => void) | null = null
 const mockOnNavigated = {
-  addListener: vi.fn((listener: () => void) => {
+  addListener: vi.fn((listener: (url: string) => void) => {
     navigationListener = listener
   }),
   removeListener: vi.fn(() => {
@@ -415,7 +415,7 @@ describe('useCaptureData', () => {
     expect(mockCaptureNetwork).toHaveBeenCalledTimes(1)
   })
 
-  it('resets consoleLogs and networkEntries on navigation, preserving filter state', async () => {
+  it('resets consoleLogs and networkEntries on refresh, preserving filter state', async () => {
     const { result } = renderHook(() => useCaptureData())
 
     // Flush startup to populate data
@@ -434,16 +434,9 @@ describe('useCaptureData', () => {
 
     expect(result.current.state.consoleFilter).toBe('error')
 
-    // preserveLogs now defaults to true; explicitly disable it to verify the
-    // reset-on-navigation behavior (the feature still exists, it's just opt-in).
-    await act(async () => {
-      result.current.dispatch({ type: 'TOGGLE_PRESERVE_LOGS' })
-    })
-    expect(result.current.state.preserveLogs).toBe(false)
-
     // Trigger navigation reset
     await act(async () => {
-      navigationListener?.()
+      navigationListener?.('http://example.com')
     })
 
     // consoleLogs and networkEntries should be empty, but filter preserved
@@ -453,6 +446,34 @@ describe('useCaptureData', () => {
     expect(result.current.state.consoleVisible).toBe(true)
     expect(result.current.state.networkVisible).toBe(true)
     expect(result.current.state.includeAgentContext).toBe(true)
+  })
+
+  it('preserves consoleLogs on navigation (URL change) even when preserveLogs=false', async () => {
+    const { result } = renderHook(() => useCaptureData())
+
+    await flushMicrotasks()
+
+    // First call establishes the previous URL (treated as initial load → refresh)
+    await act(async () => {
+      navigationListener?.('http://page-a.com')
+    })
+
+    // Auto-refresh repopulates data after the reset
+    await act(async () => {
+      vi.advanceTimersByTime(2000)
+    })
+    await flushMicrotasks()
+
+    expect(result.current.state.consoleLogs).toEqual([sampleConsoleLog])
+
+    // Second call with a DIFFERENT URL = navigation → always preserve
+    await act(async () => {
+      navigationListener?.('http://page-b.com')
+    })
+
+    // Data should NOT be cleared — navigation always preserves
+    expect(result.current.state.consoleLogs).toEqual([sampleConsoleLog])
+    expect(result.current.state.networkEntries).toEqual([sampleNetworkEntry])
   })
 
   it('toggles includeAgentContext via dispatch', async () => {
@@ -497,7 +518,7 @@ describe('useCaptureData', () => {
 
     // Trigger navigation reset
     await act(async () => {
-      navigationListener?.()
+      navigationListener?.('http://example.com')
     })
 
     // includeResponseBodies should be preserved after navigation
@@ -532,7 +553,7 @@ describe('useCaptureData', () => {
 
     // Trigger navigation reset
     await act(async () => {
-      navigationListener?.()
+      navigationListener?.('http://example.com')
     })
 
     // truncateConsoleLogs should be preserved after navigation

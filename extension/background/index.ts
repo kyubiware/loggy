@@ -25,6 +25,7 @@ import {
   restoreLogCountsFromStorage,
   restoreExplicitlyStoppedTabsFromStorage,
   refreshActiveTabId,
+  pendingNavigationByTab,
 } from './tab-state'
 import { evaluateConsent } from './consent'
 import {
@@ -39,6 +40,67 @@ import {
   isCaptureMessage,
   isControlMessage,
 } from './messages'
+
+/**
+ * Re-attaches the Chrome debugger after it was auto-detached by a
+ * navigation or page refresh. Chrome's debugger detaches on every new
+ * document load (chrome.debugger.onDetach fires); without re-attachment,
+ * capture silently dies after the first navigation.
+ *
+ * Guards:
+ * - Skips tabs the user explicitly stopped logging on.
+ * - Skips non-debugger modes (content-script, devtools, inactive).
+ * - Skips when the debugger is still attached (SPA navigation).
+ * - Skips tabs without consent (navigating to a non-consented host).
+ *
+ * On re-attach failure (e.g. another debugger is attached), falls back
+ * to content-script mode so capture continues.
+ */
+async function maybeReattachDebugger(tabId: number): Promise<void> {
+  if (explicitlyStoppedByTab.has(tabId)) {
+    return
+  }
+
+  const current = getOrCreateTabState(tabId)
+  if (current.mode !== 'debugger') {
+    return
+  }
+
+  if (isDebuggerAttached(tabId)) {
+    return
+  }
+
+  let url = ''
+  try {
+    const tab = await chrome.tabs.get(tabId)
+    url = tab.url ?? ''
+  } catch {
+    debugLog('capture', 'background', `Tab loading: cannot get tab for debugger re-attach`, { tabId })
+    return
+  }
+
+  const consent = await evaluateConsent(tabId, url)
+  if (!consent.hasConsent) {
+    debugLog('capture', 'background', `Tab loading: skipping debugger re-attach (no consent)`, { tabId })
+    return
+  }
+
+  debugLog('capture', 'background', `Tab loading: re-attaching debugger after navigation`, { tabId })
+  attachToTab(tabId, (error) => {
+    if (error) {
+      console.error('[Loggy] Failed to re-attach debugger after navigation:', error.message)
+      void (async () => {
+        await setMode(tabId, 'content-script')
+        updateIconForTab(tabId)
+        try {
+          await injectIntoTab(tabId)
+        } catch {
+          // Injection may fail on some pages (chrome://, etc.)
+        }
+      })()
+    }
+  })
+}
 
 async function initialize(): Promise<void> {
   debugLog('lifecycle', 'background', 'Service worker initializing')
@@ -157,6 +219,7 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   previousModeByTab.delete(tabId)
   tabStates.delete(tabId)
   lastExportFingerprintByTab.delete(tabId)
+  pendingNavigationByTab.delete(tabId)
   const wasExplicitlyStopped = explicitlyStoppedByTab.delete(tabId)
   if (activeTabId === tabId) {
     setActiveTabId(null)
@@ -179,27 +242,57 @@ chrome.tabs.onActivated.addListener((activeInfo) => {
 })
 
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  // Clear stored entries when the page starts loading (refresh or navigation),
-  // unless preserveLogs is enabled.
+  // Mark navigation start when Chrome reports a URL change. Consumed by the
+  // loading handler below. This fires BEFORE status:'loading' for navigations
+  // and NEVER fires for refreshes — making it a reliable nav/refresh signal
+  // even after service worker restarts (Chrome keeps the SW alive between
+  // the url and loading events, which are milliseconds apart).
+  if (changeInfo.url) {
+    pendingNavigationByTab.add(tabId)
+  }
+
+  // Navigation should ALWAYS preserve logs; refresh is controlled by preserveLogs.
   if (changeInfo.status === 'loading') {
     void (async () => {
       try {
-        const preserveLogs = await getPreserveLogs()
-        if (!preserveLogs) {
-          debugLog('capture', 'background', `Tab loading: clearing stored entries (preserveLogs=false)`, { tabId })
-          await chrome.storage.session.remove(getStorageKeyForTab(tabId))
-          await setPolledCount(tabId, 0)
-          lastExportFingerprintByTab.delete(tabId)
-          const current = getOrCreateTabState(tabId)
-          await setTabState({ ...current, logCount: 0 })
-          clearDebugEntries()
+        // Navigation = a URL change was seen for this tab. Refresh = no URL change.
+        const isNavigation = pendingNavigationByTab.delete(tabId)
+
+        // Reset poll delta counter on both nav and refresh — MAIN-world
+        // arrays reset on new document load.
+        await setPolledCount(tabId, 0)
+        lastExportFingerprintByTab.delete(tabId)
+
+        if (isNavigation) {
+          debugLog('capture', 'background', `Navigation: preserving entries`, { tabId })
         } else {
-          debugLog('capture', 'background', `Tab loading: preserving entries (preserveLogs=true)`, { tabId })
+          // Refresh — clear only if preserveLogs is disabled.
+          const preserveLogs = await getPreserveLogs()
+          if (!preserveLogs) {
+            debugLog('capture', 'background', `Refresh: clearing stored entries (preserveLogs=false)`, { tabId })
+            await chrome.storage.session.remove(getStorageKeyForTab(tabId))
+            const current = getOrCreateTabState(tabId)
+            await setTabState({ ...current, logCount: 0 })
+            clearDebugEntries()
+          } else {
+            debugLog('capture', 'background', `Refresh: preserving entries (preserveLogs=true)`, { tabId })
+          }
         }
+
+        // Re-attach the debugger if it was auto-detached by navigation or
+        // refresh. Chrome detaches on every new document load; without
+        // re-attachment, capture silently dies. No-op for content-script
+        // and devtools modes.
+        await maybeReattachDebugger(tabId)
       } catch (error) {
-        debugLog('capture', 'background', `Tab loading: failed to clear entries`, { tabId, error: String(error) })
+        debugLog('capture', 'background', `Tab loading: handler failed`, { tabId, error: String(error) })
       }
     })()
+  }
+
+  // Clean up the pending-navigation flag when the page finishes loading.
+  if (changeInfo.status === 'complete') {
+    pendingNavigationByTab.delete(tabId)
   }
 
   // Only react to URL changes (SPA navigation or full page navigation)

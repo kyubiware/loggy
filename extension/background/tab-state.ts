@@ -9,6 +9,17 @@ export const tabStates = new Map<number, TabCaptureState>()
 export const previousModeByTab = new Map<number, CaptureMode>()
 export const debuggerResumeTimersByTab = new Map<number, ReturnType<typeof setTimeout>>()
 export const explicitlyStoppedByTab = new Set<number>()
+/**
+ * Tabs that have seen a `changeInfo.url` event (navigation start) but not yet
+ * a `changeInfo.status === 'loading'` event. Used by the loading handler to
+ * distinguish navigation (URL changed → always preserve logs) from refresh
+ * (same URL → clear if preserveLogs=false).
+ *
+ * Unlike a committed-URL Map, this Set is reliable even after service worker
+ * restarts because Chrome fires the url event before the loading event and
+ * keeps the SW alive between them.
+ */
+export const pendingNavigationByTab = new Set<number>()
 export let activeTabId: number | null = null
 
 export function setActiveTabId(id: number | null): void {

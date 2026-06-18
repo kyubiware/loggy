@@ -5,6 +5,8 @@ import { useRouteActions } from '../../shared/hooks/useRouteActions'
 import { useConsentActions } from '../../shared/hooks/useConsentActions'
 import { useDebouncedFilter } from '../../shared/hooks/useDebouncedFilter'
 import type { StatusResponse } from '../../types/messages'
+import { debugLog } from '../../utils/debug-logger'
+import { computeIsLoggingActive } from './isLoggingActive'
 import { usePopupData } from './usePopupData'
 import { usePopupExport } from './usePopupExport'
 import { usePopupSettings } from './usePopupSettings'
@@ -67,6 +69,12 @@ export function usePopupActions() {
       chrome.runtime.sendMessage(
         { type: 'get-status' },
         (response: StatusResponse) => {
+          debugLog('message', 'popup', 'get-status response', {
+            mode: response?.mode,
+            tabId: response?.tabId,
+            logCount: response?.logCount,
+            connected: response?.connected,
+          })
           setStatus(response)
           setLoadingStatus(false)
         },
@@ -119,6 +127,12 @@ export function usePopupActions() {
       chrome.runtime.sendMessage(
         { type: 'get-status' },
         (response: StatusResponse) => {
+          debugLog('message', 'popup', 'get-status response (refresh)', {
+            mode: response?.mode,
+            tabId: response?.tabId,
+            logCount: response?.logCount,
+            connected: response?.connected,
+          })
           setStatus(response)
         },
       )
@@ -146,6 +160,11 @@ export function usePopupActions() {
       chrome.runtime.sendMessage(
         { type: 'toggle-debugger', tabId },
         (response: StatusResponse) => {
+          debugLog('message', 'popup', 'toggle-debugger response', {
+            newMode: response?.mode,
+            tabId,
+            connected: response?.connected,
+          })
           setStatus(response)
         },
       )
@@ -186,8 +205,7 @@ export function usePopupActions() {
   }
 
   const isLoading = loadingStatus || loadingSettings || loadingData
-  const isLoggingActive =
-    status?.mode === 'debugger' || status?.mode === 'content-script'
+  const isLoggingActive = computeIsLoggingActive(status, isFirefox)
   const showConsentView = status?.mode === 'inactive'
 
   // Firefox lacks chrome.debugger, so the header Play/Pause toggle
