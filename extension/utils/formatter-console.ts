@@ -1,3 +1,4 @@
+import type { HAREntry } from '../types/har'
 import type { ConsolidatedLog } from './consolidation.js'
 import {
   bySeverityThenCount,
@@ -14,6 +15,41 @@ export {
   consolidateLogs as consolidateConsoleLogs,
   formatTimestampRange,
   isLikelyFailureSignal,
+}
+
+/**
+ * Extracts 4xx/5xx network failures from HAR entries and formats them
+ * for the Debug Signals section of the Markdown export.
+ */
+export function formatNetworkFailureSignals(networkEntries: HAREntry[]): string {
+  const _4xx = networkEntries.filter((e) => e.response.status >= 400 && e.response.status < 500)
+  const _5xx = networkEntries.filter((e) => e.response.status >= 500 && e.response.status < 600)
+
+  function formatFailureLine(entry: HAREntry, tag: string): string {
+    try {
+      const path = new URL(entry.request.url).pathname
+      return `[${tag}] ${entry.request.method} ${path} → ${entry.response.status}`
+    } catch {
+      return `[${tag}] ${entry.request.method} ${entry.request.url} → ${entry.response.status}`
+    }
+  }
+
+  let output = ''
+  if (_4xx.length > 0) {
+    output += `- **Network 4xx Errors**: ${_4xx.length}\n`
+    for (const entry of _4xx) {
+      output += `${formatFailureLine(entry, 'network 4xx')}\n`
+    }
+    output += '\n'
+  }
+  if (_5xx.length > 0) {
+    output += `- **Network 5xx Errors**: ${_5xx.length}\n`
+    for (const entry of _5xx) {
+      output += `${formatFailureLine(entry, 'network 5xx')}\n`
+    }
+    output += '\n'
+  }
+  return output
 }
 
 /**
