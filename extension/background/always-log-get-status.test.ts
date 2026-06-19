@@ -129,6 +129,7 @@ beforeAll(() => {
       }),
       removeListener: vi.fn(),
     },
+    onConnect: { addListener: vi.fn() },
     onInstalled: { addListener: vi.fn() },
     onStartup: { addListener: vi.fn() },
     sendMessage: vi.fn(),

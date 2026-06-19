@@ -15,6 +15,7 @@ import {
   explicitlyStoppedByTab,
   activeTabId,
   setActiveTabId,
+  getMode,
   getOrCreateTabState,
   getStorageKeyForTab,
   setMode,
@@ -40,6 +41,7 @@ import {
   isCaptureMessage,
   isControlMessage,
 } from './messages'
+import { handlePanelClosed } from './messages/tab-lifecycle'
 
 /**
  * Re-attaches the Chrome debugger after it was auto-detached by a
@@ -148,6 +150,38 @@ async function initialize(): Promise<void> {
     // Intentionally swallowed — pollAllActiveTabs logs errors internally
   })
 }
+
+/**
+ * Listen for long-lived port connections from the DevTools panel.
+ *
+ * The panel opens a `loggy-panel` port on mount. When the panel page is
+ * destroyed (DevTools panel closed), the port auto-disconnects. This is
+ * the only reliable way to detect panel close on Firefox, where React
+ * useEffect cleanup may not fire.
+ *
+ * To avoid double-firing on Chrome (where both the port disconnect AND
+ * the `panel-closed` message fire), only call handlePanelClosed when the
+ * mode is still `devtools` — the message handler transitions away from
+ * `devtools` first.
+ */
+chrome.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
+  if (port.name !== 'loggy-panel') return
+
+  let panelTabId: number | undefined
+
+  port.onMessage.addListener((msg: unknown) => {
+    if (msg && typeof (msg as { tabId?: unknown }).tabId === 'number') {
+      panelTabId = (msg as { tabId: number }).tabId
+    }
+  })
+
+  port.onDisconnect.addListener(() => {
+    if (panelTabId !== undefined && getMode(panelTabId) === 'devtools') {
+      // Cleanup didn't fire (Firefox) — handle the panel close now
+      void handlePanelClosed(panelTabId)
+    }
+  })
+})
 
 chrome.runtime.onMessage.addListener((rawMessage, sender, sendResponse) => {
   const message = rawMessage as LoggyMessage

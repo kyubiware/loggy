@@ -6,6 +6,7 @@ import type { LoggyState } from '../../../types/state'
 import { debugLog } from '../../../utils/debug-logger'
 import {
   clearResponseBodies,
+  connectPanelPort,
   notifyPanelClosed,
   notifyPanelOpened,
   startResponseBodyCapture,
@@ -90,10 +91,17 @@ export function useLifecycleEffect(
   networkClearCutoffMs: React.MutableRefObject<number | null>
 ): void {
   const previousUrlRef = useRef('')
+  const portRef = useRef<chrome.runtime.Port | null>(null)
   useEffect(() => {
     startResponseBodyCapture()
     const inspectedTabId = chrome.devtools.inspectedWindow.tabId
-    if (typeof inspectedTabId === 'number') notifyPanelOpened(inspectedTabId)
+    if (typeof inspectedTabId === 'number') {
+      notifyPanelOpened(inspectedTabId)
+      // Open a long-lived port so the background can detect panel close
+      // even when React cleanup doesn't fire (Firefox DevTools).
+      // Port auto-disconnects when the panel page is destroyed.
+      portRef.current = connectPanelPort(inspectedTabId)
+    }
     void captureData()
     if (document.visibilityState === 'visible') startAutoRefresh()
 
@@ -121,6 +129,10 @@ export function useLifecycleEffect(
 
     return () => {
       if (typeof inspectedTabId === 'number') notifyPanelClosed(inspectedTabId)
+      if (portRef.current) {
+        portRef.current.disconnect()
+        portRef.current = null
+      }
       stopAutoRefresh()
       stopResponseBodyCapture()
       document.removeEventListener('visibilitychange', handleVisibilityChange)

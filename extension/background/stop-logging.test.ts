@@ -142,8 +142,8 @@ beforeAll(() => {
       addListener: vi.fn((fn: MessageListener) => {
         onMessageListeners.push(fn)
       }),
-      removeListener: vi.fn(),
     },
+    onConnect: { addListener: vi.fn() },
     onInstalled: { addListener: vi.fn() },
     onStartup: { addListener: vi.fn() },
     sendMessage: vi.fn(),

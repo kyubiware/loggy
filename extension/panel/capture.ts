@@ -162,3 +162,20 @@ export function notifyPanelClosed(tabId: number): void {
     // Background not ready — ignore
   }
 }
+
+/**
+ * Open a long-lived port to the background service worker.
+ *
+ * When the panel page is destroyed (panel closed), the port auto-disconnects.
+ * This is critical for Firefox, where React useEffect cleanup may not fire
+ * when the DevTools panel is torn down, so the `panel-closed` message is
+ * never sent and the background state stays stuck at `mode === 'devtools'`.
+ *
+ * The port name `loggy-panel` allows the background to identify panel
+ * connections and detect panel close via `port.onDisconnect`.
+ */
+export function connectPanelPort(tabId: number): chrome.runtime.Port {
+  const port = chrome.runtime.connect({ name: 'loggy-panel' })
+  port.postMessage({ tabId })
+  return port
+}
