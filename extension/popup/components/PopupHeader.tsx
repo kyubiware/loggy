@@ -1,6 +1,16 @@
 import type React from 'react'
 
-import { Check, Coins, Copy, Monitor, Pause, Play, Square, Trash2 } from 'lucide-react'
+import {
+  Check,
+  Coins,
+  Copy,
+  ExternalLink,
+  Monitor,
+  Pause,
+  Play,
+  Square,
+  Trash2,
+} from 'lucide-react'
 
 import iconUrl from '../../icons/icon48.png'
 import { Tooltip } from '../../shared/components/Tooltip'
@@ -18,6 +28,9 @@ export interface PopupHeaderProps {
   isDevtoolsMode?: boolean
   onToggleLogging?: () => void
   onStopLogging?: () => void
+  onPreview?: () => void
+  showPreview?: boolean
+  markdown?: string
 }
 
 export function PopupHeader({
@@ -32,7 +45,10 @@ export function PopupHeader({
   isDevtoolsMode = false,
   onToggleLogging,
   onStopLogging,
+  onPreview,
+  markdown = '',
 }: PopupHeaderProps): React.JSX.Element {
+  const showPreview = hasData && markdown.length > 0
   return (
     <div className='flex items-center justify-between border-b border-stone-200 dark:border-stone-700 pb-2 max-sm:sticky max-sm:top-0 max-sm:z-10 max-sm:bg-white max-sm:dark:bg-stone-900'>
       <h1 className='text-lg font-semibold flex items-center gap-2'>
@@ -42,8 +58,7 @@ export function PopupHeader({
         {hasData ? (
           <Tooltip content='Estimated token count for export'>
             <span className='flex items-center gap-1 text-[11px] uppercase tracking-wider text-stone-500 dark:text-stone-400 font-semibold'>
-              <Coins size={14} />
-              ≈{formatTokenCount(tokenCount)}
+              <Coins size={14} />≈{formatTokenCount(tokenCount)}
             </span>
           </Tooltip>
         ) : (
@@ -51,6 +66,20 @@ export function PopupHeader({
             No captured data
           </span>
         )}
+        <Tooltip content='Open full preview'>
+          <button
+            type='button'
+            onClick={onPreview}
+            disabled={!showPreview}
+            className={`flex items-center justify-center p-1.5 rounded text-xs transition-colors ${
+              showPreview
+                ? 'text-stone-500 hover:text-stone-700 hover:bg-stone-100 dark:text-stone-400 dark:hover:text-stone-200 dark:hover:bg-stone-800'
+                : 'text-stone-300 cursor-not-allowed dark:text-stone-700'
+            }`}
+          >
+            <ExternalLink size={14} />
+          </button>
+        </Tooltip>
         {onClear && (
           <Tooltip content='Clear Logs'>
             <button

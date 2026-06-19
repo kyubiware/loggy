@@ -77,12 +77,16 @@ export default function Popup() {
           onCopy={copyToClipboard}
           hasData={hasData}
           tokenCount={tokenCount}
+          onPreview={handlePreview}
           onClear={handleClearLogs}
           showLoggingToggle
           isLoggingActive={isLoggingActive}
           isDevtoolsMode={status.mode === 'devtools'}
+          markdown={markdown}
           onToggleLogging={handleToggleLogging}
-          onStopLogging={status.mode !== 'devtools' ? handleStopLogging : undefined}
+          onStopLogging={
+            status.mode !== 'devtools' ? handleStopLogging : undefined
+          }
         />
       )}
 
@@ -146,7 +150,7 @@ export default function Popup() {
               ))}
               <ResponseBodyModeSelect
                 value={settings.responseBodyMode}
-                onChange={(value) => setSetting('responseBodyMode', value)}
+                onChange={value => setSetting('responseBodyMode', value)}
               />
             </div>
             <div className='flex flex-col gap-2'>
@@ -186,18 +190,14 @@ export default function Popup() {
                 onSelectAll={selectAllRoutes}
                 onDeselectAll={deselectAllRoutes}
                 autoIncludeRoutes={settings.autoIncludeRoutes}
-                onToggleAutoIncludeRoutes={() => setSetting('autoIncludeRoutes', !settings.autoIncludeRoutes)}
+                onToggleAutoIncludeRoutes={() =>
+                  setSetting('autoIncludeRoutes', !settings.autoIncludeRoutes)
+                }
               />
             )}
           </FiltersAccordion>
-          <TokenCountAndCopy
-            hasData={hasData}
-            markdown={markdown}
-            onPreview={handlePreview}
-          />
         </>
       )}
-
     </div>
   )
 }
