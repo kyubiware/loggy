@@ -28,7 +28,7 @@ export function usePopupActions() {
     routeOptions,
     loading: loadingData,
     refresh: refreshData,
-  } = usePopupData(tabId, selectedRoutes, routesFilterEnabled)
+  } = usePopupData(tabId, selectedRoutes, routesFilterEnabled, settings)
   const [serverConnected, setServerConnected] = useState(false)
   const serverPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastProbedUrlRef = useRef<string | null>(null)

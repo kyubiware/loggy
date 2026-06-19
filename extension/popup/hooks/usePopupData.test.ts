@@ -3,6 +3,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TabExportDataResponse } from '../../types/messages'
+import { createDefaultSettings, type PersistedLoggySettings } from '../../types/state'
 import { usePopupData } from './usePopupData'
 
 /**
@@ -145,5 +146,111 @@ describe('usePopupData — scroll preservation', () => {
     expect(firstFalseIndex).toBeGreaterThanOrEqual(0)
     const afterFirstFalse = loadingTrace.slice(firstFalseIndex)
     expect(afterFirstFalse.every((value) => value === false)).toBe(true)
+  })
+})
+
+/**
+ * Regression tests for the Chrome-path settings re-fetch.
+ *
+ * Background: `usePopupData`'s `refresh` callback previously only depended on
+ * `[isFirefox, debouncedRoutes, routesFilterEnabled]` — no settings. So on
+ * Chrome, changing a markdown-affecting setting (e.g. responseBodyMode smart →
+ * full) never triggered a re-fetch, leaving the token count stale. Firefox was
+ * unaffected because `useFirefoxDirectCapture` polls every 2s and reads
+ * settings fresh each time.
+ *
+ * The fix passes a memoized fingerprint of only the export-relevant settings
+ * into the `refresh` deps. These tests verify (a) an export-relevant change
+ * triggers a re-fetch and (b) a pure-UI change (serverUrl) does NOT, since the
+ * server URL field is undebounced and per-keystroke round-trips would be
+ * wasteful.
+ */
+describe('usePopupData — settings re-fetch (Chrome path)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+
+    const mock = chromeMock()
+
+    // Force the Chrome code path (typeof chrome.debugger !== 'undefined').
+    mock.debugger = {}
+
+    mock.runtime = {
+      lastError: null,
+      sendMessage: vi.fn(
+        (_message: unknown, callback?: (response: unknown) => void) => {
+          const response: TabExportDataResponse = {
+            tokenCount: 100,
+            markdown: '# export',
+            hasData: true,
+            logCount: 1,
+            routeOptions: ['/api/users'],
+          }
+          setTimeout(() => callback?.(response), 0)
+        },
+      ),
+    }
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    const mock = chromeMock()
+    delete mock.debugger
+    delete mock.runtime
+  })
+
+  it('re-fetches when an export-relevant setting changes (responseBodyMode)', () => {
+    const settingsA = createDefaultSettings()
+    const settingsB: PersistedLoggySettings = { ...settingsA, responseBodyMode: 'full' }
+
+    const { rerender } = renderHook(
+      ({ settings }: { settings: PersistedLoggySettings }) =>
+        usePopupData(1, undefined, undefined, settings),
+      { initialProps: { settings: settingsA } },
+    )
+
+    // Drain initial mount fetch.
+    act(() => {
+      vi.runAllTimers()
+    })
+
+    const sendMessage = chromeMock().runtime?.sendMessage as ReturnType<typeof vi.fn>
+    const callsAfterInitial = sendMessage.mock.calls.length
+
+    // Change responseBodyMode smart → full. This is the reported bug scenario.
+    rerender({ settings: settingsB })
+    act(() => {
+      vi.runAllTimers()
+    })
+
+    expect(sendMessage.mock.calls.length).toBeGreaterThan(callsAfterInitial)
+  })
+
+  it('does NOT re-fetch when only a pure-UI setting changes (serverUrl)', () => {
+    const settingsA = createDefaultSettings()
+    const settingsB: PersistedLoggySettings = {
+      ...settingsA,
+      serverUrl: 'http://example.test:8743',
+    }
+
+    const { rerender } = renderHook(
+      ({ settings }: { settings: PersistedLoggySettings }) =>
+        usePopupData(1, undefined, undefined, settings),
+      { initialProps: { settings: settingsA } },
+    )
+
+    act(() => {
+      vi.runAllTimers()
+    })
+
+    const sendMessage = chromeMock().runtime?.sendMessage as ReturnType<typeof vi.fn>
+    const callsAfterInitial = sendMessage.mock.calls.length
+
+    // Typing in the server URL field must not fire a background export fetch.
+    rerender({ settings: settingsB })
+    act(() => {
+      vi.runAllTimers()
+    })
+
+    expect(sendMessage.mock.calls.length).toBe(callsAfterInitial)
   })
 })
