@@ -5,7 +5,8 @@
 
 import { describe, expect, test } from 'vitest'
 import type { HAREntry } from '../types/har'
-import { formatNetworkEntry } from './formatter-network'
+import type { ConsolidatedNetworkEntry } from './consolidation-network'
+import { formatConsolidatedNetworkEntry, formatNetworkEntry } from './formatter-network'
 import { formatResponseSection } from './formatter-network-sections'
 
 describe('formatNetworkEntry - includeResponseBodies flag', () => {
@@ -587,6 +588,264 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
 
       expect(result).toContain('- **Body elided (smart mode)**:')
       expect(result).not.toContain(longBody)
+    })
+  })
+
+  describe('formatConsolidatedNetworkEntry - polling dedup', () => {
+    const makeResponse = (bodyText: string) => ({
+      status: 200,
+      statusText: 'OK',
+      headers: [{ name: 'Content-Type', value: 'application/json' }],
+      content: { size: bodyText.length, mimeType: 'application/json', text: bodyText },
+    })
+
+    const firstBody = '{"status":"pending"}'
+    const matureBody = '{"status":"completed","data":[1,2,3]}'
+
+    test('should deduplicate identical subsequent response diffs for polling endpoints', () => {
+      const group: ConsolidatedNetworkEntry = {
+        entries: [
+          {
+            startedDateTime: '2024-01-15T10:30:00Z',
+            request: { url: 'https://api.example.com/poll', method: 'GET' },
+            response: makeResponse(firstBody),
+            time: 50,
+          },
+          {
+            startedDateTime: '2024-01-15T10:30:01Z',
+            request: { url: 'https://api.example.com/poll', method: 'GET' },
+            response: makeResponse(matureBody),
+            time: 50,
+          },
+          {
+            startedDateTime: '2024-01-15T10:30:02Z',
+            request: { url: 'https://api.example.com/poll', method: 'GET' },
+            response: makeResponse(matureBody),
+            time: 50,
+          },
+          {
+            startedDateTime: '2024-01-15T10:30:03Z',
+            request: { url: 'https://api.example.com/poll', method: 'GET' },
+            response: makeResponse(matureBody),
+            time: 50,
+          },
+        ],
+        key: 'GET::https://api.example.com/poll::',
+        method: 'GET',
+        url: 'https://api.example.com/poll',
+        identicalResponses: false,
+        bodyDiffs: [
+          { entryIndex: 0, timestamp: '2024-01-15T10:30:00Z', hasDiff: false },
+          {
+            entryIndex: 1,
+            timestamp: '2024-01-15T10:30:01Z',
+            hasDiff: true,
+            diffLines: ['- {"status":"pending"}', '+ {"status":"completed","data":[1,2,3]}'],
+          },
+          {
+            entryIndex: 2,
+            timestamp: '2024-01-15T10:30:02Z',
+            hasDiff: true,
+            diffLines: ['- {"status":"pending"}', '+ {"status":"completed","data":[1,2,3]}'],
+          },
+          {
+            entryIndex: 3,
+            timestamp: '2024-01-15T10:30:03Z',
+            hasDiff: true,
+            diffLines: ['- {"status":"pending"}', '+ {"status":"completed","data":[1,2,3]}'],
+          },
+        ],
+        count: 4,
+        timestamps: [
+          '2024-01-15T10:30:00Z',
+          '2024-01-15T10:30:01Z',
+          '2024-01-15T10:30:02Z',
+          '2024-01-15T10:30:03Z',
+        ],
+      }
+
+      const result = formatConsolidatedNetworkEntry(group, {
+        includeResponseBodies: true,
+        responseBodyMode: 'full',
+        index: 1,
+      })
+
+      // Should show the first diff (call 2 → call 1 transition)
+      expect(result).toContain('Call 2')
+      expect(result).toContain('{"status":"completed"')
+
+      // Should NOT repeat identical diffs for calls 3 and 4
+      expect(result).not.toContain('Call 3')
+      expect(result).not.toContain('Call 4')
+
+      // Should include dedup notice
+      expect(result).toContain('identical')
+    })
+
+    test('should still show unique diffs when subsequent responses keep changing', () => {
+      const body3 = '{"status":"completed","data":[1,2,3,4]}'
+      const group: ConsolidatedNetworkEntry = {
+        entries: [
+          {
+            startedDateTime: '2024-01-15T10:30:00Z',
+            request: { url: 'https://api.example.com/poll', method: 'GET' },
+            response: makeResponse(firstBody),
+            time: 50,
+          },
+          {
+            startedDateTime: '2024-01-15T10:30:01Z',
+            request: { url: 'https://api.example.com/poll', method: 'GET' },
+            response: makeResponse(matureBody),
+            time: 50,
+          },
+          {
+            startedDateTime: '2024-01-15T10:30:02Z',
+            request: { url: 'https://api.example.com/poll', method: 'GET' },
+            response: makeResponse(body3),
+            time: 50,
+          },
+        ],
+        key: 'GET::https://api.example.com/poll::',
+        method: 'GET',
+        url: 'https://api.example.com/poll',
+        identicalResponses: false,
+        bodyDiffs: [
+          { entryIndex: 0, timestamp: '2024-01-15T10:30:00Z', hasDiff: false },
+          {
+            entryIndex: 1,
+            timestamp: '2024-01-15T10:30:01Z',
+            hasDiff: true,
+            diffLines: ['- {"status":"pending"}', '+ {"status":"completed","data":[1,2,3]}'],
+          },
+          {
+            entryIndex: 2,
+            timestamp: '2024-01-15T10:30:02Z',
+            hasDiff: true,
+            diffLines: ['- {"status":"pending"}', '+ {"status":"completed","data":[1,2,3,4]}'],
+          },
+        ],
+        count: 3,
+        timestamps: ['2024-01-15T10:30:00Z', '2024-01-15T10:30:01Z', '2024-01-15T10:30:02Z'],
+      }
+
+      const result = formatConsolidatedNetworkEntry(group, {
+        includeResponseBodies: true,
+        responseBodyMode: 'full',
+        index: 1,
+      })
+
+      // Both unique diffs should appear
+      expect(result).toContain('Call 2')
+      expect(result).toContain('Call 3')
+      expect(result).not.toContain('identical')
+    })
+
+    test('should not deduplicate when there are only 2 calls', () => {
+      const group: ConsolidatedNetworkEntry = {
+        entries: [
+          {
+            startedDateTime: '2024-01-15T10:30:00Z',
+            request: { url: 'https://api.example.com/poll', method: 'GET' },
+            response: makeResponse(firstBody),
+            time: 50,
+          },
+          {
+            startedDateTime: '2024-01-15T10:30:01Z',
+            request: { url: 'https://api.example.com/poll', method: 'GET' },
+            response: makeResponse(matureBody),
+            time: 50,
+          },
+        ],
+        key: 'GET::https://api.example.com/poll::',
+        method: 'GET',
+        url: 'https://api.example.com/poll',
+        identicalResponses: false,
+        bodyDiffs: [
+          { entryIndex: 0, timestamp: '2024-01-15T10:30:00Z', hasDiff: false },
+          {
+            entryIndex: 1,
+            timestamp: '2024-01-15T10:30:01Z',
+            hasDiff: true,
+            diffLines: ['- {"status":"pending"}', '+ {"status":"completed","data":[1,2,3]}'],
+          },
+        ],
+        count: 2,
+        timestamps: ['2024-01-15T10:30:00Z', '2024-01-15T10:30:01Z'],
+      }
+
+      const result = formatConsolidatedNetworkEntry(group, {
+        includeResponseBodies: true,
+        responseBodyMode: 'full',
+        index: 1,
+      })
+
+      expect(result).toContain('Call 2')
+      expect(result).not.toContain('identical')
+    })
+  })
+
+  describe('formatConsolidatedNetworkEntry - request body on failure', () => {
+    test('should show request body for POST that returns 500', () => {
+      const entry: HAREntry = {
+        startedDateTime: '2024-01-15T10:30:00Z',
+        request: {
+          url: 'https://api.example.com/submit',
+          method: 'POST',
+          headers: [{ name: 'Content-Type', value: 'application/json' }],
+          postData: {
+            mimeType: 'application/json',
+            text: '{"userId":42,"action":"submit"}',
+          },
+        },
+        response: {
+          status: 500,
+          statusText: 'Internal Server Error',
+          headers: [{ name: 'Content-Type', value: 'application/json' }],
+          content: { size: 50, mimeType: 'application/json', text: '{"error":"server fault"}' },
+        },
+        time: 100,
+      }
+
+      const result = formatNetworkEntry(entry, {
+        includeResponseBodies: true,
+        responseBodyMode: 'full',
+        index: 1,
+      })
+
+      // Request body should be shown for failed request
+      expect(result).toContain('#### Request Body')
+      expect(result).toContain('{"userId":42,"action":"submit"}')
+      expect(result).toContain('```json')
+    })
+
+    test('should show request body for POST that returns 400', () => {
+      const entry: HAREntry = {
+        startedDateTime: '2024-01-15T10:30:00Z',
+        request: {
+          url: 'https://api.example.com/validate',
+          method: 'POST',
+          headers: [{ name: 'Content-Type', value: 'application/json' }],
+          postData: {
+            mimeType: 'application/json',
+            text: '{"invalid":"payload"}',
+          },
+        },
+        response: {
+          status: 400,
+          statusText: 'Bad Request',
+          headers: [{ name: 'Content-Type', value: 'application/json' }],
+        },
+        time: 50,
+      }
+
+      const result = formatNetworkEntry(entry, {
+        includeResponseBodies: true,
+        responseBodyMode: 'full',
+        index: 1,
+      })
+
+      expect(result).toContain('#### Request Body')
+      expect(result).toContain('{"invalid":"payload"}')
     })
   })
 })

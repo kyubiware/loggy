@@ -1,5 +1,5 @@
 import type { HAREntry } from '../types/har'
-import type { ConsolidatedNetworkEntry } from './consolidation-network'
+import type { BodyDiff, ConsolidatedNetworkEntry } from './consolidation-network'
 import { formatFilteredHeaders, getLanguageFromMime, shouldUseCodeBlock } from './formatter-network'
 import { formatBytes, formatRelativeOffset, truncate, truncateJSON } from './formatter-strings'
 import { sketchJsonBody } from './schema-sketch'
@@ -157,17 +157,59 @@ export function formatConsolidatedResponseSection(
         }
 
         // Diffs are always rendered — they're compact and valuable even in smart mode
-        for (const diff of group.bodyDiffs) {
-          if (!diff.hasDiff || !diff.diffLines) continue
-          output += `#### Response Diff — Call ${diff.entryIndex + 1} (${diff.timestamp})\n`
-          output += '```diff\n'
-          output += diff.diffLines.join('\n')
-          output += '\n```\n\n'
-        }
+        output += renderChangedResponseDiffs(group)
       }
     }
   }
 
+  return output
+}
+
+/**
+ * Renders response diff blocks for a consolidated group, deduplicating
+ * identical subsequent diffs when all responses after the first change
+ * produce the same diff output.
+ */
+function renderChangedResponseDiffs(group: ConsolidatedNetworkEntry): string {
+  const changedDiffs = group.bodyDiffs.filter(
+    (d): d is BodyDiff & { diffLines: string[] } => d.hasDiff && !!d.diffLines
+  )
+
+  if (changedDiffs.length === 0) return ''
+
+  if (changedDiffs.length > 1) {
+    const firstChanged = changedDiffs[0]
+    const allSubsequentIdentical = changedDiffs
+      .slice(1)
+      .every(
+        (d: BodyDiff & { diffLines: string[] }) =>
+          d.diffLines.length === firstChanged.diffLines.length &&
+          d.diffLines.every((line: string, i: number) => line === firstChanged.diffLines[i])
+      )
+
+    if (allSubsequentIdentical) {
+      // Deduplicate — only render the first changed diff
+      let output = `#### Response Diff — Call ${firstChanged.entryIndex + 1} (${firstChanged.timestamp})\n`
+      output += '```diff\n'
+      output += firstChanged.diffLines.join('\n')
+      output += '\n```\n\n'
+
+      const omittedStart = firstChanged.entryIndex + 2
+      if (omittedStart <= group.count) {
+        output += `_(identical response for calls ${omittedStart}–${group.count} — omitted)_\n\n`
+      }
+      return output
+    }
+  }
+
+  // Render all changed diffs normally (either only one, or they keep changing)
+  let output = ''
+  for (const diff of changedDiffs) {
+    output += `#### Response Diff — Call ${diff.entryIndex + 1} (${diff.timestamp})\n`
+    output += '```diff\n'
+    output += diff.diffLines.join('\n')
+    output += '\n```\n\n'
+  }
   return output
 }
 
