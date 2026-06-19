@@ -1237,4 +1237,35 @@ describe('formatMarkdown - Token-efficient Contract', () => {
       expect(result).toContain('**Failure-Likely Events**: 1')
     })
   })
+
+  describe('Network failure signals', () => {
+    test('should report 5xx network responses as network errors in Debug Signals', () => {
+      const data: ExportData = {
+        url: 'https://example.com',
+        timestamp: '2024-01-15T10:30:00Z',
+        consoleLogs: [],
+        networkEntries: [
+          {
+            startedDateTime: '2024-01-15T10:30:00Z',
+            request: { url: 'https://api.example.com/data', method: 'GET' },
+            response: { status: 500, statusText: 'Internal Server Error' },
+            time: 100,
+          },
+          {
+            startedDateTime: '2024-01-15T10:30:01Z',
+            request: { url: 'https://api.example.com/submit', method: 'POST' },
+            response: { status: 502, statusText: 'Bad Gateway' },
+            time: 150,
+          },
+        ],
+      }
+
+      const result = formatMarkdown(data)
+
+      expect(result).toContain('- **Network 5xx Errors**: 2')
+      expect(result).toContain('[network 5xx]')
+      expect(result).toContain('GET /data → 500')
+      expect(result).toContain('POST /submit → 502')
+    })
+  })
 })

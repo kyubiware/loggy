@@ -14,6 +14,7 @@ import {
   bySeverityThenCount,
   consolidateConsoleLogs,
   formatConsoleLog,
+  formatNetworkFailureSignals,
   formatTimestampRange,
   isLikelyFailureSignal,
 } from './formatter-console'
@@ -142,6 +143,7 @@ function formatDebugSignalsSection(
   let output = `### Debug Signals\n\n`
   output += `- **Errors (raw/consolidated)**: ${levelCount.error}/${consolidatedLevelCount.error}\n`
   output += `- **Warnings (raw/consolidated)**: ${levelCount.warn}/${consolidatedLevelCount.warn}\n`
+  output += formatNetworkFailureSignals(data.networkEntries)
   output += `- **Failure-Likely Events**: ${failureSignals.length}\n\n`
 
   if (failureSignals.length > 0) {
