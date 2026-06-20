@@ -396,6 +396,10 @@ function bootstrapConsoleCapture() {
         (init && init.method && String(init.method)) ||
         'GET';
 
+      // Capture request body from fetch options (init.body) or from Request body
+      const rawBody = init && init.body !== undefined ? init.body : (typeof input === 'object' && input && 'body' in input ? input.body : undefined);
+      const requestBody = typeof rawBody === 'string' ? String(rawBody) : undefined;
+
       return originalFetch.apply(this, args).then(
         function (response) {
           const responseUrl = response && response.url ? String(response.url) : url;
@@ -413,6 +417,7 @@ function bootstrapConsoleCapture() {
                   url: responseUrl,
                   method: responseMethod,
                   status: status,
+                  requestBody: requestBody,
                   responseBody: String(body || ''),
                   contentType: contentType,
                   duration: Date.now() - startTime
@@ -423,6 +428,7 @@ function bootstrapConsoleCapture() {
                   url: responseUrl,
                   method: responseMethod,
                   status: status,
+                  requestBody: requestBody,
                   responseBody: String(body || ''),
                   contentType: contentType,
                   duration: Date.now() - startTime
@@ -435,6 +441,7 @@ function bootstrapConsoleCapture() {
                   url: responseUrl,
                   method: responseMethod,
                   status: status,
+                  requestBody: requestBody,
                   responseBody: '',
                   contentType: contentType,
                   duration: Date.now() - startTime
@@ -445,6 +452,7 @@ function bootstrapConsoleCapture() {
                   url: responseUrl,
                   method: responseMethod,
                   status: status,
+                  requestBody: requestBody,
                   responseBody: '',
                   contentType: contentType,
                   duration: Date.now() - startTime
@@ -517,6 +525,8 @@ function bootstrapConsoleCapture() {
 
     XMLHttpRequest.prototype.send = function () {
       const startTime = Date.now();
+      const xhrRequestBody = arguments[0];
+      const requestBody = typeof xhrRequestBody === 'string' ? String(xhrRequestBody) : undefined;
 
       this.addEventListener(
         'loadend',
@@ -526,6 +536,7 @@ function bootstrapConsoleCapture() {
             url: this.__loggyUrl ? String(this.__loggyUrl) : '',
             method: this.__loggyMethod ? String(this.__loggyMethod) : 'GET',
             status: typeof this.status === 'number' ? this.status : 0,
+            requestBody: requestBody,
             duration: Date.now() - startTime
           });
 
@@ -534,6 +545,7 @@ function bootstrapConsoleCapture() {
             url: this.__loggyUrl ? String(this.__loggyUrl) : '',
             method: this.__loggyMethod ? String(this.__loggyMethod) : 'GET',
             status: typeof this.status === 'number' ? this.status : 0,
+            requestBody: requestBody,
             duration: Date.now() - startTime
           });
           if (window.__loggyNetworkLogs.length > 500) { window.__loggyNetworkLogs.shift(); }

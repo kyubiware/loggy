@@ -1267,5 +1267,48 @@ describe('formatMarkdown - Token-efficient Contract', () => {
       expect(result).toContain('GET /data → 500')
       expect(result).toContain('POST /submit → 502')
     })
+
+    test('should consolidate duplicate network failure lines by method+path', () => {
+      const data: ExportData = {
+        url: 'https://example.com',
+        timestamp: '2024-01-15T10:30:00Z',
+        consoleLogs: [],
+        networkEntries: [
+          {
+            startedDateTime: '2024-01-15T10:30:00Z',
+            request: { url: 'https://api.example.com/suggest', method: 'POST' },
+            response: { status: 500, statusText: 'Internal Server Error' },
+            time: 55,
+          },
+          {
+            startedDateTime: '2024-01-15T10:30:01Z',
+            request: { url: 'https://api.example.com/suggest', method: 'POST' },
+            response: { status: 500, statusText: 'Internal Server Error' },
+            time: 55,
+          },
+          {
+            startedDateTime: '2024-01-15T10:30:02Z',
+            request: { url: 'https://api.example.com/suggest', method: 'POST' },
+            response: { status: 500, statusText: 'Internal Server Error' },
+            time: 55,
+          },
+          {
+            startedDateTime: '2024-01-15T10:30:03Z',
+            request: { url: 'https://api.example.com/other', method: 'GET' },
+            response: { status: 500, statusText: 'Internal Server Error' },
+            time: 30,
+          },
+        ],
+      }
+
+      const result = formatMarkdown(data)
+
+      expect(result).toContain('- **Network 5xx Errors**: 4')
+      // Three identical POST /suggest entries should consolidate into one (×3)
+      expect(result).toContain('POST /suggest → 500 (×3)')
+      // Single GET /other should show without count
+      expect(result).not.toContain('GET /other → 500 (×1)')
+      expect(result).toContain('GET /other → 500')
+    })
   })
 })

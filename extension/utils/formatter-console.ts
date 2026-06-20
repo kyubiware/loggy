@@ -25,7 +25,16 @@ export function formatNetworkFailureSignals(networkEntries: HAREntry[]): string 
   const _4xx = networkEntries.filter((e) => e.response.status >= 400 && e.response.status < 500)
   const _5xx = networkEntries.filter((e) => e.response.status >= 500 && e.response.status < 600)
 
-  function formatFailureLine(entry: HAREntry, tag: string): string {
+  function getGroupKey(entry: HAREntry): string {
+    try {
+      const path = new URL(entry.request.url).pathname
+      return `${entry.request.method}::${path}`
+    } catch {
+      return `${entry.request.method}::__invalid_url__`
+    }
+  }
+
+  function formatFailureTag(entry: HAREntry, tag: string): string {
     try {
       const path = new URL(entry.request.url).pathname
       return `[${tag}] ${entry.request.method} ${path} → ${entry.response.status}`
@@ -34,19 +43,40 @@ export function formatNetworkFailureSignals(networkEntries: HAREntry[]): string 
     }
   }
 
+  function formatGrouped(tag: string, entries: HAREntry[]): string {
+    // Group entries by (method, pathname)
+    const groups = new Map<string, HAREntry[]>()
+    for (const entry of entries) {
+      const key = getGroupKey(entry)
+      const group = groups.get(key)
+      if (group) {
+        group.push(entry)
+      } else {
+        groups.set(key, [entry])
+      }
+    }
+
+    let output = ''
+    for (const [, group] of groups) {
+      const line = formatFailureTag(group[0], tag)
+      if (group.length > 1) {
+        output += `${line} (×${group.length})\n`
+      } else {
+        output += `${line}\n`
+      }
+    }
+    return output
+  }
+
   let output = ''
   if (_4xx.length > 0) {
     output += `- **Network 4xx Errors**: ${_4xx.length}\n`
-    for (const entry of _4xx) {
-      output += `${formatFailureLine(entry, 'network 4xx')}\n`
-    }
+    output += formatGrouped('network 4xx', _4xx)
     output += '\n'
   }
   if (_5xx.length > 0) {
     output += `- **Network 5xx Errors**: ${_5xx.length}\n`
-    for (const entry of _5xx) {
-      output += `${formatFailureLine(entry, 'network 5xx')}\n`
-    }
+    output += formatGrouped('network 5xx', _5xx)
     output += '\n'
   }
   return output

@@ -848,4 +848,81 @@ describe('formatNetworkEntry - includeResponseBodies flag', () => {
       expect(result).toContain('{"invalid":"payload"}')
     })
   })
+
+  describe('formatConsolidatedMeta - status range', () => {
+    test('should show single status when all entries have same status', () => {
+      const group: ConsolidatedNetworkEntry = {
+        entries: [
+          {
+            startedDateTime: '2024-01-15T10:30:00Z',
+            request: { url: 'https://api.example.com/items', method: 'GET' },
+            response: { status: 200, statusText: 'OK' },
+            time: 50,
+          },
+          {
+            startedDateTime: '2024-01-15T10:30:01Z',
+            request: { url: 'https://api.example.com/items', method: 'GET' },
+            response: { status: 200, statusText: 'OK' },
+            time: 50,
+          },
+        ],
+        key: 'GET::https://api.example.com/items::',
+        method: 'GET',
+        url: 'https://api.example.com/items',
+        identicalResponses: true,
+        bodyDiffs: [],
+        count: 2,
+        timestamps: ['2024-01-15T10:30:00Z', '2024-01-15T10:30:01Z'],
+      }
+
+      const result = formatConsolidatedNetworkEntry(group, {
+        includeResponseBodies: false,
+        index: 1,
+      })
+
+      expect(result).toContain('- **Status**: 200')
+      // Should not show range when all same
+      expect(result).not.toContain('**Status**: 200/')
+    })
+
+    test('should show status range when entries have mixed statuses', () => {
+      const group: ConsolidatedNetworkEntry = {
+        entries: [
+          {
+            startedDateTime: '2024-01-15T10:30:00Z',
+            request: { url: 'https://api.example.com/submit', method: 'POST' },
+            response: { status: 500, statusText: 'Internal Server Error' },
+            time: 50,
+          },
+          {
+            startedDateTime: '2024-01-15T10:30:01Z',
+            request: { url: 'https://api.example.com/submit', method: 'POST' },
+            response: { status: 200, statusText: 'OK' },
+            time: 50,
+          },
+        ],
+        key: 'POST::https://api.example.com/submit::',
+        method: 'POST',
+        url: 'https://api.example.com/submit',
+        identicalResponses: false,
+        bodyDiffs: [
+          {
+            entryIndex: 0,
+            timestamp: '2024-01-15T10:30:00Z',
+            hasDiff: false,
+          },
+        ],
+        count: 2,
+        timestamps: ['2024-01-15T10:30:00Z', '2024-01-15T10:30:01Z'],
+      }
+
+      const result = formatConsolidatedNetworkEntry(group, {
+        includeResponseBodies: true,
+        responseBodyMode: 'full',
+        index: 1,
+      })
+
+      expect(result).toContain('- **Status**: 200/500')
+    })
+  })
 })

@@ -246,7 +246,14 @@ export function formatConsolidatedMeta(
   if (time) {
     output += `- **Duration**: ${time}ms (first call)\n`
   }
-  output += `- **Status**: ${response.status} ${response.statusText}\n`
+  const statuses = group.entries.map((e) => e.response.status)
+  const minStatus = Math.min(...statuses)
+  const maxStatus = Math.max(...statuses)
+  if (minStatus !== maxStatus) {
+    output += `- **Status**: ${minStatus}/${maxStatus}\n`
+  } else {
+    output += `- **Status**: ${response.status} ${response.statusText}\n`
+  }
   if (emittedBytes > 0) {
     output += `- **Size**: ${formatBytes(emittedBytes)}\n`
   }

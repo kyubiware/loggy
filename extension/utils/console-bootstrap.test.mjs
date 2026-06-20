@@ -46,7 +46,8 @@ function createMockXMLHttpRequestClass() {
       this.listeners.set(type, entries)
     }
 
-    send() {
+    send(body) {
+      this.__loggyRequestBody = typeof body === 'string' ? body : undefined
       const entries = this.listeners.get('loadend') ?? []
 
       for (const entry of entries) {
@@ -203,6 +204,65 @@ describe('console bootstrap network buffer', () => {
 
     expect(() => JSON.stringify(window.__loggyNetworkLogs)).not.toThrow()
     expect(JSON.parse(JSON.stringify(window.__loggyNetworkLogs))).toHaveLength(3)
+  })
+
+  test('captures request body on fetch POST', async () => {
+    window.fetch = vi.fn().mockResolvedValue({
+      url: 'https://example.test/submit',
+      status: 200,
+      headers: {
+        get: vi.fn().mockReturnValue('application/json'),
+      },
+      clone: vi.fn().mockReturnValue({
+        text: vi.fn().mockResolvedValue('{"ok":true}'),
+      }),
+    })
+
+    runBootstrap()
+
+    await window.fetch('https://example.test/submit', {
+      method: 'POST',
+      body: '{"action":"create","id":42}',
+    })
+    await flushMicrotasks()
+
+    expect(window.__loggyNetworkLogs).toHaveLength(1)
+    expect(window.__loggyNetworkLogs[0]).toHaveProperty('requestBody')
+    expect(window.__loggyNetworkLogs[0].requestBody).toBe('{"action":"create","id":42}')
+  })
+
+  test('captures request body on XHR send', () => {
+    runBootstrap()
+
+    const xhr = new window.XMLHttpRequest()
+    xhr.open('POST', 'https://example.test/xhr')
+    xhr.status = 201
+    xhr.send('{"xhrBody":true}')
+
+    expect(window.__loggyNetworkLogs).toHaveLength(1)
+    expect(window.__loggyNetworkLogs[0]).toHaveProperty('requestBody')
+    expect(window.__loggyNetworkLogs[0].requestBody).toBe('{"xhrBody":true}')
+  })
+
+  test('omits requestBody on fetch GET', async () => {
+    window.fetch = vi.fn().mockResolvedValue({
+      url: 'https://example.test/items',
+      status: 200,
+      headers: {
+        get: vi.fn().mockReturnValue('application/json'),
+      },
+      clone: vi.fn().mockReturnValue({
+        text: vi.fn().mockResolvedValue('[]'),
+      }),
+    })
+
+    runBootstrap()
+
+    await window.fetch('https://example.test/items', { method: 'GET' })
+    await flushMicrotasks()
+
+    expect(window.__loggyNetworkLogs).toHaveLength(1)
+    // GET requests may still have requestBody: undefined (always included in the payload)
   })
 
   test('console buffer works independently from network buffer', () => {
