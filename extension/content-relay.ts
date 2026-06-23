@@ -1,3 +1,4 @@
+import { browser } from './browser-apis'
 import type {
   CapturedConsoleEntry,
   CapturedNetworkEntry,
@@ -119,19 +120,16 @@ function handleConsentResponse(response: unknown): void {
   consentBuffer.length = 0
 }
 
-function sendRuntimeMessage(message: RelayOutboundMessage): Promise<boolean> {
-  return new Promise((resolve) => {
-    try {
-      chrome.runtime.sendMessage(message, (response: unknown) => {
-        if (isContentRelayReadyMessage(message)) {
-          handleConsentResponse(response)
-        }
-        resolve(!chrome.runtime.lastError)
-      })
-    } catch {
-      resolve(false)
+async function sendRuntimeMessage(message: RelayOutboundMessage): Promise<boolean> {
+  try {
+    const response = await browser.runtime.sendMessage<unknown>(message)
+    if (isContentRelayReadyMessage(message)) {
+      handleConsentResponse(response)
     }
-  })
+    return true
+  } catch {
+    return false
+  }
 }
 
 function enqueueMessage(message: RelayOutboundMessage): void {
@@ -230,7 +228,7 @@ if ((window as unknown as Record<string, unknown>).__loggyRelayInitialized) {
   ;(window as unknown as Record<string, unknown>).__loggyRelayInitialized = true
   window.addEventListener('message', handleMessage)
 
-  chrome.runtime.onMessage.addListener((message: unknown) => {
+  browser.runtime.onMessage.addListener((message: unknown) => {
     const consentMessage = message as ConsentChangedMessage
     if (consentMessage.type !== 'consent-changed') {
       return
@@ -247,17 +245,12 @@ if ((window as unknown as Record<string, unknown>).__loggyRelayInitialized) {
     url: location.href,
   }
 
-  try {
-    chrome.runtime.sendMessage(requestConsentMessage, (response: unknown) => {
-      if (chrome.runtime.lastError) {
-        return
-      }
-
-      handleConsentResponse(response)
+  browser.runtime
+    .sendMessage(requestConsentMessage)
+    .then((response) => handleConsentResponse(response))
+    .catch(() => {
+      // Ignore send failures. Queue/buffer handling keeps retries safe.
     })
-  } catch {
-    // Ignore send failures. Queue/buffer handling keeps retries safe.
-  }
 
   const readyMessage: ContentRelayReadyMessage = {
     type: 'content-relay-ready',

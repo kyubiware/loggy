@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { browser } from '../../../browser-apis/index.js'
 import { useConsentActions } from '../../../shared/hooks/useConsentActions'
 import type { ConsentState } from '../../../types/messages'
 
@@ -11,41 +12,44 @@ export function useConsentCheck() {
 
   // On mount: get tabId, check consent, get host
   useEffect(() => {
-    const tabId = chrome.devtools.inspectedWindow.tabId
+    const tabId = browser.devtools.inspectedWindow.tabId
     if (typeof tabId !== 'number') {
       setConsentState('not-consented')
       return
     }
 
     // Check consent via background
-    chrome.runtime.sendMessage({ type: 'request-consent', tabId }, (response: ConsentState) => {
-      if (response?.hasConsent) {
-        setConsentState('consented')
-      } else {
+    browser.runtime
+      .sendMessage<ConsentState>({ type: 'request-consent', tabId })
+      .then((response) => {
+        setConsentState(response?.hasConsent ? 'consented' : 'not-consented')
+      })
+      .catch(() => {
         setConsentState('not-consented')
-      }
-    })
+      })
 
     // Get host for display
-    chrome.devtools.inspectedWindow.eval(
-      'document.location.hostname',
-      (result: unknown, exceptionInfo: chrome.devtools.inspectedWindow.EvaluationExceptionInfo) => {
-        if (!exceptionInfo.isException && typeof result === 'string') {
+    browser.devtools.inspectedWindow
+      .eval('document.location.hostname')
+      .then(({ result, exceptionInfo }) => {
+        if (typeof result === 'string' && !exceptionInfo?.isException) {
           setHost(result)
         }
-      }
-    )
+      })
   }, [])
 
   const refreshConsent = useCallback(() => {
-    const tabId = chrome.devtools.inspectedWindow.tabId
+    const tabId = browser.devtools.inspectedWindow.tabId
     if (typeof tabId !== 'number') return
-    chrome.runtime.sendMessage({ type: 'request-consent', tabId }, (response: ConsentState) => {
-      setConsentState(response?.hasConsent ? 'consented' : 'not-consented')
-    })
+    browser.runtime
+      .sendMessage<ConsentState>({ type: 'request-consent', tabId })
+      .then((response) => {
+        setConsentState(response?.hasConsent ? 'consented' : 'not-consented')
+      })
+      .catch(() => undefined)
   }, [])
 
-  const tabId = chrome.devtools.inspectedWindow.tabId
+  const tabId = browser.devtools.inspectedWindow.tabId
   const { handleStartLogging, handleAlwaysLog } = useConsentActions({
     tabId,
     host,

@@ -7,23 +7,6 @@ import { createDefaultSettings, type PersistedLoggySettings } from '../../types/
 import { usePopupData } from './usePopupData'
 
 /**
- * Mock useFirefoxDirectCapture so it doesn't set up its `setInterval` poller
- * (which would cause vi.runAllTimers() to loop forever). We're testing the
- * Chrome code path here, so the Firefox hook's internals are irrelevant.
- */
-vi.mock('./useFirefoxDirectCapture', () => ({
-  useFirefoxDirectCapture: () => ({
-    tokenCount: 0,
-    markdown: '',
-    hasData: false,
-    logCount: 0,
-    routeOptions: [],
-    loading: false,
-    refresh: vi.fn(),
-  }),
-}))
-
-/**
  * Regression tests for the scroll-position preservation fix.
  *
  * Background: `refresh()` previously called `setLoading(true)` on every
@@ -40,7 +23,6 @@ vi.mock('./useFirefoxDirectCapture', () => ({
 // Permissive chrome mock surface — we only need a few fields, and the real
 // chrome type doesn't mark them optional, so we cast through unknown.
 type ChromeMock = {
-  debugger?: unknown
   runtime?: {
     sendMessage: (
       message: unknown,
@@ -59,11 +41,6 @@ describe('usePopupData — scroll preservation', () => {
     vi.useFakeTimers()
 
     const mock = chromeMock()
-
-    // Ensure the Chrome code path is taken (not Firefox). The global chrome
-    // mock in vitest.setup.ts omits `chrome.debugger`, which would otherwise
-    // make `typeof chrome.debugger === 'undefined'` true → isFirefox=true.
-    mock.debugger = {}
 
     mock.runtime = {
       lastError: null,
@@ -89,11 +66,10 @@ describe('usePopupData — scroll preservation', () => {
   afterEach(() => {
     vi.useRealTimers()
     const mock = chromeMock()
-    delete mock.debugger
     delete mock.runtime
   })
 
-  it('does NOT flip loading back to true on subsequent refreshes', () => {
+  it('does NOT flip loading back to true on subsequent refreshes', async () => {
     // Track every loading value the hook exposes across renders. The bug
     // signature is: true → false (initial load) → TRUE (refresh) → false.
     // After the fix the trace should be: true → false → false → false.
@@ -106,8 +82,13 @@ describe('usePopupData — scroll preservation', () => {
 
     // Drain the mount effect + the setTimeout callback inside refresh.
     // This flips loading from its initial `true` to `false`.
-    act(() => {
-      vi.runAllTimers()
+    // Uses vi.advanceTimersByTimeAsync(100) to flush all setTimeout(0)
+    // chains (including the browser-apis Promise microtasks, per T11
+    // learning) WITHOUT firing the 2s setInterval that the mount effect
+    // sets up (D2: popup polling on both browsers). vi.runAllTimersAsync
+    // would loop forever on the interval.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100)
     })
 
     // Confirm the initial load completed.
@@ -131,8 +112,8 @@ describe('usePopupData — scroll preservation', () => {
     act(() => {
       result.current.refresh()
     })
-    act(() => {
-      vi.runAllTimers()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100)
     })
 
     // Sanity check: the refresh actually hit the background.
@@ -150,14 +131,12 @@ describe('usePopupData — scroll preservation', () => {
 })
 
 /**
- * Regression tests for the Chrome-path settings re-fetch.
+ * Regression tests for the settings re-fetch.
  *
  * Background: `usePopupData`'s `refresh` callback previously only depended on
- * `[isFirefox, debouncedRoutes, routesFilterEnabled]` — no settings. So on
- * Chrome, changing a markdown-affecting setting (e.g. responseBodyMode smart →
- * full) never triggered a re-fetch, leaving the token count stale. Firefox was
- * unaffected because `useFirefoxDirectCapture` polls every 2s and reads
- * settings fresh each time.
+ * `[isFirefox, debouncedRoutes, routesFilterEnabled]` — no settings. So
+ * changing a markdown-affecting setting (e.g. responseBodyMode smart → full)
+ * never triggered a re-fetch, leaving the token count stale.
  *
  * The fix passes a memoized fingerprint of only the export-relevant settings
  * into the `refresh` deps. These tests verify (a) an export-relevant change
@@ -165,14 +144,11 @@ describe('usePopupData — scroll preservation', () => {
  * server URL field is undebounced and per-keystroke round-trips would be
  * wasteful.
  */
-describe('usePopupData — settings re-fetch (Chrome path)', () => {
+describe('usePopupData — settings re-fetch', () => {
   beforeEach(() => {
     vi.useFakeTimers()
 
     const mock = chromeMock()
-
-    // Force the Chrome code path (typeof chrome.debugger !== 'undefined').
-    mock.debugger = {}
 
     mock.runtime = {
       lastError: null,
@@ -194,11 +170,10 @@ describe('usePopupData — settings re-fetch (Chrome path)', () => {
   afterEach(() => {
     vi.useRealTimers()
     const mock = chromeMock()
-    delete mock.debugger
     delete mock.runtime
   })
 
-  it('re-fetches when an export-relevant setting changes (responseBodyMode)', () => {
+  it('re-fetches when an export-relevant setting changes (responseBodyMode)', async () => {
     const settingsA = createDefaultSettings()
     const settingsB: PersistedLoggySettings = { ...settingsA, responseBodyMode: 'full' }
 
@@ -208,9 +183,11 @@ describe('usePopupData — settings re-fetch (Chrome path)', () => {
       { initialProps: { settings: settingsA } },
     )
 
-    // Drain initial mount fetch.
-    act(() => {
-      vi.runAllTimers()
+    // Drain initial mount fetch. advanceTimersByTimeAsync(100) processes
+    // the setTimeout(0) chain (D13 Promise microtasks) without firing the
+    // 2s setInterval (D2 polling) — runAllTimersAsync would loop forever.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100)
     })
 
     const sendMessage = chromeMock().runtime?.sendMessage as ReturnType<typeof vi.fn>
@@ -218,14 +195,14 @@ describe('usePopupData — settings re-fetch (Chrome path)', () => {
 
     // Change responseBodyMode smart → full. This is the reported bug scenario.
     rerender({ settings: settingsB })
-    act(() => {
-      vi.runAllTimers()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100)
     })
 
     expect(sendMessage.mock.calls.length).toBeGreaterThan(callsAfterInitial)
   })
 
-  it('does NOT re-fetch when only a pure-UI setting changes (serverUrl)', () => {
+  it('does NOT re-fetch when only a pure-UI setting changes (serverUrl)', async () => {
     const settingsA = createDefaultSettings()
     const settingsB: PersistedLoggySettings = {
       ...settingsA,
@@ -238,8 +215,9 @@ describe('usePopupData — settings re-fetch (Chrome path)', () => {
       { initialProps: { settings: settingsA } },
     )
 
-    act(() => {
-      vi.runAllTimers()
+    // advanceTimersByTimeAsync(100) — see test above for rationale.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100)
     })
 
     const sendMessage = chromeMock().runtime?.sendMessage as ReturnType<typeof vi.fn>
@@ -247,10 +225,115 @@ describe('usePopupData — settings re-fetch (Chrome path)', () => {
 
     // Typing in the server URL field must not fire a background export fetch.
     rerender({ settings: settingsB })
-    act(() => {
-      vi.runAllTimers()
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100)
     })
 
     expect(sendMessage.mock.calls.length).toBe(callsAfterInitial)
+  })
+})
+
+/**
+ * Tests for the popup polling (D2: 2s polling on both browsers, T17).
+ *
+ * Verifies:
+ * - Synchronous-on-mount refresh fires a sendMessage (D19: covers SW cold-start)
+ * - setInterval is set up with 2000ms period
+ * - Cleanup on unmount clears the interval (no further refreshes)
+ */
+describe('usePopupData — polling (D2: 2s on both browsers)', () => {
+  beforeEach(() => {
+    vi.useFakeTimers()
+
+    const mock = chromeMock()
+    mock.runtime = {
+      lastError: null,
+      sendMessage: vi.fn(
+        (_message: unknown, callback?: (response: unknown) => void) => {
+          const response: TabExportDataResponse = {
+            tokenCount: 0,
+            markdown: '',
+            hasData: false,
+            logCount: 0,
+            routeOptions: [],
+          }
+          setTimeout(() => callback?.(response), 0)
+        },
+      ),
+    }
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    const mock = chromeMock()
+    delete mock.runtime
+  })
+
+  it('fires a synchronous refresh on mount', async () => {
+    const { result } = renderHook(() => usePopupData(1, undefined))
+
+    const sendMessage = chromeMock().runtime?.sendMessage as ReturnType<
+      typeof vi.fn
+    >
+
+    // Drain the mount refresh's setTimeout(0) chain (D13 Promise microtasks).
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100)
+    })
+
+    // The mount useEffect must have called refresh() at least once.
+    expect(sendMessage.mock.calls.length).toBeGreaterThan(0)
+    expect(result.current.loading).toBe(false)
+  })
+
+  it('polls every 2000ms via setInterval', async () => {
+    const { unmount } = renderHook(() => usePopupData(1, undefined))
+
+    const sendMessage = chromeMock().runtime?.sendMessage as ReturnType<
+      typeof vi.fn
+    >
+
+    // Drain the initial mount refresh.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100)
+    })
+    const callsAfterMount = sendMessage.mock.calls.length
+
+    // Advance 2s — the interval should fire exactly once.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+    const callsAfterFirstInterval = sendMessage.mock.calls.length
+    expect(callsAfterFirstInterval).toBeGreaterThan(callsAfterMount)
+
+    // Advance another 2s — second interval fire.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000)
+    })
+    expect(sendMessage.mock.calls.length).toBeGreaterThan(callsAfterFirstInterval)
+
+    unmount()
+  })
+
+  it('clears the interval on unmount (no further refreshes)', async () => {
+    const { unmount } = renderHook(() => usePopupData(1, undefined))
+
+    const sendMessage = chromeMock().runtime?.sendMessage as ReturnType<
+      typeof vi.fn
+    >
+
+    // Drain mount refresh.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(100)
+    })
+    const callsAtUnmount = sendMessage.mock.calls.length
+
+    unmount()
+
+    // Advance 4s post-unmount — no new sendMessage calls (interval was cleared).
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(4000)
+    })
+    expect(sendMessage.mock.calls.length).toBe(callsAtUnmount)
   })
 })

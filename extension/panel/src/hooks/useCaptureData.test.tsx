@@ -1,5 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { browser } from '../../../browser-apis/index.js'
 import * as serverExport from '../../../shared/server-export'
 import type { ConsoleMessage } from '../../../types/console'
 import type { HAREntry } from '../../../types/har'
@@ -20,7 +21,16 @@ vi.mock('../../capture', () => ({
   captureConsoleLogs: vi.fn(),
   clearCapturedConsoleLogs: vi.fn(),
   clearResponseBodies: vi.fn(),
+  connectPanelPort: vi.fn(() => ({
+    name: '',
+    postMessage: vi.fn(),
+    disconnect: vi.fn(),
+    onDisconnect: { addListener: vi.fn() },
+    onMessage: { addListener: vi.fn() },
+  })),
   enrichWithResponseBodies: vi.fn((entries: HAREntry[]) => entries),
+  notifyPanelClosed: vi.fn(),
+  notifyPanelOpened: vi.fn(),
   startResponseBodyCapture: vi.fn(),
   stopResponseBodyCapture: vi.fn(),
 }))
@@ -48,6 +58,7 @@ const mockOnNavigated = {
   removeListener: vi.fn(() => {
     navigationListener = null
   }),
+  hasListener: vi.fn(() => navigationListener !== null),
 }
 
 const sampleConsoleLog: ConsoleMessage = {
@@ -84,17 +95,13 @@ describe('useCaptureData', () => {
     mockClearCapturedConsoleLogs.mockResolvedValue(undefined)
     mockProbeServer.mockResolvedValue(false)
 
-    // Mock chrome.devtools.network.onNavigated
-    vi.stubGlobal('chrome', {
-      ...chrome,
-      devtools: {
-        ...chrome.devtools,
-        network: {
-          ...chrome.devtools.network,
-          onNavigated: mockOnNavigated,
-        },
-      },
-    })
+    // Override browser.devtools.network.onNavigated so the hook's
+    // useLifecycleEffect registers its listener on mockOnNavigated.
+    // chromeBrowser was created at module load time and its event-sink
+    // references are stale (they point to the vitest.setup eventSinkStub).
+    // Direct property assignment on the module-level `browser` object is the
+    // least-invasive fix; it does not require vi.mock on the browser-apis module.
+    browser.devtools.network.onNavigated = mockOnNavigated
 
     // Start with visible state
     Object.defineProperty(document, 'visibilityState', {

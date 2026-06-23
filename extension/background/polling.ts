@@ -1,3 +1,5 @@
+import { browser } from '../browser-apis'
+import type { ExecutionWorld } from '../browser-apis/types'
 import { getOrCreateTabState, tabStates, setTabState } from './tab-state'
 import {
   readStoredEntries,
@@ -40,7 +42,7 @@ export interface RawBufferData {
  */
 export async function getPolledCount(tabId: number): Promise<number> {
   const key = `${POLL_COUNT_KEY_PREFIX}${tabId}`
-  const result = (await chrome.storage.session.get(key)) as Record<string, unknown>
+  const result = (await browser.storage.session.get(key)) as Record<string, unknown>
   return typeof result[key] === 'number' ? (result[key] as number) : 0
 }
 
@@ -51,7 +53,7 @@ export async function getPolledCount(tabId: number): Promise<number> {
  */
 export async function setPolledCount(tabId: number, count: number): Promise<void> {
   const key = `${POLL_COUNT_KEY_PREFIX}${tabId}`
-  await chrome.storage.session.set({ [key]: count })
+  await browser.storage.session.set({ [key]: count })
 }
 
 /**
@@ -59,7 +61,7 @@ export async function setPolledCount(tabId: number, count: number): Promise<void
  * server when new data is detected. This is the primary data path for
  * background auto-sync when the DevTools panel is not open.
  *
- * Uses a per-tab `lastPolledCount` tracker in `chrome.storage.session`
+ * Uses a per-tab `lastPolledCount` tracker in `browser.storage.session`
  * to compute a delta between the current MAIN-world array length and
  * what we previously persisted. New entries are deduplicated against
  * entries already stored by the concurrent `storeCapturedData` path
@@ -84,9 +86,9 @@ export async function pollAndSyncTab(tabId: number): Promise<void> {
   }
 
   try {
-    const results = await chrome.scripting.executeScript({
+    const results = await browser.scripting.executeScript({
       target: { tabId },
-      world: 'MAIN' as chrome.scripting.ExecutionWorld,
+      world: 'MAIN' as ExecutionWorld,
       func: () => ({
         consoleLogs: (window as unknown as Record<string, unknown[]>).__loggyConsoleLogs || [],
         networkLogs: (window as unknown as Record<string, unknown[]>).__loggyNetworkLogs || [],

@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { browser } from '../../browser-apis'
 
 export interface UseConsentActionsOptions {
   /** Active tab ID to send commands for. */
@@ -11,7 +12,7 @@ export interface UseConsentActionsOptions {
 
 /**
  * Shared consent action handlers for start/stop logging and always-log.
- * Centralizes the chrome.runtime.sendMessage pattern so popup and panel
+ * Centralizes the browser.runtime.sendMessage pattern so popup and panel
  * cannot drift out of sync.
  */
 export function useConsentActions({
@@ -21,29 +22,27 @@ export function useConsentActions({
 }: UseConsentActionsOptions) {
   const handleStartLogging = useCallback(() => {
     if (tabId === undefined) return
-    chrome.runtime.sendMessage(
-      { type: 'start-logging', tabId },
-      () => onStateChanged(),
-    )
+    browser.runtime.sendMessage({ type: 'start-logging', tabId })
+      .then(() => onStateChanged())
+      .catch(() => undefined)
   }, [tabId, onStateChanged])
 
   const handleStopLogging = useCallback(() => {
     if (tabId === undefined) return
-    chrome.runtime.sendMessage(
-      { type: 'stop-logging', tabId },
-      () => onStateChanged(),
-    )
+    browser.runtime.sendMessage({ type: 'stop-logging', tabId })
+      .then(() => onStateChanged())
+      .catch(() => undefined)
     if (host) {
-      chrome.runtime.sendMessage({ type: 'remove-always-log', host })
+      browser.runtime.sendMessage({ type: 'remove-always-log', host })
+        .catch(() => undefined)
     }
   }, [tabId, host, onStateChanged])
 
   const handleAlwaysLog = useCallback(() => {
     if (!host) return
-    chrome.runtime.sendMessage(
-      { type: 'add-always-log', host },
-      () => onStateChanged(),
-    )
+    browser.runtime.sendMessage({ type: 'add-always-log', host })
+      .then(() => onStateChanged())
+      .catch(() => undefined)
   }, [host, onStateChanged])
 
   return { handleStartLogging, handleStopLogging, handleAlwaysLog }

@@ -1,5 +1,7 @@
 import { clearDebugEntries, debugLog } from '../utils/debug-logger'
 import { LOGGY_MESSAGE_NAMESPACE, type CaptureMessage, type LoggyMessage } from '../types/messages'
+import { browser } from '../browser-apis/index'
+import type { BrowserPort } from '../browser-apis/index'
 import {
   attachToTab,
   detachFromTab,
@@ -46,7 +48,7 @@ import { handlePanelClosed } from './messages/tab-lifecycle'
 /**
  * Re-attaches the Chrome debugger after it was auto-detached by a
  * navigation or page refresh. Chrome's debugger detaches on every new
- * document load (chrome.debugger.onDetach fires); without re-attachment,
+ * document load (browser.debugger.onDetach fires); without re-attachment,
  * capture silently dies after the first navigation.
  *
  * Guards:
@@ -74,7 +76,7 @@ async function maybeReattachDebugger(tabId: number): Promise<void> {
 
   let url = ''
   try {
-    const tab = await chrome.tabs.get(tabId)
+    const tab = await browser.tabs.get(tabId)
     url = tab.url ?? ''
   } catch {
     debugLog('capture', 'background', `Tab loading: cannot get tab for debugger re-attach`, { tabId })
@@ -129,16 +131,16 @@ async function initialize(): Promise<void> {
     updateIconForTab(activeTabId)
   }
 
-  await chrome.storage.local.get(LOGGY_ALWAYS_LOG_HOSTS_KEY)
+  await browser.storage.local.get(LOGGY_ALWAYS_LOG_HOSTS_KEY)
 
   const alwaysLogHosts = await getAlwaysLogHosts()
   await syncAllAlwaysLogScripts(alwaysLogHosts.map((h) => h.host))
 
   // Register periodic alarm for background auto-sync polling.
-  // chrome.alarms enforces a minimum period of 30s in production MV3.
+  // browser.alarms enforces a minimum period of 30s in production MV3.
   try {
-    await chrome.alarms.clear(AUTO_SYNC_ALARM_NAME)
-    await chrome.alarms.create(AUTO_SYNC_ALARM_NAME, { periodInMinutes: 0.5 })
+    await browser.alarms.clear(AUTO_SYNC_ALARM_NAME)
+    await browser.alarms.create(AUTO_SYNC_ALARM_NAME, { periodInMinutes: 0.5 })
     debugLog('lifecycle', 'background', 'Auto-sync alarm registered (30s period)')
   } catch (error) {
     debugLog('lifecycle', 'background', `Failed to register auto-sync alarm: ${String(error)}`)
@@ -164,7 +166,7 @@ async function initialize(): Promise<void> {
  * mode is still `devtools` — the message handler transitions away from
  * `devtools` first.
  */
-chrome.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
+browser.runtime.onConnect.addListener((port: BrowserPort) => {
   if (port.name !== 'loggy-panel') return
 
   let panelTabId: number | undefined
@@ -183,7 +185,7 @@ chrome.runtime.onConnect.addListener((port: chrome.runtime.Port) => {
   })
 })
 
-chrome.runtime.onMessage.addListener((rawMessage, sender, sendResponse) => {
+browser.runtime.onMessage.addListener((rawMessage, sender, sendResponse) => {
   const message = rawMessage as LoggyMessage
   const msgType =
     typeof message === 'object' && message !== null && 'type' in message
@@ -239,7 +241,7 @@ chrome.runtime.onMessage.addListener((rawMessage, sender, sendResponse) => {
   return true
 })
 
-chrome.tabs.onRemoved.addListener((tabId) => {
+browser.tabs.onRemoved.addListener((tabId) => {
   const pendingResume = debuggerResumeTimersByTab.get(tabId)
   if (pendingResume) {
     clearTimeout(pendingResume)
@@ -265,17 +267,17 @@ chrome.tabs.onRemoved.addListener((tabId) => {
       const { persistExplicitlyStoppedTabs } = await import('./tab-state')
       await persistExplicitlyStoppedTabs()
     }
-    await chrome.storage.session.remove(getStorageKeyForTab(tabId))
-    await chrome.storage.session.remove(getFailedBufferStorageKeyForTab(tabId))
+    await browser.storage.session.remove(getStorageKeyForTab(tabId))
+    await browser.storage.session.remove(getFailedBufferStorageKeyForTab(tabId))
   })()
 })
 
-chrome.tabs.onActivated.addListener((activeInfo) => {
+browser.tabs.onActivated.addListener((activeInfo) => {
   setActiveTabId(activeInfo.tabId)
   updateIconForTab(activeInfo.tabId)
 })
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
   // Mark navigation start when Chrome reports a URL change. Consumed by the
   // loading handler below. This fires BEFORE status:'loading' for navigations
   // and NEVER fires for refreshes — making it a reliable nav/refresh signal
@@ -304,7 +306,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
           const preserveLogs = await getPreserveLogs()
           if (!preserveLogs) {
             debugLog('capture', 'background', `Refresh: clearing stored entries (preserveLogs=false)`, { tabId })
-            await chrome.storage.session.remove(getStorageKeyForTab(tabId))
+            await browser.storage.session.remove(getStorageKeyForTab(tabId))
             const current = getOrCreateTabState(tabId)
             await setTabState({ ...current, logCount: 0 })
             clearDebugEntries()
@@ -373,7 +375,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
           }
 
           try {
-            await chrome.tabs.sendMessage(tabId, {
+            await browser.tabs.sendMessage(tabId, {
               type: 'consent-changed',
               hasConsent: true,
               captureMode,
@@ -393,7 +395,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
           updateIconForTab(tabId)
 
           try {
-            await chrome.tabs.sendMessage(tabId, {
+            await browser.tabs.sendMessage(tabId, {
               type: 'consent-changed',
               hasConsent: false,
               captureMode: 'none',
@@ -409,11 +411,11 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   })()
 })
 
-chrome.runtime.onInstalled.addListener(() => {
+browser.runtime.onInstalled.addListener(() => {
   void initialize()
 })
 
-chrome.runtime.onStartup.addListener(() => {
+browser.runtime.onStartup.addListener(() => {
   void initialize()
 })
 
@@ -421,7 +423,7 @@ self.addEventListener('activate', () => {
   void initialize()
 })
 
-chrome.alarms.onAlarm.addListener((alarm) => {
+browser.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name !== AUTO_SYNC_ALARM_NAME) return
   void pollAllActiveTabs()
 })

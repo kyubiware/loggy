@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { browser } from '../../browser-apis'
+import type { StorageChange } from '../../browser-apis/types'
 import {
   LOGGY_PANEL_SETTINGS_STORAGE_KEY,
   createDefaultSettings,
@@ -33,7 +35,8 @@ export function usePopupSettings(): {
     const defaults = createDefaultSettings()
     defaultsRef.current = defaults
 
-    chrome.storage.local.get([LOGGY_PANEL_SETTINGS_STORAGE_KEY], (result) => {
+    ;(async () => {
+      const result = await browser.storage.local.get<Record<string, unknown>>([LOGGY_PANEL_SETTINGS_STORAGE_KEY])
       const mergedSettings = mergePersistedSettings(
         result[LOGGY_PANEL_SETTINGS_STORAGE_KEY],
         defaults,
@@ -41,30 +44,29 @@ export function usePopupSettings(): {
 
       setSettings(extractPersistedSettings({ ...createInitialState(), ...mergedSettings }))
       setLoading(false)
-    })
+    })()
 
-    const handleStorageChange = (
-      changes: Record<string, chrome.storage.StorageChange>,
-      areaName: string,
+    const handleStorageChange = async (
+      changes: Record<string, StorageChange>,
+      areaName: 'local' | 'session' | 'sync' | 'managed',
     ) => {
       if (areaName !== 'local' || !changes[LOGGY_PANEL_SETTINGS_STORAGE_KEY]) {
         return
       }
 
-      chrome.storage.local.get([LOGGY_PANEL_SETTINGS_STORAGE_KEY], (result) => {
-        const mergedSettings = mergePersistedSettings(
-          result[LOGGY_PANEL_SETTINGS_STORAGE_KEY],
-          defaultsRef.current,
-        )
+      const result = await browser.storage.local.get<Record<string, unknown>>([LOGGY_PANEL_SETTINGS_STORAGE_KEY])
+      const mergedSettings = mergePersistedSettings(
+        result[LOGGY_PANEL_SETTINGS_STORAGE_KEY],
+        defaultsRef.current,
+      )
 
-        setSettings(extractPersistedSettings({ ...createInitialState(), ...mergedSettings }))
-      })
+      setSettings(extractPersistedSettings({ ...createInitialState(), ...mergedSettings }))
     }
 
-    chrome.storage.onChanged.addListener(handleStorageChange)
+    browser.storage.onChanged.addListener(handleStorageChange)
 
     return () => {
-      chrome.storage.onChanged.removeListener(handleStorageChange)
+      browser.storage.onChanged.removeListener(handleStorageChange)
     }
   }, [])
 
@@ -77,7 +79,7 @@ export function usePopupSettings(): {
           ...updatedSettings,
         })
 
-        chrome.storage.local.set({
+        browser.storage.local.set({
           [LOGGY_PANEL_SETTINGS_STORAGE_KEY]: persistedSettings,
         })
 

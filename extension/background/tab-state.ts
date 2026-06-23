@@ -1,3 +1,4 @@
+import { browser } from '../browser-apis'
 import type { TabCaptureState, CaptureMode, StatusResponse } from '../types/messages'
 import { debugLog } from '../utils/debug-logger'
 
@@ -52,11 +53,11 @@ export function getOrCreateTabState(tabId: number): TabCaptureState {
 
 export function persistTabStates(): Promise<void> {
   const serialized = Object.fromEntries(tabStates.entries())
-  return chrome.storage.session.set({ [TAB_STATES_STORAGE_KEY]: serialized })
+  return browser.storage.session.set({ [TAB_STATES_STORAGE_KEY]: serialized })
 }
 
 export function persistExplicitlyStoppedTabs(): Promise<void> {
-  return chrome.storage.session.set({
+  return browser.storage.session.set({
     [EXPLICITLY_STOPPED_STORAGE_KEY]: Array.from(explicitlyStoppedByTab),
   })
 }
@@ -72,7 +73,7 @@ export async function unmarkTabExplicitlyStopped(tabId: number): Promise<void> {
 }
 
 export async function restoreExplicitlyStoppedTabsFromStorage(): Promise<void> {
-  const result = (await chrome.storage.session.get(EXPLICITLY_STOPPED_STORAGE_KEY)) as Record<
+  const result = (await browser.storage.session.get(EXPLICITLY_STOPPED_STORAGE_KEY)) as Record<
     string,
     unknown
   >
@@ -149,11 +150,11 @@ export function updateIconForTab(tabId: number): void {
       }
     : { 16: 'icons/icon16.png', 48: 'icons/icon48.png', 128: 'icons/icon128.png' }
 
-  chrome.action.setIcon({ tabId, path: iconPath })
+  browser.action.setIcon({ tabId, path: iconPath })
 }
 
 export async function restoreTabStatesFromStorage(): Promise<void> {
-  const result = (await chrome.storage.session.get(TAB_STATES_STORAGE_KEY)) as Record<
+  const result = (await browser.storage.session.get(TAB_STATES_STORAGE_KEY)) as Record<
     string,
     unknown
   >
@@ -190,7 +191,7 @@ export async function restoreTabStatesFromStorage(): Promise<void> {
 }
 
 export async function restoreLogCountsFromStorage(): Promise<void> {
-  const all = (await chrome.storage.session.get(null)) as Record<string, unknown>
+  const all = (await browser.storage.session.get(null)) as Record<string, unknown>
 
   for (const [key, value] of Object.entries(all)) {
     if (!key.startsWith(STORAGE_KEY_PREFIX)) {
@@ -212,7 +213,7 @@ export async function restoreLogCountsFromStorage(): Promise<void> {
 
 export async function refreshActiveTabId(): Promise<void> {
   try {
-    const tabs = await chrome.tabs.query({ active: true, currentWindow: true })
+    const tabs = await browser.tabs.query({ active: true, currentWindow: true })
     activeTabId = tabs[0]?.id ?? null
   } catch {
     activeTabId = null

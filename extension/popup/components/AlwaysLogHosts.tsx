@@ -1,6 +1,7 @@
 import type React from 'react'
 import { useEffect, useState } from 'react'
 
+import { browser } from '../../browser-apis'
 import type { AlwaysLogHost } from '../../types/messages'
 
 export interface AlwaysLogHostsProps {
@@ -10,14 +11,13 @@ export interface AlwaysLogHostsProps {
 export function AlwaysLogHosts({ onRemove }: AlwaysLogHostsProps): React.JSX.Element {
   const [hosts, setHosts] = useState<AlwaysLogHost[]>([])
 
-  const fetchHosts = () => {
-    chrome.runtime.sendMessage(
-      { type: 'get-always-log-hosts' },
-      (response: { type: string; hosts: AlwaysLogHost[] } | undefined) => {
-        if (chrome.runtime.lastError || !response) return
-        setHosts(response.hosts ?? [])
-      },
-    )
+  const fetchHosts = async () => {
+    try {
+      const response = await browser.runtime.sendMessage<{ type: string; hosts: AlwaysLogHost[] }>({ type: 'get-always-log-hosts' })
+      if (response) setHosts(response.hosts ?? [])
+    } catch {
+      // Ignore send failures
+    }
   }
 
   useEffect(() => {

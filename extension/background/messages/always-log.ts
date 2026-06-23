@@ -14,6 +14,7 @@ import {
   detachFromTab,
   isAttached as isDebuggerAttached,
 } from '../../capture/debugger-capture'
+import { browser } from '../../browser-apis'
 import type {
   AlwaysLogHost,
   AlwaysLogHostsResponse,
@@ -24,7 +25,7 @@ export async function handleAddAlwaysLog(host: string): Promise<{ ok: true }> {
   await registerAlwaysLogScriptsForHost(host)
 
   try {
-    const tabs = await chrome.tabs.query({})
+    const tabs = await browser.tabs.query({})
     for (const tab of tabs) {
       if (typeof tab.id !== 'number' || !tab.url) {
         continue
@@ -46,15 +47,11 @@ export async function handleAddAlwaysLog(host: string): Promise<{ ok: true }> {
                 console.error(`[Loggy] Failed to inject into tab ${tab.id}:`, error)
               }
 
-              try {
-                await chrome.tabs.sendMessage(tab.id, {
-                  type: 'consent-changed',
-                  hasConsent: true,
-                  captureMode: 'content-script',
-                })
-              } catch {
-                // Content script may not be loaded
-              }
+              await browser.tabs.sendMessage(tab.id, {
+                type: 'consent-changed',
+                hasConsent: true,
+                captureMode: 'content-script',
+              }).catch(() => undefined)
             }
           }
         }
@@ -74,7 +71,7 @@ export async function handleRemoveAlwaysLog(host: string): Promise<{ ok: true }>
   await unregisterAlwaysLogScriptsForHost(host)
 
   try {
-    const tabs = await chrome.tabs.query({})
+    const tabs = await browser.tabs.query({})
     for (const tab of tabs) {
       if (typeof tab.id !== 'number' || !tab.url) {
         continue
@@ -94,15 +91,11 @@ export async function handleRemoveAlwaysLog(host: string): Promise<{ ok: true }>
               await setMode(tab.id, 'inactive')
               updateIconForTab(tab.id)
 
-              try {
-                await chrome.tabs.sendMessage(tab.id, {
-                  type: 'consent-changed',
-                  hasConsent: false,
-                  captureMode: 'none',
-                })
-              } catch {
-                // Content script may not be loaded
-              }
+              await browser.tabs.sendMessage(tab.id, {
+                type: 'consent-changed',
+                hasConsent: false,
+                captureMode: 'none',
+              }).catch(() => undefined)
             }
           }
         }

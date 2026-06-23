@@ -1,3 +1,4 @@
+import { browser } from '../browser-apis/index.js'
 import type { ConsoleMessage } from '../types/console'
 import type { HAREntry } from '../types/har'
 import type { SyncPanelDataMessage } from '../types/messages'
@@ -6,7 +7,7 @@ import { debugLog } from '../utils/debug-logger'
 /**
  * Pushes the panel's current captured data to the background service worker.
  *
- * The panel captures console/network directly via chrome.devtools into React
+ * The panel captures console/network directly via devtools API into React
  * state (devtools mode), bypassing background storage. This sync makes that
  * data available to the popup, which reads exclusively from background storage.
  * Fire-and-forget; failures are logged but never thrown.
@@ -23,7 +24,7 @@ export function syncPanelDataToBackground(
       consoleLogs,
       networkEntries,
     }
-    void chrome.runtime.sendMessage(message)
+    browser.runtime.sendMessage(message).catch(() => undefined)
     debugLog('capture', 'panel', `sync-panel-data sent`, {
       tabId,
       consoleCount: consoleLogs.length,

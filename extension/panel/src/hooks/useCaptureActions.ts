@@ -1,4 +1,5 @@
 import { useCallback, useRef } from 'react'
+import { browser } from '../../../browser-apis/index.js'
 import type { ConsoleMessage } from '../../../types/console'
 import type { HAREntry } from '../../../types/har'
 import type { LoggyState } from '../../../types/state'
@@ -28,7 +29,7 @@ function syncCapturedToBackground(
     return
   }
   lastSyncFingerprintRef.current = fingerprint
-  const tabId = chrome.devtools.inspectedWindow.tabId
+  const tabId = browser.devtools.inspectedWindow.tabId
   if (typeof tabId === 'number') {
     syncPanelDataToBackground(tabId, consoleLogs, networkEntries)
   }

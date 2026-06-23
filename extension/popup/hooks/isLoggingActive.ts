@@ -9,7 +9,7 @@ import type { StatusResponse } from '../../types/messages'
  *   the popup can't toggle this off, but it should still reflect that
  *   capture is happening).
  * - `debugger` → active (Chrome debugger attached via toggle-debugger).
- * - `content-script` on Firefox → active (Firefox lacks chrome.debugger,
+ * - `content-script` on Firefox → active (Firefox lacks the debugger API,
  *   so content-script IS the primary capture mode after Start Logging).
  * - `content-script` on Chrome → INACTIVE (paused — `toggle-debugger`
  *   detached the debugger and fell back to content-script per the

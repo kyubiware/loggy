@@ -1,3 +1,4 @@
+import { browser } from '../browser-apis'
 import { STORAGE_KEY_PREFIX, getStorageKeyForTab } from './tab-state'
 import type { CapturedConsoleEntry, CapturedNetworkEntry, CaptureMessage } from '../types/messages'
 import type { ConsoleMessage } from '../types/console'
@@ -108,7 +109,7 @@ export function fromHAREntry(har: HAREntry): CapturedNetworkEntry {
 
 export async function readStoredEntries(tabId: number): Promise<StoredCapturedEntry[]> {
   const key = getStorageKeyForTab(tabId)
-  const result = (await chrome.storage.session.get(key)) as Record<string, unknown>
+  const result = (await browser.storage.session.get(key)) as Record<string, unknown>
   const raw = result[key]
 
   if (!Array.isArray(raw)) {
@@ -120,7 +121,7 @@ export async function readStoredEntries(tabId: number): Promise<StoredCapturedEn
 
 export async function writeStoredEntries(tabId: number, entries: StoredCapturedEntry[]): Promise<void> {
   const key = getStorageKeyForTab(tabId)
-  await chrome.storage.session.set({ [key]: entries })
+  await browser.storage.session.set({ [key]: entries })
 }
 
 export async function storeCapturedData(tabId: number, data: CaptureMessage): Promise<number> {
@@ -139,7 +140,7 @@ export async function storeCapturedData(tabId: number, data: CaptureMessage): Pr
 /**
  * Full per-tab replace driven by the DevTools panel snapshot.
  *
- * The panel captures console/network directly via chrome.devtools into React
+ * The panel captures console/network directly via browser.devtools into React
  * state (devtools mode) and never routes those captures through
  * {@link storeCapturedData}. This function lets the panel push its current
  * view into background storage so the popup (which reads exclusively from
@@ -215,7 +216,7 @@ export function getEntryKey(entry: StoredCapturedEntry): string {
 }
 
 export async function getTokenLimit(): Promise<number> {
-  const result = (await chrome.storage.local.get(LOGGY_PANEL_SETTINGS_STORAGE_KEY)) as Record<
+  const result = (await browser.storage.local.get(LOGGY_PANEL_SETTINGS_STORAGE_KEY)) as Record<
     string,
     unknown
   >

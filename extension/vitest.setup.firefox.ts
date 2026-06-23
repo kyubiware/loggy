@@ -1,16 +1,23 @@
 /**
- * Vitest setup for extension API mocks and testing-library matchers
+ * Vitest setup for Firefox extension API mocks
+ *
+ * Mirrors vitest.setup.ts (Chrome) but stubs __BROWSER__ = 'firefox' and
+ * assigns the mock to BOTH globalThis.browser AND globalThis.chrome.
+ *
+ * Firefox uses `chrome.*` in most contexts via the built-in compat shim and
+ * `browser.*` in DevTools panel context (moz-extension:// origin), so both
+ * globals must resolve to the same mock object for test harness compatibility.
  */
 
 import '@testing-library/jest-dom/vitest'
 import { beforeEach, vi } from 'vitest'
 import { createBaseChromeMock } from './vitest/mocks/base-chrome-mock'
 
-vi.stubGlobal('__BROWSER__', 'chrome')
+vi.stubGlobal('__BROWSER__', 'firefox')
 vi.stubGlobal('__BUILD_KEY__', 'test')
 vi.stubGlobal('__DEBUG__', false)
 
-// Create isolated base mock with full chrome surface coverage
+// Create isolated base mock with full extension API surface coverage
 const {
   chrome: baseChrome,
   mockEval,
@@ -20,14 +27,9 @@ const {
   resetStorage,
 } = createBaseChromeMock()
 
-// Assign chrome mock to global for test consumption
-globalThis.chrome = baseChrome as typeof chrome
-
-// `browser.*` (the native Firefox WebExtensions API) is structurally typed
-// as `typeof chrome` in firefox.ts. Aliasing the mock lets chrome.ts and
-// firefox.ts both load under the test harness. Firefox-specific runtime
-// behavior is not exercised in unit tests.
-;(globalThis as Record<string, unknown>).browser = globalThis.chrome
+// Assign the mock to both globals: chrome.* (compat shim) and browser.* (native
+// Firefox WebExtensions API). firefox.ts references both at runtime.
+;(globalThis as Record<string, unknown>).browser = globalThis.chrome = baseChrome
 
 // Export mock functions for use in tests
 export const mockChromeEval = mockEval

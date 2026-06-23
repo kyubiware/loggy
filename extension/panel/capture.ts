@@ -1,4 +1,4 @@
-import type { DevToolsNetworkRequest } from '../browser-apis/index.js'
+import type { BrowserPort, DevToolsNetworkRequest } from '../browser-apis/index.js'
 import { browser } from '../browser-apis/index.js'
 import type { ConsoleMessage } from '../types/console'
 import type { HAREntry } from '../types/har'
@@ -27,12 +27,9 @@ function filterToAPIRequests(entries: HAREntry[]): HAREntry[] {
 }
 
 export async function captureNetworkEntries(): Promise<HAREntry[]> {
-  return new Promise((resolve) => {
-    browser.devtools.network.getHAR((harLog) => {
-      const allEntries = harLog.entries || []
-      resolve(filterToAPIRequests(allEntries))
-    })
-  })
+  const harLog = await browser.devtools.network.getHAR()
+  const allEntries = harLog.entries || []
+  return filterToAPIRequests(allEntries)
 }
 
 export function startResponseBodyCapture(): void {
@@ -145,7 +142,7 @@ export async function clearCapturedConsoleLogs(): Promise<void> {
 export function notifyPanelOpened(tabId: number): void {
   try {
     const message: PanelOpenedMessage = { type: 'panel-opened', tabId }
-    chrome.runtime.sendMessage(message)
+    browser.runtime.sendMessage(message).catch(() => undefined)
   } catch {
     // Background not ready — ignore
   }
@@ -157,7 +154,7 @@ export function notifyPanelOpened(tabId: number): void {
 export function notifyPanelClosed(tabId: number): void {
   try {
     const message: PanelClosedMessage = { type: 'panel-closed', tabId }
-    chrome.runtime.sendMessage(message)
+    browser.runtime.sendMessage(message).catch(() => undefined)
   } catch {
     // Background not ready — ignore
   }
@@ -174,8 +171,8 @@ export function notifyPanelClosed(tabId: number): void {
  * The port name `loggy-panel` allows the background to identify panel
  * connections and detect panel close via `port.onDisconnect`.
  */
-export function connectPanelPort(tabId: number): chrome.runtime.Port {
-  const port = chrome.runtime.connect({ name: 'loggy-panel' })
+export function connectPanelPort(tabId: number): BrowserPort {
+  const port = browser.runtime.connect({ name: 'loggy-panel' })
   port.postMessage({ tabId })
   return port
 }

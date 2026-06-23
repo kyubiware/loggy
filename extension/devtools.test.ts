@@ -11,8 +11,13 @@ describe('devtools bootstrap', () => {
     mockEval.mockReset()
     mockOnNavigatedAddListener.mockReset()
 
+    // Preserve the vitest.setup.ts full chrome mock and merge devtools-specific
+    // overrides on top. chrome.ts accesses chrome.runtime.* at module-load time,
+    // so the full mock must remain intact.
     globalThis.chrome = {
+      ...globalThis.chrome,
       devtools: {
+        ...((globalThis.chrome as Record<string, unknown>)?.devtools as Record<string, unknown>),
         panels: {
           create: mockCreatePanel,
         },
@@ -20,6 +25,8 @@ describe('devtools bootstrap', () => {
           eval: mockEval,
         },
         network: {
+          ...(((globalThis.chrome as Record<string, unknown>)?.devtools as Record<string, unknown>)
+            ?.network as Record<string, unknown>),
           onNavigated: {
             addListener: mockOnNavigatedAddListener,
           },

@@ -2,6 +2,7 @@ import { StrictMode, useCallback, useEffect, useRef, useState } from 'react'
 import Markdown from 'react-markdown'
 import { createRoot } from 'react-dom/client'
 import remarkGfm from 'remark-gfm'
+import { browser } from '../browser-apis'
 import { writeClipboard } from '../utils/clipboard'
 import './index.css'
 
@@ -21,13 +22,17 @@ function Preview() {
       return
     }
 
-    chrome.runtime.sendMessage({ type: 'get-cached-preview', id }, (response: { markdown: string | null } | undefined) => {
-      if (!response?.markdown) {
+    browser.runtime.sendMessage<{ markdown: string | null }>({ type: 'get-cached-preview', id })
+      .then((response) => {
+        if (!response?.markdown) {
+          setError('No preview data found. Please try again from the popup.')
+          return
+        }
+        setMarkdown(response.markdown)
+      })
+      .catch(() => {
         setError('No preview data found. Please try again from the popup.')
-        return
-      }
-      setMarkdown(response.markdown)
-    })
+      })
   }, [])
 
   useEffect(

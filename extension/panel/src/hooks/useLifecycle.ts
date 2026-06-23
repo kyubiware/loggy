@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { browser } from '../../../browser-apis/index.js'
+import { type BrowserPort, browser } from '../../../browser-apis/index.js'
 import type { ConsoleMessage } from '../../../types/console'
 import type { HAREntry } from '../../../types/har'
 import type { LoggyState } from '../../../types/state'
@@ -91,10 +91,10 @@ export function useLifecycleEffect(
   networkClearCutoffMs: React.MutableRefObject<number | null>
 ): void {
   const previousUrlRef = useRef('')
-  const portRef = useRef<chrome.runtime.Port | null>(null)
+  const portRef = useRef<BrowserPort | null>(null)
   useEffect(() => {
     startResponseBodyCapture()
-    const inspectedTabId = chrome.devtools.inspectedWindow.tabId
+    const inspectedTabId = browser.devtools.inspectedWindow.tabId
     if (typeof inspectedTabId === 'number') {
       notifyPanelOpened(inspectedTabId)
       // Open a long-lived port so the background can detect panel close

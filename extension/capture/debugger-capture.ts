@@ -3,6 +3,8 @@ import type {
   CapturedConsoleEntry,
   CapturedNetworkEntry,
 } from '../types/messages'
+import { browser } from '../browser-apis'
+import type { Debuggee } from '../browser-apis/types'
 
 type CaptureCallback = (tabId: number, message: CaptureMessage) => void
 type OperationCallback = (error?: Error) => void
@@ -94,7 +96,7 @@ export function isAttached(tabId: number): boolean {
 }
 
 /**
- * Attaches chrome.debugger to a tab and enables Runtime + Network domains.
+ * Attaches the debugger to a tab and enables Runtime + Network domains.
  */
 export function attachToTab(tabId: number, callback?: OperationCallback): void {
   ensureListenersRegistered()
@@ -104,44 +106,48 @@ export function attachToTab(tabId: number, callback?: OperationCallback): void {
     return
   }
 
-  const debuggee: chrome.debugger.Debuggee = { tabId }
+  const debuggee: Debuggee = { tabId }
 
-  chrome.debugger.attach(debuggee, CDP_PROTOCOL_VERSION, () => {
-    const attachError = getDebuggerError('Failed to attach debugger', tabId)
+  doAttach(debuggee, tabId, callback)
+}
 
-    if (attachError) {
-      callback?.(attachError)
-      return
-    }
+async function doAttach(
+  debuggee: Debuggee,
+  tabId: number,
+  callback?: OperationCallback,
+): Promise<void> {
+  try {
+    await browser.debugger.attach(debuggee, CDP_PROTOCOL_VERSION)
+  } catch (error) {
+    callback?.(mapDebuggerError(error, 'Failed to attach debugger', tabId))
+    return
+  }
 
-    chrome.debugger.sendCommand(debuggee, 'Runtime.enable', undefined, () => {
-      const runtimeEnableError = getDebuggerError('Failed to enable Runtime domain', tabId)
+  try {
+    await browser.debugger.sendCommand(debuggee, 'Runtime.enable')
+  } catch (error) {
+    await detachAfterPartialAttach(tabId)
+    callback?.(mapDebuggerError(error, 'Failed to enable Runtime domain', tabId))
+    return
+  }
 
-      if (runtimeEnableError) {
-        detachAfterPartialAttach(tabId, () => callback?.(runtimeEnableError))
-        return
-      }
+  try {
+    await browser.debugger.sendCommand(debuggee, 'Network.enable')
+  } catch (error) {
+    await detachAfterPartialAttach(tabId)
+    callback?.(mapDebuggerError(error, 'Failed to enable Network domain', tabId))
+    return
+  }
 
-      chrome.debugger.sendCommand(debuggee, 'Network.enable', undefined, () => {
-        const networkEnableError = getDebuggerError('Failed to enable Network domain', tabId)
-
-        if (networkEnableError) {
-          detachAfterPartialAttach(tabId, () => callback?.(networkEnableError))
-          return
-        }
-
-        attachedTabs.add(tabId)
-        callback?.()
-      })
-    })
-  })
+  attachedTabs.add(tabId)
+  callback?.()
 }
 
 /**
- * Detaches chrome.debugger from a tab.
+ * Detaches the debugger from a tab.
  */
 export function detachFromTab(tabId: number, callback?: OperationCallback): void {
-  const debuggee: chrome.debugger.Debuggee = { tabId }
+  const debuggee: Debuggee = { tabId }
 
   if (!attachedTabs.has(tabId)) {
     clearTabState(tabId)
@@ -149,35 +155,41 @@ export function detachFromTab(tabId: number, callback?: OperationCallback): void
     return
   }
 
-  chrome.debugger.detach(debuggee, () => {
-    const detachError = getDebuggerError('Failed to detach debugger', tabId)
+  doDetach(debuggee, tabId, callback)
+}
 
+async function doDetach(
+  debuggee: Debuggee,
+  tabId: number,
+  callback?: OperationCallback,
+): Promise<void> {
+  try {
+    await browser.debugger.detach(debuggee)
+  } catch (error) {
     clearTabState(tabId)
-
-    if (
-      detachError &&
-      !isBenignDetachError(detachError.message)
-    ) {
-      callback?.(detachError)
+    const err = error instanceof Error ? error : new Error(String(error))
+    if (!isBenignDetachError(err.message)) {
+      callback?.(err)
       return
     }
+  }
 
-    callback?.()
-  })
+  clearTabState(tabId)
+  callback?.()
 }
 
 function ensureListenersRegistered(): void {
   if (listenersRegistered) return
 
-  chrome.debugger.onEvent.addListener(handleDebuggerEvent)
-  chrome.debugger.onDetach.addListener(handleDebuggerDetach)
+  browser.debugger.onEvent.addListener(handleDebuggerEvent)
+  browser.debugger.onDetach.addListener(handleDebuggerDetach)
   listenersRegistered = true
 }
 
 function handleDebuggerEvent(
-  source: chrome.debugger.Debuggee,
+  source: Debuggee,
   method: string,
-  params?: object
+  params?: object,
 ): void {
   const tabId = source.tabId
   if (typeof tabId !== 'number') return
@@ -204,7 +216,7 @@ function handleDebuggerEvent(
   }
 }
 
-function handleDebuggerDetach(source: chrome.debugger.Debuggee): void {
+function handleDebuggerDetach(source: Debuggee): void {
   const tabId = source.tabId
   if (typeof tabId !== 'number') return
   clearTabState(tabId)
@@ -242,7 +254,7 @@ function handleResponseReceived(tabId: number, params: NetworkResponseReceivedEv
     typeof params.response?.mimeType === 'string' ? params.response.mimeType : undefined
 }
 
-function handleLoadingFinished(tabId: number, params: NetworkLoadingFinishedEvent): void {
+async function handleLoadingFinished(tabId: number, params: NetworkLoadingFinishedEvent): Promise<void> {
   const requestId = params.requestId
   if (!requestId) return
 
@@ -250,59 +262,42 @@ function handleLoadingFinished(tabId: number, params: NetworkLoadingFinishedEven
   const pendingRequest = tabRequests.get(requestId)
   if (!pendingRequest) return
 
-  getResponseBody(tabId, requestId, (responseBody) => {
-    const duration = computeDurationMs(pendingRequest, params.timestamp)
+  const responseBody = await getResponseBody(tabId, requestId)
+  const duration = computeDurationMs(pendingRequest, params.timestamp)
 
-    const entry: CapturedNetworkEntry = {
-      timestamp: new Date(pendingRequest.requestStartedAt).toISOString(),
-      url: pendingRequest.url,
-      method: pendingRequest.method,
-      status: pendingRequest.status ?? 0,
-      requestHeaders: pendingRequest.requestHeaders,
-      requestBody: pendingRequest.requestBody,
-      responseHeaders: pendingRequest.responseHeaders,
-      responseBody,
-      contentType: pendingRequest.contentType,
-      duration,
-    }
+  const entry: CapturedNetworkEntry = {
+    timestamp: new Date(pendingRequest.requestStartedAt).toISOString(),
+    url: pendingRequest.url,
+    method: pendingRequest.method,
+    status: pendingRequest.status ?? 0,
+    requestHeaders: pendingRequest.requestHeaders,
+    requestBody: pendingRequest.requestBody,
+    responseHeaders: pendingRequest.responseHeaders,
+    responseBody,
+    contentType: pendingRequest.contentType,
+    duration,
+  }
 
-    emit(tabId, { source: 'network', payload: entry })
-    tabRequests.delete(requestId)
-  })
+  emit(tabId, { source: 'network', payload: entry })
+  tabRequests.delete(requestId)
 }
 
-function getResponseBody(
-  tabId: number,
-  requestId: string,
-  callback: (responseBody?: string) => void
-): void {
-  const debuggee: chrome.debugger.Debuggee = { tabId }
-  let settled = false
+async function getResponseBody(tabId: number, requestId: string): Promise<string | undefined> {
+  const debuggee: Debuggee = { tabId }
 
-  const timeoutId = setTimeout(() => {
-    if (settled) return
-    settled = true
-    callback(undefined)
-  }, RESPONSE_BODY_TIMEOUT_MS)
+  const timeoutPromise = new Promise<string | undefined>((resolve) => {
+    setTimeout(() => resolve(undefined), RESPONSE_BODY_TIMEOUT_MS)
+  })
 
-  chrome.debugger.sendCommand(
-    debuggee,
-    'Network.getResponseBody',
-    { requestId },
-    (result?: { body?: unknown; base64Encoded?: unknown }) => {
-      if (settled) return
-      settled = true
-      clearTimeout(timeoutId)
+  const bodyPromise: Promise<string | undefined> =
+    browser.debugger.sendCommand(debuggee, 'Network.getResponseBody', { requestId })
+      .then((result) => {
+        const body = (result as { body?: unknown })?.body
+        return typeof body === 'string' ? body : undefined
+      })
+      .catch(() => undefined)
 
-      if (chrome.runtime.lastError) {
-        callback(undefined)
-        return
-      }
-
-      const body = result?.body
-      callback(typeof body === 'string' ? body : undefined)
-    }
-  )
+  return Promise.race([bodyPromise, timeoutPromise])
 }
 
 function transformConsoleEvent(params: RuntimeConsoleAPICalledEvent): CapturedConsoleEntry {
@@ -357,11 +352,13 @@ function clearTabState(tabId: number): void {
   pendingRequestsByTab.delete(tabId)
 }
 
-function detachAfterPartialAttach(tabId: number, callback: () => void): void {
-  chrome.debugger.detach({ tabId }, () => {
-    clearTabState(tabId)
-    callback()
-  })
+async function detachAfterPartialAttach(tabId: number): Promise<void> {
+  try {
+    await browser.debugger.detach({ tabId })
+  } catch {
+    // Ignore detach errors during cleanup after a failed domain enable
+  }
+  clearTabState(tabId)
 }
 
 function emit(tabId: number, message: CaptureMessage): void {
@@ -423,9 +420,8 @@ function toIsoTimestamp(timestamp?: number): string {
   return new Date().toISOString()
 }
 
-function getDebuggerError(action: string, tabId: number): Error | null {
-  const message = chrome.runtime.lastError?.message
-  if (!message) return null
+function mapDebuggerError(error: unknown, action: string, tabId: number): Error {
+  const message = error instanceof Error ? error.message : String(error)
 
   if (message.includes('Another debugger is already attached')) {
     return new Error(`Debugger already attached by another client for tab ${tabId}`)

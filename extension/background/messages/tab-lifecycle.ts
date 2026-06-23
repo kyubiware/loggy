@@ -17,6 +17,8 @@ import {
 } from '../../capture/debugger-capture'
 import { getAutoServerSync, exportTabToServer } from '../server-sync'
 import { debugLog } from '../../utils/debug-logger'
+import { browser } from '../../browser-apis'
+import type { MessageSender } from '../../browser-apis/types'
 import {
   type StatusResponse,
   type TabCaptureState,
@@ -25,7 +27,7 @@ import {
 } from '../../types/messages'
 
 export async function handleGetStatus(
-  sender: chrome.runtime.MessageSender,
+  sender: MessageSender,
 ): Promise<StatusResponse | TabCaptureState | (TabCaptureState & { consent: ConsentState })> {
   const status = getActiveTabStatus()
 
@@ -35,7 +37,7 @@ export async function handleGetStatus(
   // Skip auto-activation if the user explicitly stopped logging for this tab.
   if (status.mode === 'inactive' && !explicitlyStoppedByTab.has(status.tabId) && status.tabId >= 0) {
     const tabId = status.tabId
-    const tab = await chrome.tabs.get(tabId).catch(() => null)
+    const tab = await browser.tabs.get(tabId).catch(() => null)
     const url = tab?.url
 
     if (url) {
@@ -70,15 +72,11 @@ export async function handleGetStatus(
           })
         }
 
-        try {
-          await chrome.tabs.sendMessage(tabId, {
-            type: 'consent-changed',
-            hasConsent: true,
-            captureMode,
-          })
-        } catch {
-          // Content script may not be loaded yet
-        }
+        await browser.tabs.sendMessage(tabId, {
+          type: 'consent-changed',
+          hasConsent: true,
+          captureMode,
+        }).catch(() => undefined)
 
         return getActiveTabStatus()
       }
@@ -89,7 +87,7 @@ export async function handleGetStatus(
 }
 
 export async function handleGetTabStatus(
-  sender: chrome.runtime.MessageSender,
+  sender: MessageSender,
 ): Promise<TabCaptureState> {
   const tabId = sender.tab?.id
   if (typeof tabId !== 'number') {
@@ -176,15 +174,11 @@ export async function handlePanelClosed(tabId: number): Promise<TabCaptureState>
       console.error('[Loggy] Failed to inject content scripts on panel close:', error)
     }
 
-    try {
-      await chrome.tabs.sendMessage(tabId, {
-        type: 'consent-changed',
-        hasConsent: true,
-        captureMode: 'content-script',
-      })
-    } catch {
-      // Content script may not be loaded yet
-    }
+    await browser.tabs.sendMessage(tabId, {
+      type: 'consent-changed',
+      hasConsent: true,
+      captureMode: 'content-script',
+    }).catch(() => undefined)
   }
 
   // Fire auto-sync export on panel close so that data captured during

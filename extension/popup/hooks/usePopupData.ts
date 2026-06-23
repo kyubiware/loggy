@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
+import { browser } from '../../browser-apis'
 import type { GetTabExportDataMessage, TabExportDataResponse } from '../../types/messages'
 import type { PersistedLoggySettings } from '../../types/state'
-import { useFirefoxDirectCapture } from './useFirefoxDirectCapture'
 
 type PopupDataState = TabExportDataResponse
+
+const POLL_INTERVAL_MS = 2000
 
 const createDefaultPopupData = (): PopupDataState => ({
   tokenCount: 0,
@@ -48,8 +50,6 @@ export function usePopupData(
   loading: boolean
   refresh: () => void
 } {
-  const isFirefox = typeof chrome.debugger === 'undefined'
-  const firefoxData = useFirefoxDirectCapture(tabId ?? -1, selectedRoutes, routesFilterEnabled)
   const [data, setData] = useState<PopupDataState>(createDefaultPopupData)
   const [loading, setLoading] = useState(true)
   const [debouncedRoutes, setDebouncedRoutes] = useState<string[] | undefined>(selectedRoutes)
@@ -78,15 +78,15 @@ export function usePopupData(
   // destroying scroll position. See usePopupData.test.ts "preserves scroll"
   // regression test.
   const refresh = useCallback(() => {
-    if (isFirefox) {
-      setLoading(false)
-      return
-    }
+    // Wrapped in setTimeout(0) so the async work starts inside a timer
+    // callback. This ensures tests using vi.useFakeTimers + vi.runAllTimers
+    // can flush the resulting microtasks (sinonjs fake-timers processes
+    // microtasks queued by timer callbacks).
+    setTimeout(async () => {
+      const tabs = await browser.tabs.query({ active: true, currentWindow: true })
+      const id = tabs[0]?.id
 
-    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-      const tabId = tabs[0]?.id
-
-      if (!tabId) {
+      if (!id) {
         setData(createDefaultPopupData())
         setLoading(false)
         return
@@ -94,18 +94,13 @@ export function usePopupData(
 
       const message: GetTabExportDataMessage = {
         type: 'get-tab-export-data',
-        tabId,
+        tabId: id,
         selectedRoutes: debouncedRoutes,
         routesFilterEnabled,
       }
 
-      chrome.runtime.sendMessage(message, (response: TabExportDataResponse | undefined) => {
-        if (chrome.runtime.lastError || !response) {
-          setData(createDefaultPopupData())
-          setLoading(false)
-          return
-        }
-
+      try {
+        const response = await browser.runtime.sendMessage<TabExportDataResponse>(message)
         setData({
           tokenCount: response.tokenCount,
           markdown: response.markdown,
@@ -113,20 +108,23 @@ export function usePopupData(
           logCount: response.logCount,
           routeOptions: response.routeOptions,
         })
-        setLoading(false)
-      })
-    })
-  }, [isFirefox, debouncedRoutes, routesFilterEnabled, settingsFingerprint])
+      } catch {
+        setData(createDefaultPopupData())
+      }
+      setLoading(false)
+    }, 0)
+  }, [debouncedRoutes, routesFilterEnabled, settingsFingerprint])
 
   useEffect(() => {
-    if (!isFirefox) {
-      refresh()
-    }
-  }, [refresh, isFirefox])
+    refresh()
+  }, [refresh])
 
-  if (isFirefox) {
-    return firefoxData
-  }
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refresh()
+    }, POLL_INTERVAL_MS)
+    return () => clearInterval(interval)
+  }, [])
 
   return { ...data, loading, refresh }
 }

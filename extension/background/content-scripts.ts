@@ -1,3 +1,6 @@
+import { browser } from '../browser-apis'
+import type { RegisteredContentScript } from '../browser-apis/types'
+
 declare const __BROWSER__: string
 
 const CONSOLE_BOOTSTRAP_FILE = 'chunks/console-bootstrap.js'
@@ -14,7 +17,7 @@ export async function registerAlwaysLogScriptsForHost(host: string): Promise<voi
   const mainId = `loggy-main-${safeHostId}`
   const matches = [`*://${host}/*`]
 
-  const scripts: chrome.scripting.RegisteredContentScript[] = [
+  const scripts: RegisteredContentScript[] = [
     {
       id: relayId,
       matches,
@@ -41,13 +44,13 @@ export async function registerAlwaysLogScriptsForHost(host: string): Promise<voi
   }
 
   try {
-    await chrome.scripting.unregisterContentScripts({ ids: scripts.map((script) => script.id) })
+    await browser.scripting.unregisterContentScripts({ ids: scripts.map((script) => script.id) })
   } catch {
     // Scripts may not exist yet
   }
 
   try {
-    await chrome.scripting.registerContentScripts(scripts)
+    await browser.scripting.registerContentScripts(scripts)
   } catch (error) {
     console.error(`[Loggy] Failed to register content scripts for host ${host}:`, error)
   }
@@ -65,7 +68,7 @@ export async function unregisterAlwaysLogScriptsForHost(host: string): Promise<v
   }
 
   try {
-    await chrome.scripting.unregisterContentScripts({ ids })
+    await browser.scripting.unregisterContentScripts({ ids })
   } catch {
     // Scripts may not be registered
   }
@@ -73,7 +76,7 @@ export async function unregisterAlwaysLogScriptsForHost(host: string): Promise<v
 
 export async function syncAllAlwaysLogScripts(hosts: string[]): Promise<void> {
   try {
-    const registered = await chrome.scripting.getRegisteredContentScripts()
+    const registered = await browser.scripting.getRegisteredContentScripts()
     const expectedIds = new Set<string>()
 
     for (const host of hosts) {
@@ -93,7 +96,7 @@ export async function syncAllAlwaysLogScripts(hosts: string[]): Promise<void> {
 
     if (orphanedIds.length > 0) {
       try {
-        await chrome.scripting.unregisterContentScripts({ ids: orphanedIds })
+        await browser.scripting.unregisterContentScripts({ ids: orphanedIds })
       } catch (error) {
         console.error('[Loggy] Failed to unregister orphaned content scripts:', error)
       }
@@ -119,7 +122,7 @@ export async function injectIntoTab(tabId: number): Promise<void> {
 
   for (const script of scripts) {
     try {
-      await chrome.scripting.executeScript({
+      await browser.scripting.executeScript({
         target: { tabId },
         files: [script.file],
         ...(script.world ? { world: script.world } : {}),

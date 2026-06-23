@@ -18,6 +18,8 @@ import {
   isAttached as isDebuggerAttached,
 } from '../../capture/debugger-capture'
 import { pollAndSyncTab } from '../polling'
+import { browser } from '../../browser-apis'
+import type { MessageSender } from '../../browser-apis/types'
 import type {
   CaptureMode,
   ConsentResponseMessage,
@@ -61,7 +63,7 @@ export async function handleToggleDebugger(tabId: number): Promise<TabCaptureSta
 
 export async function handleContentRelayReady(
   message: ContentRelayReadyMessage,
-  sender: chrome.runtime.MessageSender,
+  sender: MessageSender,
 ): Promise<
   (TabCaptureState & { consent: ConsentState }) | { ok: boolean }
 > {
@@ -177,15 +179,11 @@ export async function handleStartLogging(tabId: number): Promise<TabCaptureState
     console.error('[Loggy] Failed to inject content scripts:', error)
   }
 
-  try {
-    await chrome.tabs.sendMessage(tabId, {
-      type: 'consent-changed',
-      hasConsent: true,
-      captureMode: 'content-script',
-    })
-  } catch {
-    // Content script may not be loaded yet
-  }
+  await browser.tabs.sendMessage(tabId, {
+    type: 'consent-changed',
+    hasConsent: true,
+    captureMode: 'content-script',
+  }).catch(() => undefined)
 
   return updated
 }
@@ -204,15 +202,11 @@ export async function handleStopLogging(tabId: number): Promise<TabCaptureState>
   const updated = await setMode(tabId, 'inactive')
   updateIconForTab(tabId)
 
-  try {
-    await chrome.tabs.sendMessage(tabId, {
-      type: 'consent-changed',
-      hasConsent: false,
-      captureMode: 'none',
-    })
-  } catch {
-    // Content script may not be loaded
-  }
+  await browser.tabs.sendMessage(tabId, {
+    type: 'consent-changed',
+    hasConsent: false,
+    captureMode: 'none',
+  }).catch(() => undefined)
 
   // Opportunistic poll: sync any data that accumulated during
   // page load, without waiting for the next alarm cycle.
@@ -225,7 +219,7 @@ export async function handleStopLogging(tabId: number): Promise<TabCaptureState>
 
 export async function handleRequestConsent(
   message: RequestConsentMessage,
-  sender: chrome.runtime.MessageSender,
+  sender: MessageSender,
 ): Promise<ConsentState> {
   const tabId = message.tabId ?? sender.tab?.id
   if (typeof tabId !== 'number') {
@@ -235,7 +229,7 @@ export async function handleRequestConsent(
   let url = message.url || sender.tab?.url || ''
   if (!url) {
     try {
-      const tab = await chrome.tabs.get(tabId)
+      const tab = await browser.tabs.get(tabId)
       url = tab.url ?? ''
     } catch {
       // Unable to resolve URL — proceed with empty

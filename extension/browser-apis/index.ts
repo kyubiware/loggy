@@ -9,4 +9,4 @@ import { firefoxBrowser } from './firefox';
 
 export const browser: BrowserAPI = __BROWSER__ === 'firefox' ? firefoxBrowser : chromeBrowser;
 
-export type { BrowserAPI, DevToolsNetworkRequest } from './types';
+export type { BrowserAPI, BrowserPort, DevToolsNetworkRequest } from './types';

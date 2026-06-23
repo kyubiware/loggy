@@ -5,6 +5,8 @@
  * dead-eliminated — zero overhead.
  */
 
+import { browser } from '../browser-apis'
+
 declare const __DEBUG__: boolean
 
 type DebugCategory = 'message' | 'capture' | 'storage' | 'lifecycle' | 'perf'
@@ -25,7 +27,7 @@ let ringBuffer: DebugEntry[] = []
 
 function persistBuffer(): void {
   try {
-    void chrome.storage.session.set({ [STORAGE_KEY]: ringBuffer })
+    void browser.storage.session.set({ [STORAGE_KEY]: ringBuffer })
   } catch {
     // Storage may not be available in all contexts
   }
@@ -33,7 +35,7 @@ function persistBuffer(): void {
 
 async function restoreBuffer(): Promise<void> {
   try {
-    const result = (await chrome.storage.session.get(STORAGE_KEY)) as Record<string, unknown>
+    const result = (await browser.storage.session.get(STORAGE_KEY)) as Record<string, unknown>
     const stored = result[STORAGE_KEY]
     if (Array.isArray(stored)) {
       ringBuffer = stored as DebugEntry[]
@@ -50,7 +52,7 @@ export function getDebugEntries(): DebugEntry[] {
 export function clearDebugEntries(): void {
   ringBuffer = []
   try {
-    void chrome.storage.session.remove(STORAGE_KEY)
+    void browser.storage.session.remove(STORAGE_KEY)
   } catch {
     // Storage may not be available
   }

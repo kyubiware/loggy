@@ -1,3 +1,5 @@
+import { browser } from '../browser-apis/index.js'
+
 /**
  * Probes a loggy-serve endpoint by delegating to the background service worker.
  * Returns true only when the endpoint responds with JSON containing name: 'loggy-serve'.
@@ -7,22 +9,13 @@
  */
 export async function probeServer(url: string): Promise<boolean> {
   try {
-    return await new Promise<boolean>((resolve) => {
-      chrome.runtime.sendMessage(
-        { type: 'probe-server', url },
-        (response: { connected: boolean } | undefined) => {
-          if (chrome.runtime.lastError) {
-            console.error('[Loggy] Server probe failed:', chrome.runtime.lastError.message)
-            resolve(false)
-            return
-          }
-          const result = response?.connected ?? false
-          resolve(result)
-        }
-      )
+    const response = await browser.runtime.sendMessage<{ connected: boolean } | undefined>({
+      type: 'probe-server',
+      url,
     })
+    return response?.connected ?? false
   } catch (error) {
-    console.error('[Loggy:panel] probeServer caught error:', error)
+    console.error('[Loggy:panel] probeServer:', error)
     return false
   }
 }

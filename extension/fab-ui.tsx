@@ -4,10 +4,11 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import styles from './fab/fab.css?inline'
 import { FabContainer } from './fab/FabContainer'
+import { browser } from './browser-apis'
 
 async function isFirefoxAndroid(): Promise<boolean> {
   try {
-    const info = await chrome.runtime.getPlatformInfo()
+    const info = await browser.runtime.getPlatformInfo()
     return info.os === 'android'
   } catch {
     return false

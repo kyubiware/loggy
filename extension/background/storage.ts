@@ -1,3 +1,4 @@
+import { browser } from '../browser-apis'
 import type { AlwaysLogHost } from '../types/messages.ts'
 
 /**
@@ -5,27 +6,21 @@ import type { AlwaysLogHost } from '../types/messages.ts'
  */
 export const LOGGY_ALWAYS_LOG_HOSTS_KEY = 'loggy_always_log_hosts' as const
 
-function readAlwaysLogHosts(): Promise<AlwaysLogHost[]> {
-  return new Promise((resolve) => {
-    chrome.storage.local.get([LOGGY_ALWAYS_LOG_HOSTS_KEY], (result) => {
-      const storedHosts = result[LOGGY_ALWAYS_LOG_HOSTS_KEY]
+async function readAlwaysLogHosts(): Promise<AlwaysLogHost[]> {
+  const result = await browser.storage.local.get([LOGGY_ALWAYS_LOG_HOSTS_KEY])
+  const storedHosts = result[LOGGY_ALWAYS_LOG_HOSTS_KEY]
 
-      if (!Array.isArray(storedHosts)) {
-        resolve([])
-        return
-      }
+  if (!Array.isArray(storedHosts)) {
+    return []
+  }
 
-      resolve(
-        storedHosts.filter((entry): entry is AlwaysLogHost => {
-          return (
-            typeof entry === 'object' &&
-            entry !== null &&
-            typeof entry.host === 'string' &&
-            typeof entry.createdAt === 'number'
-          )
-        }),
-      )
-    })
+  return storedHosts.filter((entry): entry is AlwaysLogHost => {
+    return (
+      typeof entry === 'object' &&
+      entry !== null &&
+      typeof entry.host === 'string' &&
+      typeof entry.createdAt === 'number'
+    )
   })
 }
 
@@ -48,9 +43,7 @@ export async function addAlwaysLogHost(host: string): Promise<void> {
 
   const nextHosts: AlwaysLogHost[] = [...currentHosts, { host, createdAt: Date.now() }]
 
-  await new Promise<void>((resolve) => {
-    chrome.storage.local.set({ [LOGGY_ALWAYS_LOG_HOSTS_KEY]: nextHosts }, () => resolve())
-  })
+  await browser.storage.local.set({ [LOGGY_ALWAYS_LOG_HOSTS_KEY]: nextHosts })
 }
 
 /**
@@ -60,9 +53,7 @@ export async function removeAlwaysLogHost(host: string): Promise<void> {
   const currentHosts = await readAlwaysLogHosts()
   const nextHosts = currentHosts.filter((entry) => entry.host !== host)
 
-  await new Promise<void>((resolve) => {
-    chrome.storage.local.set({ [LOGGY_ALWAYS_LOG_HOSTS_KEY]: nextHosts }, () => resolve())
-  })
+  await browser.storage.local.set({ [LOGGY_ALWAYS_LOG_HOSTS_KEY]: nextHosts })
 }
 
 /**

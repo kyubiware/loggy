@@ -1,5 +1,8 @@
+declare const __BROWSER__: string
+
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { browser } from '../../browser-apis'
 import { probeServer } from '../../panel/server-probe'
 import { useRouteActions } from '../../shared/hooks/useRouteActions'
 import { useConsentActions } from '../../shared/hooks/useConsentActions'
@@ -54,32 +57,33 @@ export function usePopupActions() {
   }, [])
 
   useEffect(() => {
-    setIsFirefox(typeof chrome.debugger === 'undefined')
+    setIsFirefox(__BROWSER__ === 'firefox')
 
-    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-      const tabId = tabs[0]?.id
+    ;(async () => {
+      const tabs = await browser.tabs.query({ active: true, currentWindow: true })
+      const id = tabs[0]?.id
       const url = tabs[0]?.url ?? ''
-      setTabId(tabId)
+      setTabId(id)
       setTabUrl(url)
-      if (!tabId) {
+      if (!id) {
         setLoadingStatus(false)
         return
       }
 
-      chrome.runtime.sendMessage(
-        { type: 'get-status' },
-        (response: StatusResponse) => {
-          debugLog('message', 'popup', 'get-status response', {
-            mode: response?.mode,
-            tabId: response?.tabId,
-            logCount: response?.logCount,
-            connected: response?.connected,
-          })
-          setStatus(response)
-          setLoadingStatus(false)
-        },
-      )
-    })
+      try {
+        const response = await browser.runtime.sendMessage<StatusResponse>({ type: 'get-status' })
+        debugLog('message', 'popup', 'get-status response', {
+          mode: response?.mode,
+          tabId: response?.tabId,
+          logCount: response?.logCount,
+          connected: response?.connected,
+        })
+        setStatus(response)
+      } catch {
+        // Background worker not reachable — popup may have closed
+      }
+      setLoadingStatus(false)
+    })()
   }, [])
 
   // Probe server when network export is enabled or URL changes
@@ -120,23 +124,22 @@ export function usePopupActions() {
     }
   })()
 
-  const refreshStatus = useCallback(() => {
-    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-      const tabId = tabs[0]?.id
-      if (!tabId) return
-      chrome.runtime.sendMessage(
-        { type: 'get-status' },
-        (response: StatusResponse) => {
-          debugLog('message', 'popup', 'get-status response (refresh)', {
-            mode: response?.mode,
-            tabId: response?.tabId,
-            logCount: response?.logCount,
-            connected: response?.connected,
-          })
-          setStatus(response)
-        },
-      )
-    })
+  const refreshStatus = useCallback(async () => {
+    const tabs = await browser.tabs.query({ active: true, currentWindow: true })
+    const id = tabs[0]?.id
+    if (!id) return
+    try {
+      const response = await browser.runtime.sendMessage<StatusResponse>({ type: 'get-status' })
+      debugLog('message', 'popup', 'get-status response (refresh)', {
+        mode: response?.mode,
+        tabId: response?.tabId,
+        logCount: response?.logCount,
+        connected: response?.connected,
+      })
+      setStatus(response)
+    } catch {
+      // Refresh failed — background worker may be unavailable
+    }
   }, [])
 
   const { handleStartLogging, handleStopLogging, handleAlwaysLog } = useConsentActions({
@@ -152,48 +155,47 @@ export function usePopupActions() {
     autoIncludeRoutes: settings.autoIncludeRoutes,
   })
 
-  const handleToggleDebugger = () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, tabs => {
-      const tabId = tabs[0]?.id
-      if (!tabId) return
+  const handleToggleDebugger = async () => {
+    const tabs = await browser.tabs.query({ active: true, currentWindow: true })
+    const id = tabs[0]?.id
+    if (!id) return
 
-      chrome.runtime.sendMessage(
-        { type: 'toggle-debugger', tabId },
-        (response: StatusResponse) => {
-          debugLog('message', 'popup', 'toggle-debugger response', {
-            newMode: response?.mode,
-            tabId,
-            connected: response?.connected,
-          })
-          setStatus(response)
-        },
-      )
-    })
+    try {
+      const response = await browser.runtime.sendMessage<StatusResponse>({ type: 'toggle-debugger', tabId: id })
+      debugLog('message', 'popup', 'toggle-debugger response', {
+        newMode: response?.mode,
+        tabId: id,
+        connected: response?.connected,
+      })
+      setStatus(response)
+    } catch {
+      // Toggle failed
+    }
   }
 
-  const handleClearLogs = () => {
+  const handleClearLogs = async () => {
     if (!tabId) return
-    chrome.runtime.sendMessage(
-      { type: 'clear-tab-data', tabId },
-      () => {
-        refreshStatus()
-        refreshData()
-      },
-    )
+    try {
+      await browser.runtime.sendMessage({ type: 'clear-tab-data', tabId })
+      refreshStatus()
+      refreshData()
+    } catch {
+      // Clear failed
+    }
   }
 
-  const handlePreview = () => {
+  const handlePreview = async () => {
     if (!hasData || !markdown) return
-    chrome.runtime.sendMessage(
-      { type: 'cache-preview', markdown },
-      (response: { id: string }) => {
-        if (response?.id) {
-          chrome.tabs.create({
-            url: chrome.runtime.getURL(`preview/preview.html?id=${response.id}`),
-          })
-        }
-      },
-    )
+    try {
+      const response = await browser.runtime.sendMessage<{ id: string }>({ type: 'cache-preview', markdown })
+      if (response?.id) {
+        await browser.tabs.create({
+          url: browser.runtime.getURL(`preview/preview.html?id=${response.id}`),
+        })
+      }
+    } catch {
+      // Preview failed
+    }
   }
 
   const handleRetryConnection = () => {
@@ -208,7 +210,7 @@ export function usePopupActions() {
   const isLoggingActive = computeIsLoggingActive(status, isFirefox)
   const showConsentView = status?.mode === 'inactive'
 
-  // Firefox lacks chrome.debugger, so the header Play/Pause toggle
+  // Firefox lacks the debugger API, so the header Play/Pause toggle
   // routes through the consent-based start/stop flow instead of the
   // Chrome-only toggle-debugger path.
   const handleToggleLogging = () => {

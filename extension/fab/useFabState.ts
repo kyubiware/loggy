@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { browser } from '../browser-apis'
 import { writeClipboard } from '../utils/clipboard'
 
 import type {
@@ -52,16 +53,8 @@ export function useFabState(): { state: FabState; actions: FabActions } {
   const sendMessage = useCallback(
     <TResponse,>(
       message: GetTabStatusMessage | GetTabExportDataMessage | StartLoggingMessage | StopLoggingMessage,
-    ) =>
-      new Promise<TResponse | undefined>(resolve => {
-        chrome.runtime.sendMessage(message, (response: TResponse | undefined) => {
-          if (chrome.runtime.lastError) {
-            resolve(undefined)
-            return
-          }
-          resolve(response)
-        })
-      }),
+    ): Promise<TResponse | undefined> =>
+      browser.runtime.sendMessage<TResponse>(message).catch(() => undefined),
     [],
   )
 
@@ -104,10 +97,10 @@ export function useFabState(): { state: FabState; actions: FabActions } {
     const listener = (message: ConsentChangedMessage) => {
       handleConsentChanged(message)
     }
-    chrome.runtime.onMessage.addListener(listener)
+    browser.runtime.onMessage.addListener(listener)
 
     return () => {
-      chrome.runtime.onMessage.removeListener(listener)
+      browser.runtime.onMessage.removeListener(listener)
     }
   }, [fetchInitialStatus, handleConsentChanged])
 

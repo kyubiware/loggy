@@ -22,13 +22,14 @@ import {
   handleGetCachedPreview,
 } from './server-preview'
 import type { ControlMessageResult } from './types'
+import type { MessageSender } from '../../browser-apis/types'
 
 export { handleCaptureMessage } from './handle-capture'
 export type { ControlMessageResult } from './types'
 
 export async function handleControlMessage(
   message: CaptureControlMessage,
-  sender: chrome.runtime.MessageSender,
+  sender: MessageSender,
 ): Promise<ControlMessageResult> {
   switch (message.type) {
     case 'get-status':

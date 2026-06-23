@@ -1,6 +1,7 @@
 declare const __DEBUG__: boolean
 const DEBUG = __DEBUG__
 
+import { browser } from '../browser-apis'
 import { getOrCreateTabState, getStorageKeyForTab } from './tab-state'
 import { readStoredEntries, toConsoleMessage, toHAREntry } from './entry-storage'
 import type { StoredCapturedEntry } from './entry-storage'
@@ -31,7 +32,7 @@ export function normalizeBaseUrl(baseUrl: string): string {
 }
 
 export async function getServerUrl(): Promise<string> {
-  const result = (await chrome.storage.local.get(LOGGY_PANEL_SETTINGS_STORAGE_KEY)) as Record<
+  const result = (await browser.storage.local.get(LOGGY_PANEL_SETTINGS_STORAGE_KEY)) as Record<
     string,
     unknown
   >
@@ -47,7 +48,7 @@ export async function getServerUrl(): Promise<string> {
 }
 
 export async function getAutoServerSync(): Promise<boolean> {
-  const result = (await chrome.storage.local.get(LOGGY_PANEL_SETTINGS_STORAGE_KEY)) as Record<
+  const result = (await browser.storage.local.get(LOGGY_PANEL_SETTINGS_STORAGE_KEY)) as Record<
     string,
     unknown
   >
@@ -59,7 +60,7 @@ export async function getAutoServerSync(): Promise<boolean> {
 }
 
 export async function getPreserveLogs(): Promise<boolean> {
-  const result = (await chrome.storage.local.get(LOGGY_PANEL_SETTINGS_STORAGE_KEY)) as Record<
+  const result = (await browser.storage.local.get(LOGGY_PANEL_SETTINGS_STORAGE_KEY)) as Record<
     string,
     unknown
   >
@@ -70,7 +71,7 @@ export async function getPreserveLogs(): Promise<boolean> {
 
 export async function getTabUrl(tabId: number): Promise<string> {
   try {
-    const tab = await chrome.tabs.get(tabId)
+    const tab = await browser.tabs.get(tabId)
     return tab.url ?? 'unknown://tab'
   } catch {
     return 'unknown://tab'
@@ -107,7 +108,7 @@ export async function buildTabMarkdown(tabId: number): Promise<string> {
 
 export async function appendFailedExportBuffer(tabId: number, markdown: string): Promise<void> {
   const key = getFailedBufferStorageKeyForTab(tabId)
-  const result = (await chrome.storage.session.get(key)) as Record<string, unknown>
+  const result = (await browser.storage.session.get(key)) as Record<string, unknown>
   const existingRaw = result[key]
   const existing = Array.isArray(existingRaw)
     ? (existingRaw.filter((entry) => typeof entry === 'string') as string[])
@@ -117,12 +118,12 @@ export async function appendFailedExportBuffer(tabId: number, markdown: string):
   const next = deduped ? existing : [...existing, markdown]
   const bounded =
     next.length > MAX_FAILED_EXPORT_BUFFER ? next.slice(-MAX_FAILED_EXPORT_BUFFER) : next
-  await chrome.storage.session.set({ [key]: bounded })
+  await browser.storage.session.set({ [key]: bounded })
 }
 
 export async function clearFailedExportBuffer(tabId: number): Promise<void> {
   const key = getFailedBufferStorageKeyForTab(tabId)
-  await chrome.storage.session.remove(key)
+  await browser.storage.session.remove(key)
 }
 
 export async function pushToServer(url: string, markdown: string): Promise<boolean> {

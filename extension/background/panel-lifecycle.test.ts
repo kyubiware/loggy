@@ -12,6 +12,7 @@
  */
 
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { MessageSender } from '../browser-apis/types'
 
 // --- Mock dependencies (vi.mock is hoisted before everything) ---
 
@@ -48,7 +49,7 @@ vi.mock('../shared/export', () => ({
 
 type MessageListener = (
   message: unknown,
-  sender: chrome.runtime.MessageSender,
+  sender: MessageSender,
   sendResponse: (response?: unknown) => void,
 ) => boolean | void
 
@@ -93,7 +94,13 @@ beforeAll(() => {
         onUpdatedListeners.push(fn)
       }),
     },
-    sendMessage: vi.fn(),
+    sendMessage: vi.fn((_tabId: number, _message: unknown, callback?: (response: unknown) => void) => {
+      if (callback) {
+        callback({})
+        return
+      }
+      return Promise.resolve({})
+    }),
     get: vi.fn(() => Promise.resolve({ id: 1, url: 'http://localhost:3000' })),
   }
 
@@ -116,14 +123,14 @@ beforeAll(() => {
 
 function sendControlMessage<T>(
   message: Record<string, unknown>,
-  sender: Partial<chrome.runtime.MessageSender> = {},
+  sender: Partial<MessageSender> = {},
 ): Promise<T> {
   return new Promise((resolve) => {
     const listener = onMessageListeners[0]
     if (!listener) {
       throw new Error('No onMessage listener registered')
     }
-    listener(message, sender as chrome.runtime.MessageSender, (response: unknown) => {
+    listener(message, sender as MessageSender, (response: unknown) => {
       resolve(response as T)
     })
   })
@@ -194,6 +201,7 @@ describe('panel-closed handler', () => {
         hasConsent: true,
         captureMode: 'content-script',
       }),
+      expect.any(Function),
     )
   })
 })

@@ -33,5 +33,8 @@ jobs:
       - name: Test
         run: npm test
 
+      - name: Run extension tests (Firefox)
+        run: npm run test:run:firefox --workspace=extension
+
       - name: Build
         run: npm run build

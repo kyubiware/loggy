@@ -11,6 +11,7 @@
  */
 
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import type { MessageSender } from '../browser-apis/types'
 
 // Stub build-time globals before any module imports them
 vi.stubGlobal('__BROWSER__', 'chrome')
@@ -72,7 +73,7 @@ vi.mock('../shared/export', () => ({
 
 type MessageListener = (
   message: unknown,
-  sender: chrome.runtime.MessageSender,
+  sender: MessageSender,
   sendResponse: (response?: unknown) => void,
 ) => boolean | void
 
@@ -163,7 +164,13 @@ beforeAll(() => {
         onUpdatedListeners.push(fn)
       }),
     },
-    sendMessage: vi.fn(),
+    sendMessage: vi.fn((_tabId: number, _message: unknown, callback?: (response: unknown) => void) => {
+      if (callback) {
+        callback({})
+        return
+      }
+      return Promise.resolve({})
+    }),
     get: vi.fn(() => {
       if (!mockActiveTab) {
         return Promise.resolve({})
@@ -195,14 +202,14 @@ afterAll(() => {
 
 function sendMessage<T>(
   message: Record<string, unknown>,
-  sender: Partial<chrome.runtime.MessageSender> = {},
+  sender: Partial<MessageSender> = {},
 ): Promise<T> {
   return new Promise((resolve) => {
     const listener = onMessageListeners[0]
     if (!listener) {
       throw new Error('No onMessage listener registered')
     }
-    listener(message, sender as chrome.runtime.MessageSender, (response: unknown) => {
+    listener(message, sender as MessageSender, (response: unknown) => {
       resolve(response as T)
     })
   })
