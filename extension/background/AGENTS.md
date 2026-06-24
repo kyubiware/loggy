@@ -4,17 +4,20 @@
 Central coordinator for tab state, capture orchestration, consent evaluation, markdown building, and server export. Manifest V3 service worker split across focused modules.
 
 ## STRUCTURE
-- `index.ts`: Entry point. Initialization, chrome.* event listener wiring (~260 lines).
+- `index.ts`: Entry point. Initialization, chrome.* event listener wiring (~431 lines).
 - `messages/`: Per-domain message handlers split out by concern. **See `messages/AGENTS.md`.**
   - `index.ts` — `handleControlMessage` router + `isCaptureMessage` / `isControlMessage` type guards
+  - `types.ts` — `ControlMessageResult` union (all handler return shapes)
+  - `handle-capture.ts` — `handleCaptureMessage` ingests raw console/network entries (no `type` field)
   - `tab-lifecycle.ts`, `capture-control.ts`, `always-log.ts`, `export-handlers.ts`, `server-preview.ts`
-- `tab-state.ts`: Per-tab state management. Maps, CRUD, persistence, icon updates.
+- `tab-state.ts`: Per-tab state management. Maps, CRUD, persistence, icon updates, `debuggerResumeTimersByTab`.
 - `consent.ts`: Consent evaluation (local pages, always-log hosts, per-session).
 - `entry-storage.ts`: Capture entry storage, conversion (console/HAR), token-limited purging.
 - `server-sync.ts`: Server communication, export pipeline, failed export buffer, settings helpers.
 - `polling.ts`: Background auto-sync polling (MAIN world array polling, fingerprinting).
 - `content-scripts.ts`: Content script injection and always-log script management.
 - `storage.ts`: Always-log host persistence (chrome.storage.local).
+- Tests (colocated, no separate dir): `always-log-get-status.test.ts`, `auto-sync.test.ts` (largest, ~774 lines), `clear-tab-data.test.ts`, `content-scripts.test.ts`, `panel-lifecycle.test.ts`, `stop-logging.test.ts` (~481 lines). No colocated tests in `messages/` except `export-handlers.test.ts`.
 
 ## WHERE TO LOOK
 | Task | Location |
@@ -43,7 +46,7 @@ messages → tab-state, consent, entry-storage, server-sync, polling
 index → all of the above + content-scripts, storage, debugger-capture
 ```
 
-`messages/` itself is internally layered: `index.ts` (router) → per-domain handlers (`tab-lifecycle`, `capture-control`, `always-log`, `export-handlers`, `server-preview`) → background core (`tab-state`, `entry-storage`, `server-sync`).
+`messages/` itself is internally layered: `index.ts` (router) → per-domain handlers (`tab-lifecycle`, `capture-control`, `always-log`, `export-handlers`, `server-preview`, `handle-capture`) → background core (`tab-state`, `entry-storage`, `server-sync`).
 
 ## CONVENTIONS
 - Per-tab state (`TabCaptureState`) tracks mode, logCount, connected flag.

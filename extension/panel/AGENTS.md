@@ -30,12 +30,20 @@ panel/
 │   │   ├── Toast.tsx
 │   │   └── *.test.tsx        # Component tests
 │   └── hooks/
-│       ├── useCaptureData.ts      # Console/network capture logic
-│       ├── useLoggyActions.ts     # Action dispatcher + toggle configs
-│       ├── useConsentCheck.ts     # Consent state management
-│       ├── useFilteredData.ts     # Filtered data hook
-│       ├── useToast.ts            # Toast state management
-│       └── useCaptureData.test.tsx
+│       ├── useCaptureData.ts      # Console/network capture logic (largest hook)
+│       ├── useCaptureActions.ts   # refresh / clear / copy / export dispatchers
+│       ├── useConsentCheck.ts     # Consent state → ConsentView rendering
+│       ├── useDataActions.ts      # console/network data mutation actions
+│       ├── useDataCapabilities.ts # Feature flags from settings
+│       ├── useFilterActions.ts    # Console regex + network include/exclude setters
+│       ├── useFilteredData.ts     # Derived FilteredPanelData via getFilteredPanelData()
+│       ├── useLifecycle.ts        # preservedConsoleLogsRef, panel-opened/closed
+│       ├── useLoggyActions.ts     # Centralized action dispatcher + TOGGLE_CONFIGS
+│       ├── usePersistence.ts      # Persist/restore PersistedLoggySettings
+│       ├── useAutoSync.ts         # Auto server-sync polling when serverConnected
+│       ├── useServerProbe.ts      # Periodic server availability (Firefox-safe)
+│       ├── useToast.ts            # Toast state (auto-dismiss 3s)
+│       └── *.test.tsx             # useCaptureData.test.tsx (~965 lines, largest)
 ├── capture.ts              # Console & network capture (DevTools API)
 ├── preview.ts              # Preview rendering helpers
 ├── server-probe.ts         # Server availability check

@@ -10,21 +10,36 @@ React application providing the DevTools panel UI with filter controls, data pre
 src/
 ├── main.tsx                 # React entry point
 ├── App.tsx                  # App shell (LoggyProvider + AppContent)
-├── AppContent.tsx           # Main layout orchestration
-├── LoggyContext.tsx         # Three-context provider
+├── AppContent.tsx           # Main layout orchestration (PreviewPane + Toast)
+├── LoggyContext.tsx         # Three-context provider (LoggyProvider)
 ├── LoggyContext.types.ts    # Context value type definitions
+├── actions.ts               # Pure action handlers (clear, copy)
 ├── index.css                # Global styles (Tailwind)
-├── components/              # UI components
-│   ├── controls/            # Filter controls and action buttons
-│   ├── PreviewPane.tsx      # Console/network data preview
-│   ├── Toast.tsx            # Toast notification
-│   ├── ConsentView.tsx      # Consent gating UI
+├── App.test.tsx             # App shell tests
+├── AppContent.test.tsx      # Layout tests
+├── App.layout.test.tsx      # Layout integration tests
+├── LoggyContext.test.tsx    # Three-context provider tests (~450 lines)
+├── components/              # UI components (see components/AGENTS.md)
+│   ├── ConsentView.tsx       # Consent gating UI
+│   ├── PreviewPane.tsx       # Console/network data preview
+│   ├── PreviewContent.tsx    # Preview body
+│   ├── PreviewPaneHeader.tsx
+│   ├── Tabs.tsx / TabButton.tsx
+│   ├── RoutesList.tsx
+│   ├── FilterToggle.tsx
+│   ├── StatsSummary.tsx
+│   ├── TokenCountBadge.tsx
+│   ├── ServerConnection.tsx
+│   ├── ExportOptionToggles.tsx
+│   ├── Toast.tsx
+│   ├── preview-line-parser.tsx
+│   ├── controls/             # Filter controls (see components/controls/AGENTS.md)
 │   └── *.test.tsx
-└── hooks/
-    ├── useCaptureData.ts    # Background messaging
-    ├── useLoggyActions.ts   # Action creators
-    ├── useConsentCheck.ts   # Consent state → ConsentView
-    ├── useToast.ts          # Toast state
+└── hooks/                    # React hooks (see hooks/AGENTS.md)
+    ├── useCaptureData.ts     # Background messaging
+    ├── useLoggyActions.ts    # Action creators
+    ├── useConsentCheck.ts    # Consent state → ConsentView
+    ├── useToast.ts           # Toast state
     └── *.test.tsx
 ```
 

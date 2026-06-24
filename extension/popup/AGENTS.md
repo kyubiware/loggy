@@ -6,12 +6,30 @@ Small React application providing status display and debugger toggles for the Lo
 ## STRUCTURE
 ```
 popup/
-├── components/      # Popup-specific UI components (AlwaysLogHosts, FiltersAccordion, SettingsAccordion, ...)
-├── hooks/           # usePopupActions, usePopupData, usePopupExport, usePopupSettings, isLoggingActive
-├── Popup.tsx        # Root React component
-├── popup.html       # HTML entry point (loaded by manifest)
-├── constants.ts     # UI-specific constants and limits
-└── index.css        # Popup-specific styles
+├── Popup.tsx             # Root React component
+├── popup.html            # HTML entry point (loaded by manifest)
+├── constants.ts          # UI-specific constants and limits
+├── index.css             # Popup-specific styles
+├── components/           # Popup-specific UI components (see popup/components/AGENTS.md)
+│   ├── PopupHeader.tsx           # Header with logo + capture mode
+│   ├── EnhancedCaptureToggle.tsx # Main start/stop logging button
+│   ├── CaptureModeDisplay.tsx    # Current capture mode indicator
+│   ├── AlwaysLogHosts.tsx        # Always-log host list management
+│   ├── FiltersAccordion.tsx      # Collapsible filters section
+│   ├── FilterInput.tsx           # Console/network filter inputs
+│   ├── RoutesList.tsx            # Route selection (tri-state per pattern)
+│   ├── ServerConnection.tsx      # Server URL + connection status
+│   ├── SettingsAccordion.tsx     # Collapsible settings section
+│   ├── ExportOptionCheckboxes.tsx # Export option toggles (bodies, agent context, etc.)
+│   ├── TokenCountAndCopy.tsx     # Token estimate + copy-to-clipboard
+│   └── *.test.tsx
+└── hooks/                # Popup business logic (see popup/hooks/AGENTS.md)
+    ├── usePopupActions.ts        # Action dispatch; branches on __BROWSER__
+    ├── usePopupData.ts           # Status polling + settingsFingerprint re-fetch
+    ├── usePopupExport.ts         # Export actions
+    ├── usePopupSettings.ts       # Settings state
+    ├── isLoggingActive.ts        # Logging active predicate
+    └── *.test.ts
 ```
 
 ## WHERE TO LOOK
@@ -40,5 +58,7 @@ popup/
 ## NOTES
 - Entry flow: `popup.html` -> `Popup.tsx`
 - Simpler than the panel; no dual React/vanilla architecture
-- **Two data paths, one bundle**: Chrome path (`usePopupData`) messages the background; Firefox path (`useFirefoxDirectCapture`) reads the MAIN world directly because the popup runs in a different process. The branch lives in `usePopupActions` keyed on `typeof chrome.debugger === 'undefined'` (the only sanctioned runtime browser check — see memory 222).
+- **Two data paths, one bundle, branched on `__BROWSER__` (NOT runtime detection — see project memory 222)**: Chrome path (`usePopupData`) messages the background; Firefox path uses MAIN world direct read. The branch lives in `usePopupActions` keyed on the build-time `__BROWSER__` define.
+- **Unified `usePopupData` hook** (Chrome path): sends `get-tab-export-data` runtime message, polls every 2s (`POLL_INTERVAL_MS=2000`), and uses `settingsFingerprint` (JSON.stringify of `EXPORT_RELEVANT_SETTING_KEYS` values) to trigger re-fetch only when export-relevant settings change. Background `handleGetTabExportData` reads all settings fresh from `chrome.storage.local` each call. Both paths converge on `getFilteredPanelData`.
 - Chrome-only debugger features must be conditionally rendered
+- See popup/components/AGENTS.md and popup/hooks/AGENTS.md for subdirectory detail

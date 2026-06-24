@@ -1,7 +1,7 @@
 # LOGGY PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-06-22
-**Commit:** 1bea433
+**Generated:** 2026-06-24
+**Commit:** d9311e7
 **Branch:** main
 
 ## OVERVIEW
@@ -14,7 +14,7 @@ Monorepo with npm workspaces containing a Chrome/Firefox DevTools extension (cap
 │   ├── background/    # Service worker (index.ts + messages/ sub-module)
 │   ├── capture/       # Debugger-based capture logic (Chrome-only)
 │   ├── panel/         # DevTools panel UI (React + three-context provider)
-│   ├── popup/         # Extension popup UI (React) — branches on chrome.debugger availability
+│   ├── popup/         # Extension popup UI (React) — branches on build-time __BROWSER__ define
 │   ├── fab/           # Firefox Android floating action button (shadow DOM React)
 │   ├── preview/       # Standalone Markdown preview page
 │   ├── shared/        # Cross-UI components, hooks, and export pipeline
@@ -39,7 +39,7 @@ Monorepo with npm workspaces containing a Chrome/Firefox DevTools extension (cap
 | Extension code | extension/ | See extension/AGENTS.md |
 | Service worker | extension/background/ | Tab state, capture coordination, storage. Handlers in background/messages/ |
 | Panel UI | extension/panel/ | DevTools panel (React three-context). Hooks in panel/src/hooks/ |
-| Popup UI | extension/popup/ | Status display, debugger toggle. Two data paths: Chrome vs Firefox direct capture |
+| Popup UI | extension/popup/ | Status display, debugger toggle. Two data paths branched on `__BROWSER__` (Chrome vs Firefox direct capture). See popup/AGENTS.md |
 | FAB UI (Firefox Android) | extension/fab/ | Floating action button on-page |
 | Preview page | extension/preview/ | Standalone Markdown preview |
 | Shared layer | extension/shared/ | Cross-UI components + hooks + export pipeline. See shared/AGENTS.md |
@@ -72,11 +72,14 @@ Monorepo with npm workspaces containing a Chrome/Firefox DevTools extension (cap
 # Build extension (Chrome + Firefox)
 npm run build
 
-# Dev server (Chrome HMR)
+# Dev server (Chrome + Firefox concurrent)
 npm run dev
 
-# Run all tests
+# Run all tests (extension + serve)
 npm test
+
+# Full CI gate (typecheck + lint + browser-apis lint + tests Chrome/Firefox + serve tests)
+npm run ci
 
 # Lint (Biome)
 npm run lint
@@ -85,11 +88,19 @@ npm run lint:fix
 # Format
 npm run format
 
-# Type check (extension)
-npx tsc --noEmit
+# Type check
+npm run typecheck --workspace=extension   # extension (tsc --noEmit)
+npm run typecheck --workspace=serve        # serve
+
+# Browser-API boundary lint (CI-enforced — chrome.* only in browser-apis/)
+npm run lint:browser-apis --workspace=extension
 
 # Publish serve to npm
 npm run publish:serve
+
+# Release scripts (repo-level)
+npm run release:extension:patch | minor | major
+npm run release:serve:patch | minor | major
 ```
 
 ## NOTES
@@ -100,5 +111,7 @@ npm run publish:serve
 - Console capture uses MAIN world content script to patch page globals (non-standard)
 - Cross-browser builds via Vite `__BROWSER__` define + separate manifest variants
 - Firefox signing/publishing via web-ext CLI
-- Husky git hooks for pre-commit linting/formatting
+- Husky pre-commit hook lives in `extension/.husky/pre-commit` (runs biome check); not at repo root
 - Server runs interactive TUI by default (readline raw-mode), `--quiet` for plain logs
+- Server auto-detects Tailscale HTTPS — provisions TLS certs when tailnet HTTPS is enabled
+- Test coverage gaps (no colocated tests): `extension/capture/`, `extension/fab/`, `extension/content-relay.ts`, `extension/devtools.mjs`, `extension/background/messages/` (only `export-handlers.test.ts`)

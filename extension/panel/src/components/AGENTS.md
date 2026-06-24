@@ -8,16 +8,29 @@ React UI components for filter controls, data preview, and notifications.
 ## STRUCTURE
 ```
 components/
-├── controls/              # Filter controls and action buttons
-│   ├── FiltersPanel.tsx   # Orchestrates filter controls
-│   ├── ActionButtons.tsx  # Icon-based action buttons
-│   ├── OptionCheckbox.tsx # Minimal checkbox component
-│   ├── FilterControl.tsx   # Composite control with label, toggle, input
-│   └── useDebouncedFilter.ts # Debouncing hook for inputs
-├── PreviewPane.tsx        # Console/network data preview tables
-├── Toast.tsx              # Toast notification component
-├── *.test.tsx            # Component tests
-└── App.layout.test.tsx    # Layout tests
+├── controls/                  # Filter controls and action buttons (see controls/AGENTS.md)
+│   ├── FiltersPanel.tsx        # Orchestrates filter controls
+│   ├── ActionButtons.tsx       # Icon-based action buttons
+│   ├── OptionCheckbox.tsx      # Minimal checkbox component
+│   ├── FilterControl.tsx       # Composite control with label, toggle, input
+│   └── useDebouncedFilter.ts   # Debouncing hook for inputs
+├── ConsentView.tsx            # Consent gating UI
+├── PreviewPane.tsx            # Console/network data preview tables (largest component)
+├── PreviewContent.tsx         # Preview body renderer
+├── PreviewPaneHeader.tsx      # Preview header with tabs + stats
+├── Tabs.tsx / TabButton.tsx   # Console/Network tab switcher
+├── RoutesList.tsx             # Route selection list (tri-state per normalized pattern)
+├── FilterToggle.tsx           # Generic filter toggle primitive
+├── StatsSummary.tsx           # Log count summary
+├── TokenCountBadge.tsx        # Export token estimate badge
+├── ServerConnection.tsx       # Server URL + connection state
+├── ExportOptionToggles.tsx    # Export option checkboxes (bodies, agent context, etc.)
+├── Toast.tsx                  # Notification component (3s auto-dismiss)
+├── preview-line-parser.tsx    # Pure helpers for parsing preview lines
+├── PreviewPane.test.tsx       # (~570 lines)
+├── PreviewContent.test.tsx    # (~474 lines)
+├── ActionsAndToast.test.tsx   # Integration tests
+└── App.layout.test.tsx        # Layout tests
 ```
 
 ## WHERE TO LOOK
@@ -27,11 +40,19 @@ components/
 | Filter UI | controls/FiltersPanel.tsx | Orchestration of filter controls |
 | Action buttons | controls/ActionButtons.tsx | Refresh, Copy buttons |
 | Filter control | controls/FilterControl.tsx | Composite with label, toggle, input |
-| Option checkbox | controls/OptionCheckbox.tsx | Minimal checkbox component |
-| Debounced input | controls/useDebouncedFilter.ts | 300ms debounce hook |
+| Option checkbox | controls/OptionCheckbox.tsx | Minimal, test-driven |
+| Debounced input | controls/useDebouncedFilter.ts | 300ms with refs |
 | Console table | PreviewPane.tsx | Console log display |
 | Network table | PreviewPane.tsx | HAR entry display |
-| Toast UI | Toast.tsx | Notification component |
+| Preview body | PreviewContent.tsx | Rendered/raw markdown body |
+| Preview header | PreviewPaneHeader.tsx | Tabs + stats summary |
+| Console/Network tabs | Tabs.tsx + TabButton.tsx | Tab switcher |
+| Route selection | RoutesList.tsx | Tri-state per normalized pattern (see utils/route-patterns.ts) |
+| Server config | ServerConnection.tsx | URL + connection state |
+| Export option checkboxes | ExportOptionToggles.tsx | Bodies, agent context, etc. |
+| Stats summary | StatsSummary.tsx | Log counts |
+| Token estimate | TokenCountBadge.tsx | Export size badge |
+| Toast UI | Toast.tsx | 3s auto-dismiss |
 
 ## CONVENTIONS
 
