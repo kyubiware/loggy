@@ -60,10 +60,26 @@ export const chromeBrowser: BrowserAPI = {
     },
     getURL: (path) => chrome.runtime.getURL(path),
     connect: (connectInfo) => chrome.runtime.connect(connectInfo),
-    onMessage: eventSink(chrome.runtime.onMessage),
-    onConnect: eventSink(chrome.runtime.onConnect),
-    onInstalled: eventSink(chrome.runtime.onInstalled),
-    onStartup: eventSink(chrome.runtime.onStartup),
+    // Lazy getters: `chromeBrowser` is a top-level export, so any value
+    // assigned here is evaluated at module-load time. The browser-apis
+    // barrel (`index.ts`) statically imports BOTH chrome.ts and firefox.ts;
+    // Rollup then leaks orphan property accesses as side-effecting
+    // statements into the wrong-browser bundle (e.g. `browser.runtime.X`
+    // lands in the Chrome bundle). Deferring every `eventSink(global.X)` to
+    // a getter means module load is side-effect-free regardless of which
+    // contexts the bundle ships to, and the EventSink contract is unchanged.
+    get onMessage() {
+      return eventSink(chrome.runtime.onMessage);
+    },
+    get onConnect() {
+      return eventSink(chrome.runtime.onConnect);
+    },
+    get onInstalled() {
+      return eventSink(chrome.runtime.onInstalled);
+    },
+    get onStartup() {
+      return eventSink(chrome.runtime.onStartup);
+    },
     getPlatformInfo: () => chrome.runtime.getPlatformInfo(),
   },
   storage: {
@@ -94,7 +110,9 @@ export const chromeBrowser: BrowserAPI = {
       set: (items) => chrome.storage.session.set(items),
       remove: (keys) => chrome.storage.session.remove(keys as never),
     },
-    onChanged: eventSink(chrome.storage.onChanged),
+    get onChanged() {
+      return eventSink(chrome.storage.onChanged);
+    },
   },
   tabs: {
     query: (queryInfo) => chrome.tabs.query(queryInfo),
@@ -105,9 +123,15 @@ export const chromeBrowser: BrowserAPI = {
         (msg, cb) => chrome.tabs.sendMessage(tabId, msg, cb),
         message,
       ),
-    onRemoved: eventSink(chrome.tabs.onRemoved),
-    onActivated: eventSink(chrome.tabs.onActivated),
-    onUpdated: eventSink(chrome.tabs.onUpdated),
+    get onRemoved() {
+      return eventSink(chrome.tabs.onRemoved);
+    },
+    get onActivated() {
+      return eventSink(chrome.tabs.onActivated);
+    },
+    get onUpdated() {
+      return eventSink(chrome.tabs.onUpdated);
+    },
   },
   debugger: {
     attach: (target, protocolVersion) => chrome.debugger.attach(target, protocolVersion),
@@ -116,8 +140,12 @@ export const chromeBrowser: BrowserAPI = {
     // is narrower than our `object`; narrow via cast at the call boundary.
     sendCommand: (target, method, params) =>
       chrome.debugger.sendCommand(target, method, params as { [key: string]: unknown } | undefined),
-    onEvent: eventSink(chrome.debugger.onEvent),
-    onDetach: eventSink(chrome.debugger.onDetach),
+    get onEvent() {
+      return eventSink(chrome.debugger.onEvent);
+    },
+    get onDetach() {
+      return eventSink(chrome.debugger.onDetach);
+    },
   },
   scripting: {
     executeScript: (injection) => chrome.scripting.executeScript(injection),
@@ -136,7 +164,9 @@ export const chromeBrowser: BrowserAPI = {
       return chrome.alarms.create(nameOrInfo as chrome.alarms.AlarmCreateInfo);
     }) as BrowserAPI['alarms']['create'],
     clear: (name) => chrome.alarms.clear(name),
-    onAlarm: eventSink(chrome.alarms.onAlarm),
+    get onAlarm() {
+      return eventSink(chrome.alarms.onAlarm);
+    },
   },
   devtools: {
     inspectedWindow: {
@@ -166,12 +196,23 @@ export const chromeBrowser: BrowserAPI = {
             resolve(harLog as unknown as HARLog);
           });
         }),
-      onRequestFinished: eventSink(
-        chrome.devtools.network.onRequestFinished as chrome.events.Event<
-          (request: DevToolsNetworkRequest) => void
-        >,
-      ),
-      onNavigated: eventSink(chrome.devtools.network.onNavigated),
+      // Lazy getters: `chromeBrowser` is a top-level export, so the object
+      // literal is evaluated at module-load time. The popup (and other non-
+      // DevTools) contexts have no `chrome.devtools` — eager access here
+      // crashes those bundles with "Cannot read properties of undefined
+      // (reading 'network')". Deferring to a getter keeps the EventSink
+      // contract while ensuring `chrome.devtools.network` is only touched
+      // in contexts where it exists (the DevTools panel).
+      get onRequestFinished() {
+        return eventSink(
+          chrome.devtools.network.onRequestFinished as chrome.events.Event<
+            (request: DevToolsNetworkRequest) => void
+          >,
+        );
+      },
+      get onNavigated() {
+        return eventSink(chrome.devtools.network.onNavigated);
+      },
     },
     panels: {
       // @types/chrome only declares the callback overload; wrap into a Promise.

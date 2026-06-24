@@ -106,10 +106,28 @@ export const firefoxBrowser: BrowserAPI = {
     },
     getURL: (path) => browser.runtime.getURL(path),
     connect: (connectInfo) => browser.runtime.connect(connectInfo),
-    onMessage: eventSink(browser.runtime.onMessage),
-    onConnect: eventSink(browser.runtime.onConnect),
-    onInstalled: eventSink(browser.runtime.onInstalled),
-    onStartup: eventSink(browser.runtime.onStartup),
+    // Lazy getters: `firefoxBrowser` is a top-level export, so any value
+    // assigned here is evaluated at module-load time. The browser-apis
+    // barrel (`index.ts`) statically imports BOTH chrome.ts and firefox.ts;
+    // Rollup then leaks orphan property accesses as side-effecting
+    // statements into the wrong-browser bundle (e.g. `browser.runtime.X`
+    // lands in the Chrome bundle, where the Firefox `browser` global does
+    // not exist, and crashes with "browser is not defined"). Deferring every
+    // `eventSink(global.X)` to a getter means module load is side-effect-free
+    // regardless of which context the bundle ships to. The EventSink
+    // contract is unchanged.
+    get onMessage() {
+      return eventSink(browser.runtime.onMessage);
+    },
+    get onConnect() {
+      return eventSink(browser.runtime.onConnect);
+    },
+    get onInstalled() {
+      return eventSink(browser.runtime.onInstalled);
+    },
+    get onStartup() {
+      return eventSink(browser.runtime.onStartup);
+    },
     getPlatformInfo: () => browser.runtime.getPlatformInfo(),
   },
   storage: {
@@ -137,7 +155,9 @@ export const firefoxBrowser: BrowserAPI = {
       set: (items) => browser.storage.session.set(items),
       remove: (keys) => browser.storage.session.remove(keys as never),
     },
-    onChanged: eventSink(browser.storage.onChanged),
+    get onChanged() {
+      return eventSink(browser.storage.onChanged);
+    },
   },
   tabs: {
     // Use browser.tabs (native Firefox) — chrome.tabs is undefined in the
@@ -150,9 +170,15 @@ export const firefoxBrowser: BrowserAPI = {
         (msg, cb) => browser.tabs.sendMessage(tabId, msg as never, cb),
         message,
       ),
-    onRemoved: eventSink(browser.tabs.onRemoved),
-    onActivated: eventSink(browser.tabs.onActivated),
-    onUpdated: eventSink(browser.tabs.onUpdated),
+    get onRemoved() {
+      return eventSink(browser.tabs.onRemoved);
+    },
+    get onActivated() {
+      return eventSink(browser.tabs.onActivated);
+    },
+    get onUpdated() {
+      return eventSink(browser.tabs.onUpdated);
+    },
   },
   debugger: debuggerUnsupported,
   scripting: {
@@ -173,7 +199,9 @@ export const firefoxBrowser: BrowserAPI = {
       return browser.alarms.create(nameOrInfo as chrome.alarms.AlarmCreateInfo);
     }) as BrowserAPI['alarms']['create'],
     clear: (name) => browser.alarms.clear(name),
-    onAlarm: eventSink(browser.alarms.onAlarm),
+    get onAlarm() {
+      return eventSink(browser.alarms.onAlarm);
+    },
   },
   devtools: {
     inspectedWindow: {
@@ -200,12 +228,22 @@ export const firefoxBrowser: BrowserAPI = {
             resolve(harLog as unknown as HARLog);
           });
         }),
-      onRequestFinished: eventSink(
-        browser.devtools.network.onRequestFinished as chrome.events.Event<
-          (request: DevToolsNetworkRequest) => void
-        >,
-      ),
-      onNavigated: eventSink(browser.devtools.network.onNavigated),
+      // Lazy getters: `firefoxBrowser` is a top-level export, so the object
+      // literal is evaluated at module-load time. Non-DevTools contexts
+      // (popup, FAB, content scripts) have no `browser.devtools` — eager
+      // access crashes those bundles. Deferring to a getter keeps the
+      // EventSink contract while ensuring `browser.devtools.network` is
+      // only touched in the DevTools panel context where it exists.
+      get onRequestFinished() {
+        return eventSink(
+          browser.devtools.network.onRequestFinished as chrome.events.Event<
+            (request: DevToolsNetworkRequest) => void
+          >,
+        );
+      },
+      get onNavigated() {
+        return eventSink(browser.devtools.network.onNavigated);
+      },
     },
     panels: {
       create: (title, iconPath, pagePath) =>
