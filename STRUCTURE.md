@@ -24,7 +24,7 @@ loggy/
 **`extension/`:**
 - Purpose: Hold the browser extension implementation.
 - Contains: Background logic, capture code, React panel UI, popup UI, FAB UI (Firefox Android), preview page, shared utilities, shared React components and hooks, browser API adapters, scripts, manifests, tests, and build outputs.
-- Key files: `extension/background/index.ts`, `extension/content-relay.ts`, `extension/panel/src/main.tsx`, `extension/panel/server-probe.ts`, `extension/popup/main.tsx`, `extension/preview/preview.tsx`, `extension/fab-ui.tsx`, `extension/utils/formatter.ts`, `extension/utils/clipboard.ts`, `extension/manifest.json`, `extension/package.json`
+- Key files: `extension/background/index.ts`, `extension/background/messages/`, `extension/content-relay.ts`, `extension/panel/src/main.tsx`, `extension/panel/server-probe.ts`, `extension/popup/main.tsx`, `extension/preview/preview.tsx`, `extension/fab-ui.tsx`, `extension/utils/formatter.ts`, `extension/utils/clipboard.ts`, `extension/utils/debug-logger.ts`, `extension/manifest.json`, `extension/devtools.mjs`, `extension/package.json`
 
 **`serve/`:**
 - Purpose: Hold the companion Fastify server.
@@ -39,7 +39,7 @@ loggy/
 **`extension/scripts/`:**
 - Purpose: Hold build, packaging, AMO metadata, and Firefox release automation.
 - Contains: Release orchestration, manifest rewrite helpers, Firefox bundle sanitizers, AMO description updates, and screenshot upload scripts.
-- Key files: `extension/scripts/release.cjs`, `extension/scripts/update-amo-description.cjs`, `extension/scripts/upload-amo-screenshots.cjs`, `extension/scripts/amo-description.md`
+- Key files: `extension/scripts/release.cjs`, `extension/scripts/update-amo-description.cjs`, `extension/scripts/upload-amo-screenshots.cjs`, `extension/scripts/check-browser-apis-boundary.cjs`, `extension/scripts/browser-apis-allowlist.json`, `extension/scripts/amo-description.md`
 
 **`extension/fab/`:**
 - Purpose: Hold the floating action button UI injected as a content script on Firefox Android.
@@ -51,15 +51,25 @@ loggy/
 - Contains: React root, rendered/raw toggle, cached markdown retrieval via runtime messaging.
 - Key files: `extension/preview/preview.tsx`, `extension/preview/preview.html`, `extension/preview/index.css`
 
+**`extension/background/messages/`:**
+- Purpose: Hold the per-domain message handler modules dispatched by the background router.
+- Contains: Router (`index.ts`), type guards, type union (`types.ts`), and handlers: tab-lifecycle, capture-control, always-log, export-handlers, server-preview, handle-capture.
+- Key files: `extension/background/messages/index.ts`, `extension/background/messages/types.ts`, `extension/background/messages/export-handlers.ts`, `extension/background/messages/server-preview.ts`
+
 **`extension/shared/components/`:**
 - Purpose: Hold reusable React UI primitives used across panel, popup, and FAB layers.
-- Contains: Icon button toggles, tooltips, option checkboxes.
-- Key files: `extension/shared/components/IconButtonToggle.tsx`, `extension/shared/components/Tooltip.tsx`, `extension/shared/components/OptionCheckbox.tsx`
+- Contains: Consent gate view, icon button toggles, tooltips, option checkboxes.
+- Key files: `extension/shared/components/ConsentView.tsx`, `extension/shared/components/IconButtonToggle.tsx`, `extension/shared/components/Tooltip.tsx`, `extension/shared/components/OptionCheckbox.tsx`
 
 **`extension/shared/hooks/`:**
 - Purpose: Hold reusable React hooks shared across extension UIs.
-- Contains: Debounced filter input hook.
-- Key files: `extension/shared/hooks/useDebouncedFilter.ts`
+- Contains: Debounced filter input hook, consent action handler, route action handler.
+- Key files: `extension/shared/hooks/useDebouncedFilter.ts`, `extension/shared/hooks/useConsentActions.ts`, `extension/shared/hooks/useRouteActions.ts`
+
+**`extension/vitest/mocks/`:**
+- Purpose: Hold shared test mock factories used across vitest configurations.
+- Contains: Base chrome mock factory covering all surfaces defined in browser-apis/types.ts.
+- Key files: `extension/vitest/mocks/base-chrome-mock.ts`
 
 **`.husky/`:**
 - Purpose: Store Git hooks.
@@ -79,8 +89,8 @@ loggy/
 ## Key File Locations
 
 **Entry Points:** `extension/background/index.ts`, `extension/panel/src/main.tsx`, `extension/popup/main.tsx`, `serve/src/cli.ts` — start capture, render the extension UIs, and launch the server CLI.
-**Configuration:** `package.json`, `extension/package.json`, `serve/package.json`, `extension/manifest.json`, `extension/manifest-chrome.json`, `extension/manifest-firefox.json`, `extension/vite.config.ts` — define workspace scripts, package metadata, and build behavior.
-**Core Logic:** `extension/utils/`, `extension/background/`, `extension/shared/`, `extension/browser-apis/`, `extension/content-relay.ts`, `serve/src/server.ts`, `serve/src/tailscale.ts` — implement filtering, formatting, message routing, export sync, browser abstraction, content relay, HTTP handling, and HTTPS setup.
+**Configuration:** `package.json`, `extension/package.json`, `serve/package.json`, `extension/manifest.json`, `extension/manifest-chrome.json`, `extension/manifest-firefox.json`, `extension/vite.config.ts`, `extension/vitest.config.ts`, `extension/vitest.config.firefox.ts` — define workspace scripts, package metadata, build behavior, and test setup.
+**Core Logic:** `extension/utils/`, `extension/background/`, `extension/background/messages/`, `extension/shared/`, `extension/browser-apis/`, `extension/content-relay.ts`, `serve/src/server.ts`, `serve/src/tailscale.ts` — implement filtering, formatting, message routing, export sync, browser abstraction, content relay, HTTP handling, HTTPS setup, and CI-enforced `chrome.*` boundary enforcement (`extension/scripts/check-browser-apis-boundary.cjs`).
 **Release Automation:** `extension/scripts/` — keep release orchestration, Firefox post-processing, AMO description updates, screenshot upload, and packaging helpers together.
 **Tests:** `extension/**/*.test.ts`, `extension/**/*.test.tsx`, `serve/tests/server.test.ts` — keep tests near the code they verify.
 
@@ -92,6 +102,7 @@ loggy/
 ## Where to Add New Code
 
 **New capture logic:** `extension/capture/` or `extension/background/` — keep browser capture orchestration in the extension runtime.
+**New background message handler:** `extension/background/messages/` — add a per-domain handler file and register its message type in `messages/index.ts` router, update `CaptureControlMessage` union in `types/messages.ts`, and `ControlMessageResult` union in `messages/types.ts`.
 **New panel UI:** `extension/panel/src/components/` or `extension/panel/src/hooks/` — keep React UI and hooks under the panel workspace.
 **New popup UI:** `extension/popup/` — keep compact browser-action controls and popup state together.
 **New shared utility:** `extension/utils/` — keep pure formatting helpers here.

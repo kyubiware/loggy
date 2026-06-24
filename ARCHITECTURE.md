@@ -13,9 +13,9 @@
 
 **Extension runtime:**
 - Purpose: Capture console and network data, manage per-tab state, build exports, and handle server sync.
-- Location: `extension/background/index.ts`, `extension/background/content-scripts.ts`, `extension/background/storage.ts`, `extension/capture/debugger-capture.ts`, `extension/types/`, `extension/utils/`, `extension/shared/`
-- Contains: Service worker orchestration, capture adapters, shared types, filtering, pruning, Markdown formatting, server sync, clipboard fallback, and state persistence.
-- Depends on: `chrome.*` APIs, `extension/browser-apis/`, `extension/types/`, `extension/utils/`, `extension/shared/`
+- Location: `extension/background/index.ts`, `extension/background/messages/`, `extension/background/content-scripts.ts`, `extension/background/storage.ts`, `extension/capture/debugger-capture.ts`, `extension/types/`, `extension/utils/`, `extension/shared/`
+- Contains: Service worker orchestration, message router (`messages/index.ts`) dispatching to per-domain handlers (`tab-lifecycle`, `capture-control`, `always-log`, `export-handlers`, `server-preview`, `handle-capture`), capture adapters, shared types, filtering, pruning, Markdown formatting, server sync, clipboard fallback, and state persistence.
+- Depends on: `chrome.*` APIs, `extension/browser-apis/`, `extension/types/`, `extension/utils/`, `extension/shared/`, `extension/background/tab-state.ts`, `extension/background/entry-storage.ts`, `extension/background/server-sync.ts`
 - Used by: `extension/panel/src/main.tsx`, `extension/popup/main.tsx`, `extension/fab-ui.tsx`, `extension/preview/preview.tsx`, content scripts, and browser events.
 
 **Panel UI:**
@@ -48,8 +48,8 @@
 
 **Shared layer:**
 - Purpose: Provide shared Markdown export pipeline, server communication helpers, and reusable React primitives (components and hooks) used across panel, popup, and FAB UIs.
-- Location: `extension/shared/export.ts`, `extension/shared/server-export.ts`, `extension/shared/components/`, `extension/shared/hooks/`, `extension/utils/formatter.ts`, `extension/utils/filtered-data.ts`, `extension/utils/pruner.ts`, `extension/utils/clipboard.ts`
-- Contains: Data filtering, redaction, pruning, Markdown formatting, clipboard write with fallback, server push helpers (`pushToServer` via background delegation), shared React components (`IconButtonToggle`, `Tooltip`, `OptionCheckbox`), shared hooks (`useDebouncedFilter`).
+- Location: `extension/shared/export.ts`, `extension/shared/server-export.ts`, `extension/shared/components/`, `extension/shared/hooks/`, `extension/utils/formatter.ts`, `extension/utils/filtered-data.ts`, `extension/utils/pruner.ts`, `extension/utils/clipboard.ts`, `extension/utils/debug-logger.ts`
+- Contains: Data filtering, redaction, pruning, Markdown formatting, clipboard write with fallback, server push helpers (`pushToServer` via background delegation), shared React components (`ConsentView`, `IconButtonToggle`, `Tooltip`, `OptionCheckbox`), shared hooks (`useDebouncedFilter`, `useConsentActions`, `useRouteActions`), and debug logging infrastructure (`debugLog` ring buffer).
 - Depends on: `extension/browser-apis/`, `extension/types/`, `extension/utils/`
 - Used by: Background runtime, panel actions, popup actions, FAB, and preview page.
 
@@ -62,14 +62,14 @@
 
 **Release automation:**
 - Purpose: Build, package, sign, and publish Firefox extension artifacts; manage AMO metadata and screenshots.
-- Location: `extension/scripts/release.cjs`, `extension/scripts/bump-version.cjs`, `extension/scripts/prepare-source-zip.cjs`, `extension/scripts/fix-devtools-module.cjs`, `extension/scripts/rewrite-firefox-manifest.cjs`, `extension/scripts/sanitize-firefox-bundle.cjs`, `extension/scripts/fix-content-scripts.cjs`, `extension/scripts/update-amo-description.cjs`, `extension/scripts/upload-amo-screenshots.cjs`, `extension/scripts/screenshot-firefox.cjs`, `extension/scripts/amo-description.md`, `.github/workflows/release-extension.yml`, `.github/workflows/sign-extension.yml`, `.github/workflows/bump-version.yml`
+- Location: `extension/scripts/release.cjs`, `extension/scripts/bump-version.cjs`, `extension/scripts/prepare-source-zip.cjs`, `extension/scripts/fix-devtools-module.cjs`, `extension/scripts/rewrite-firefox-manifest.cjs`, `extension/scripts/sanitize-firefox-bundle.cjs`, `extension/scripts/fix-content-scripts.cjs`, `extension/scripts/update-amo-description.cjs`, `extension/scripts/upload-amo-screenshots.cjs`, `extension/scripts/screenshot-firefox.cjs`, `extension/scripts/screenshot-chrome.cjs`, `extension/scripts/install-chrome.cjs`, `extension/scripts/install-firefox.cjs`, `extension/scripts/pack-chrome-crx.cjs`, `extension/scripts/check-browser-apis-boundary.cjs`, `extension/scripts/amo-description.md`, `extension/scripts/browser-apis-allowlist.json`, `.github/workflows/release-extension.yml`, `.github/workflows/sign-extension.yml`, `.github/workflows/bump-version.yml`, `.github/workflows/ci.yml`, `.github/workflows/screenshots.yml`, `.github/workflows/release-serve.yml`
 - Contains: Release orchestration, Firefox bundle post-processing, AMO description updates, screenshot upload and diffing, Firefox-specific screenshot capture, and version bump automation.
 - Depends on: `web-ext`, `dotenv-cli`, GitHub Actions, and Firefox build outputs.
 - Used by: Firefox release, signing, AMO publishing, and versioning workflows.
 
 **Workspace configuration:**
 - Purpose: Define package boundaries, scripts, and shared project rules.
-- Location: `package.json`, `extension/package.json`, `serve/package.json`, `extension/manifest.json`, `extension/manifest-chrome.json`, `extension/manifest-firefox.json`, `extension/vite.config.ts`, `extension/vitest.setup.ts`, `extension/scripts/`
+- Location: `package.json`, `extension/package.json`, `serve/package.json`, `extension/manifest.json`, `extension/manifest-chrome.json`, `extension/manifest-firefox.json`, `extension/vite.config.ts`, `extension/vitest.config.ts`, `extension/vitest.config.firefox.ts`, `extension/vitest.setup.ts`, `extension/vitest.setup.firefox.ts`, `extension/vitest/mocks/base-chrome-mock.ts`, `extension/scripts/`
 - Contains: npm workspaces, build/test/lint scripts, package metadata, extension manifests, Vite bundler config, test setup with Chrome API mocks, and release helper scripts.
 - Depends on: npm workspaces and Node.js 24+.
 - Used by: Development commands and release pipelines.
@@ -78,10 +78,11 @@
 
 **Capture to export pipeline:**
 
-1. Browser events enter the background service worker through runtime messages and capture callbacks — `extension/background/index.ts`
-2. The background worker persists tab state, stores captured entries in session storage, and syncs consent/state to the extension UI — `extension/background/index.ts`, `extension/background/storage.ts`
-3. The shared export pipeline filters, prunes, and formats console/network data into Markdown — `extension/shared/export.ts`, `extension/shared/server-export.ts`, `extension/utils/filtered-data.ts`, `extension/utils/pruner.ts`, `extension/utils/formatter.ts`
-4. The panel, popup, FAB, and preview page render the current state, filters, and export actions from shared contexts and hooks — `extension/panel/src/main.tsx`, `extension/panel/src/LoggyContext.tsx`, `extension/popup/main.tsx`, `extension/popup/components/`, `extension/fab/FabContainer.tsx`, `extension/preview/preview.tsx`
+1. Browser events enter the background service worker through runtime messages and capture callbacks — `extension/background/index.ts` wires `chrome.*` event listeners and delegates to `extension/background/messages/index.ts`
+2. The message router (`extension/background/messages/index.ts`) dispatches each incoming `CaptureControlMessage` type to its handler: `tab-lifecycle.ts`, `capture-control.ts`, `always-log.ts`, `export-handlers.ts`, `server-preview.ts`, or `handle-capture.ts` — `extension/background/messages/`
+3. The background worker persists tab state, stores captured entries in session storage, and syncs consent/state to the extension UI — `extension/background/index.ts`, `extension/background/storage.ts`, `extension/background/tab-state.ts`, `extension/background/entry-storage.ts`
+4. The shared export pipeline filters, prunes, and formats console/network data into Markdown — `extension/shared/export.ts`, `extension/shared/server-export.ts`, `extension/utils/filtered-data.ts`, `extension/utils/pruner.ts`, `extension/utils/formatter.ts`
+5. The panel, popup, FAB, and preview page render the current state, filters, and export actions from shared contexts and hooks — `extension/panel/src/main.tsx`, `extension/panel/src/LoggyContext.tsx`, `extension/popup/main.tsx`, `extension/popup/components/`, `extension/fab/FabContainer.tsx`, `extension/preview/preview.tsx`
 
 **Server export pipeline:**
 
@@ -105,8 +106,8 @@
 
 **`BrowserAPI`:**
 - Purpose: Abstract browser-specific API differences behind a build-time selection.
-- Location: `extension/browser-apis/types.ts`, `extension/browser-apis/index.ts`, `extension/browser-apis/chrome.ts`, `extension/browser-apis/firefox.ts`
-- Pattern: Interface plus platform-specific implementations.
+- Location: `extension/browser-apis/types.ts`, `extension/browser-apis/index.ts`, `extension/browser-apis/chrome.ts`, `extension/browser-apis/firefox.ts`, `extension/browser-apis/SURFACE_AUDIT.md`, `extension/scripts/check-browser-apis-boundary.cjs`, `extension/scripts/browser-apis-allowlist.json`
+- Pattern: Interface plus platform-specific implementations, with CI-enforced boundary checking that prevents `chrome.*` imports outside `browser-apis/`.
 
 **`CaptureMode`:**
 - Purpose: Define the four capture modes (content-script, debugger, devtools, inactive).
@@ -122,6 +123,11 @@
 - Purpose: Define typed control messages (probe, push, toggle, consent, status) and response payloads.
 - Location: `extension/types/control.ts`, `extension/types/responses.ts`
 - Pattern: Discriminated union interfaces with `type` field for message routing.
+
+**`ControlMessageResult`:**
+- Purpose: Define the union of all possible return shapes from background message handlers.
+- Location: `extension/background/messages/types.ts`
+- Pattern: Discriminated union imported by `handleControlMessage` router for type-safe dispatch; extend the union when adding a new message type.
 
 **`ExportData` / `formatMarkdown`:**
 - Purpose: Represent captured page data and generate the final Markdown document.
@@ -196,7 +202,7 @@
 
 ## Cross-Cutting Concerns
 
-**Logging:** Use `console.error()` for CLI startup failures. Use `[Loggy]` prefixed logs for critical errors in background runtime. Use `[Loggy:bg]`, `[Loggy:panel]`, and `[Loggy:popup]` prefixed logs for debug output in respective extension contexts.
+**Logging:** Use `console.error()` for CLI startup failures. Use `debugLog()` from `extension/utils/debug-logger.ts` for debugging/tracing — writes to a ring buffer included in Markdown exports when `__DEBUG__` is true. Use `[Loggy]` prefixed logs for critical errors in background runtime. Use `[Loggy:bg]`, `[Loggy:panel]`, and `[Loggy:popup]` prefixed logs for debug output in respective extension contexts.
 **Caching:** Use in-memory maps for tab state and preview caching, plus `chrome.storage.session` for per-tab persistence and `chrome.storage.local` for settings.
 **Storage:** Use `chrome.storage.session` and `chrome.storage.local` in the extension; use in-memory state and optional file writes in `serve/`.
 **Clipboard:** Use `writeClipboard()` from `extension/utils/clipboard.ts` — async Clipboard API with hidden-textarea fallback — in panel, popup, FAB, and preview layers.
