@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-05-13
-**Commit:** d96265d
+**Generated:** 2026-06-22
+**Commit:** 1bea433
 **Branch:** main
 
 ## OVERVIEW
@@ -11,7 +11,14 @@ Chrome/Firefox DevTools extension capturing Console & Network logs as Markdown f
 ```
 ./
 ├── background/         # Service worker (tab state, capture modes, storage, server export)
-│   └── index.ts        # 738 lines - message routing, capture coordination, chrome.storage
+│   ├── index.ts        # Entry: chrome.* listener wiring, initialization
+│   └── messages/       # Per-domain message handlers (see background/messages/AGENTS.md)
+│       ├── index.ts            # handleControlMessage router + type guards
+│       ├── tab-lifecycle.ts    # status / panel-opened / panel-closed
+│       ├── capture-control.ts  # toggle-debugger / start-stop / consent
+│       ├── always-log.ts       # add/remove/get always-log hosts
+│       ├── export-handlers.ts  # get-tab-export-data / sync-panel-data / clear
+│       └── server-preview.ts   # probe-server / push-to-server / preview cache
 ├── capture/            # Debugger-based capture logic
 │   └── debugger-capture.ts  # Chrome-only debugger protocol capture
 ├── panel/              # DevTools panel UI (React UI + panel-specific business logic)
@@ -50,18 +57,27 @@ Chrome/Firefox DevTools extension capturing Console & Network logs as Markdown f
 │   ├── types.ts        # BrowserAPI interface
 │   ├── chrome.ts       # chrome.* API wrappers
 │   └── firefox.ts      # browser.* API wrappers
-├── shared/             # Shared React components and panel/export helpers
-│   ├── components/     # IconButtonToggle, Tooltip (used by panel/ and popup/)
-│   ├── hooks/          # useDebouncedFilter shared hook
-│   ├── export.ts       # buildExportMarkdown, triggerServerExport
-│   └── server-export.ts # pushToServer helper
-├── scripts/            # Build/release scripts (CJS)
-│   ├── release.cjs           # Full release pipeline
-│   ├── bump-version.cjs      # Version bumping
-│   ├── prepare-source-zip.cjs # Source archive
-│   ├── fix-content-scripts.cjs # Post-build content script fixup
-│   ├── rewrite-firefox-manifest.cjs # Firefox manifest rewrite
-│   └── sanitize-firefox-bundle.cjs # Firefox bundle sanitization
+├── shared/             # Cross-UI components, hooks, export pipeline (see shared/AGENTS.md)
+│   ├── components/     # ConsentView, IconButtonToggle, Tooltip, OptionCheckbox
+│   ├── hooks/          # useDebouncedFilter, useRouteActions, useConsentActions
+│   ├── export.ts       # buildExportMarkdown, triggerServerExport (fire-and-forget)
+│   └── server-export.ts # pushToServer (delegates fetch to background — Firefox CORS)
+├── scripts/            # Build/release scripts (CJS) — see scripts/AGENTS.md
+│   ├── release.cjs                    # Full release pipeline
+│   ├── bump-version.cjs               # Version bumping (4 files)
+│   ├── prepare-source-zip.cjs         # Source archive
+│   ├── fix-devtools-module.cjs        # Firefox: rebundle devtools/panel as IIFE
+│   ├── rewrite-firefox-manifest.cjs   # No-op stub (pipeline compat)
+│   ├── sanitize-firefox-bundle.cjs    # Firefox: innerHTML → textContent
+│   ├── fix-content-scripts.cjs        # Firefox: strip import/export
+│   ├── update-amo-description.cjs     # AMO listing description + changelog
+│   ├── upload-amo-screenshots.cjs     # AMO screenshot hash-diff upload
+│   ├── screenshot-firefox.cjs         # Playwright Firefox screenshots
+│   ├── screenshot-chrome.cjs          # Playwright Chromium CWS screenshots
+│   ├── install-chrome.cjs             # Launch Chrome with --load-extension
+│   ├── install-firefox.cjs            # RDP install / XPI profile fallback
+│   ├── pack-chrome-crx.cjs            # CRX packaging (needs loggy-chrome.pem)
+│   └── check-browser-apis-boundary.cjs # Lint: chrome.* only in browser-apis/
 ├── content-relay.ts    # Content script: relays page data to background via postMessage
 ├── devtools.mjs        # DevTools entry: creates panel, injects console capture
 ├── manifest.json       # Manifest V3 config (service_worker, content_scripts, popup)
@@ -150,8 +166,9 @@ Chrome/Firefox DevTools extension capturing Console & Network logs as Markdown f
 - Panel: React handles all UI; root `.ts` files are panel-specific business logic and data flow helpers
 - Console capture: MAIN world content script (non-standard, patches page globals)
 - Content relay: MAIN world → isolated world via `__LOGGY_RELAY__` postMessage namespace
-- background/index.ts (738 lines) — central coordinator: tabs, capture, storage, server export
-- Shared code lives in shared/ (components, hooks, export helpers)
-- Build scripts in scripts/ are CJS for Node.js compatibility
+- background/ is split: `index.ts` owns chrome.* wiring; `background/messages/` owns the per-type handler switch (see background/messages/AGENTS.md)
+- Shared code lives in shared/ — see shared/AGENTS.md (ConsentView + useConsentActions + useRouteActions are the cross-UI contract)
+- Popup data path branches on `typeof chrome.debugger === 'undefined'`: Chrome uses `usePopupData` (background message), Firefox uses `useFirefoxDirectCapture` (MAIN world read via `chrome.scripting.executeScript`, 2s poll)
+- Build scripts in scripts/ are CJS for Node.js compatibility (see scripts/AGENTS.md)
 - Firefox builds require post-processing (manifest rewrite, content script fixup, bundle sanitization)
-- Largest test files: pruner.test.ts (1317 lines), formatter.test.ts (1222 lines)
+- Largest test files: pruner.test.ts (1317 lines), formatter.test.ts (1222 lines), useCaptureData.test.tsx (965 lines)

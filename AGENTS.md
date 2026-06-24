@@ -1,7 +1,7 @@
 # LOGGY PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-05-13
-**Commit:** d96265d
+**Generated:** 2026-06-22
+**Commit:** 1bea433
 **Branch:** main
 
 ## OVERVIEW
@@ -11,20 +11,24 @@ Monorepo with npm workspaces containing a Chrome/Firefox DevTools extension (cap
 ```
 ./
 ├── extension/         # Browser extension (TypeScript + React + Manifest V3)
-│   ├── background/    # Service worker (message routing, capture modes, storage)
-│   ├── capture/       # Debugger-based capture logic
-│   ├── panel/         # DevTools panel UI (React + vanilla JS dual architecture)
-│   ├── popup/         # Extension popup UI (React)
+│   ├── background/    # Service worker (index.ts + messages/ sub-module)
+│   ├── capture/       # Debugger-based capture logic (Chrome-only)
+│   ├── panel/         # DevTools panel UI (React + three-context provider)
+│   ├── popup/         # Extension popup UI (React) — branches on chrome.debugger availability
+│   ├── fab/           # Firefox Android floating action button (shadow DOM React)
+│   ├── preview/       # Standalone Markdown preview page
+│   ├── shared/        # Cross-UI components, hooks, and export pipeline
 │   ├── utils/         # Pure data processing (filters, formatter, pruner, consolidation)
-│   ├── types/         # Shared TypeScript definitions (console, HAR, messages)
+│   ├── types/         # Shared TypeScript definitions (console, HAR, messages, state)
 │   ├── browser-apis/  # Cross-browser API abstractions (build-time selection)
-│   ├── shared/        # Shared React components (IconButtonToggle, Tooltip)
-│   ├── scripts/       # Build/release scripts (CJS)
+│   ├── scripts/       # Build/release/install scripts (CJS)
 │   └── manifest.json  # Manifest V3 config
 ├── serve/             # Fastify companion server (CLI + TUI + HTTP API)
-│   ├── src/           # Server implementation (server.ts, tui.ts, clipboard.ts)
+│   ├── src/           # server.ts, cli.ts, tui.ts, clipboard.ts, tailscale.ts
 │   ├── tests/         # Vitest tests
 │   └── bin/           # CLI entry point
+├── scripts/           # Repo-level release shell scripts (release-extension.sh, release-serve.sh)
+├── .github/workflows/ # ci, sign-extension, release-extension, release-serve, screenshots, bump-version
 └── package.json       # Workspace root
 ```
 
@@ -33,16 +37,16 @@ Monorepo with npm workspaces containing a Chrome/Firefox DevTools extension (cap
 | Task | Location | Notes |
 |------|----------|-------|
 | Extension code | extension/ | See extension/AGENTS.md |
-| Service worker | extension/background/ | Tab state, capture coordination, storage |
-| Panel UI | extension/panel/ | DevTools panel (React + vanilla) |
-| Popup UI | extension/popup/ | Status display, debugger toggle |
+| Service worker | extension/background/ | Tab state, capture coordination, storage. Handlers in background/messages/ |
+| Panel UI | extension/panel/ | DevTools panel (React three-context). Hooks in panel/src/hooks/ |
+| Popup UI | extension/popup/ | Status display, debugger toggle. Two data paths: Chrome vs Firefox direct capture |
 | FAB UI (Firefox Android) | extension/fab/ | Floating action button on-page |
 | Preview page | extension/preview/ | Standalone Markdown preview |
-| Shared layer | extension/shared/ | Cross-UI components, hooks, export pipeline |
+| Shared layer | extension/shared/ | Cross-UI components + hooks + export pipeline. See shared/AGENTS.md |
 | Data processing | extension/utils/ | Filters, formatter, pruner, consolidation |
-| Type definitions | extension/types/ | ConsoleMessage, HAREntry, LoggyMessage |
+| Type definitions | extension/types/ | ConsoleMessage, HAREntry, LoggyMessage, LoggyState |
 | Browser APIs | extension/browser-apis/ | Chrome/Firefox build-time selection |
-| Release automation | extension/scripts/ | Build, sign, publish, AMO management |
+| Release automation | extension/scripts/ | Build, sign, publish, AMO, screenshots, installers — see scripts/AGENTS.md |
 | Server code | serve/ | Fastify API + interactive TUI |
 | Workspace config | package.json | Workspaces: ["extension", "serve"] |
 

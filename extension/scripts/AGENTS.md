@@ -17,7 +17,14 @@ scripts/
 ├── fix-content-scripts.cjs       # Firefox: strip import/export from content scripts
 ├── update-amo-description.cjs    # AMO API: PATCH listing description + changelog
 ├── upload-amo-screenshots.cjs    # AMO API: hash-based diff, upload/delete screenshots
-├── screenshot-firefox.cjs        # Playwright: capture panel screenshots in Firefox
+├── screenshot-firefox.cjs        # Playwright Firefox: capture panel screenshots
+├── screenshot-chrome.cjs         # Playwright Chromium: CWS screenshots (custom HTTP server for ES modules)
+├── install-chrome.cjs            # Launch Chrome with --load-extension
+├── install-firefox.cjs           # RDP install (Firefox 130+ WebDriver BiDi) / XPI profile fallback
+├── pack-chrome-crx.cjs           # CRX packaging (requires loggy-chrome.pem)
+├── check-browser-apis-boundary.cjs # TS compiler API lint: chrome.* only inside browser-apis/
+├── check-browser-apis-boundary.test.cjs
+├── browser-apis-allowlist.json   # Per-file leak counts enforced by CI
 ├── amo-description.md            # Source-of-truth AMO listing description
 └── update-amo-description.test.ts # Tests for appendChangelog
 ```
@@ -34,7 +41,12 @@ scripts/
 | Firefox content scripts | fix-content-scripts.cjs | Strip import/export, remove crossorigin attrs |
 | AMO description | update-amo-description.cjs | JWT auth, reads amo-description.md |
 | AMO screenshots | upload-amo-screenshots.cjs | Hash-based diff against AMO previews |
-| Screenshot capture | screenshot-firefox.cjs | Playwright + mock data injection |
+| Firefox screenshots | screenshot-firefox.cjs | Playwright + mock data injection |
+| Chrome CWS screenshots | screenshot-chrome.cjs | Playwright Chromium + custom HTTP server (file:// blocked for ES modules) |
+| Install to Chrome | install-chrome.cjs | Locates Chrome binary, `--load-extension` flag |
+| Install to Firefox | install-firefox.cjs | Custom TCP RDP client; XPI profile-copy fallback |
+| Chrome CRX package | pack-chrome-crx.cjs | Requires `loggy-chrome.pem` key file |
+| Browser API boundary lint | check-browser-apis-boundary.cjs | TypeScript compiler API; allowlist tracked in `browser-apis-allowlist.json` |
 
 ## CONVENTIONS
 
@@ -54,5 +66,8 @@ scripts/
 - rewrite-firefox-manifest.cjs is a no-op stub (content scripts now dynamically registered)
 - esbuild is a transitive dep via Vite (not in devDependencies directly)
 - External deps: web-ext (signing), playwright (screenshots), dotenv-cli (secrets), esbuild (bundling)
-- AMO API uses JWT auth with issuer/secret from environment
+- AMO API uses JWT auth with issuer/secret from environment (`AMO_JWT_ISSUER`/`AMO_JWT_SECRET` or `AMO_API_KEY`/`AMO_API_SECRET` fallback)
 - Screenshots stored in ../screenshots/ relative to scripts/
+- `check-browser-apis-boundary.cjs` is a CI gate — leaks increment `browser-apis-allowlist.json` counts; never lower the allowlist without verifying the leak is gone
+- `install-firefox.cjs` includes a custom TCP RDP implementation for live extension install on Firefox 130+ (WebDriver BiDi fallback to XPI profile copy for older builds)
+- `screenshot-chrome.cjs` runs a custom HTTP server because Chromium blocks `file://` for ES modules

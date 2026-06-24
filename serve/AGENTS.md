@@ -1,7 +1,7 @@
 # SERVE KNOWLEDGE BASE
 
-**Generated:** 2026-05-13
-**Commit:** d96265d
+**Generated:** 2026-06-22
+**Commit:** 1bea433
 **Branch:** main
 
 **Scope:** Fastify companion server

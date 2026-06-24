@@ -5,12 +5,14 @@ Central coordinator for tab state, capture orchestration, consent evaluation, ma
 
 ## STRUCTURE
 - `index.ts`: Entry point. Initialization, chrome.* event listener wiring (~260 lines).
+- `messages/`: Per-domain message handlers split out by concern. **See `messages/AGENTS.md`.**
+  - `index.ts` — `handleControlMessage` router + `isCaptureMessage` / `isControlMessage` type guards
+  - `tab-lifecycle.ts`, `capture-control.ts`, `always-log.ts`, `export-handlers.ts`, `server-preview.ts`
 - `tab-state.ts`: Per-tab state management. Maps, CRUD, persistence, icon updates.
 - `consent.ts`: Consent evaluation (local pages, always-log hosts, per-session).
 - `entry-storage.ts`: Capture entry storage, conversion (console/HAR), token-limited purging.
 - `server-sync.ts`: Server communication, export pipeline, failed export buffer, settings helpers.
 - `polling.ts`: Background auto-sync polling (MAIN world array polling, fingerprinting).
-- `messages.ts`: Message handlers (capture + control) and type guards.
 - `content-scripts.ts`: Content script injection and always-log script management.
 - `storage.ts`: Always-log host persistence (chrome.storage.local).
 
@@ -23,7 +25,8 @@ Central coordinator for tab state, capture orchestration, consent evaluation, ma
 | Markdown Build | `server-sync.ts` — `buildTabMarkdown` converts stored entries to Markdown per tab |
 | Failed Export Buffer | `server-sync.ts` — `appendFailedExportBuffer`, `clearFailedExportBuffer` — bounded retry queue |
 | Debugger Resume | `tab-state.ts` — `debuggerResumeTimersByTab` — deferred resume timers per tab |
-| Message Router | `messages.ts` — `handleControlMessage`, `handleCaptureMessage`, type guards |
+| Message Router | `messages/index.ts` — `handleControlMessage`, `handleCaptureMessage`, type guards (see `messages/AGENTS.md`) |
+| Per-type handlers | `messages/{tab-lifecycle,capture-control,always-log,export-handlers,server-preview}.ts` |
 | Server Export | `server-sync.ts` — `pushToServer`, `exportTabToServer`, `probeServerFromBackground` |
 | Background Polling | `polling.ts` — `pollAndSyncTab`, `pollAllActiveTabs` — auto-sync via MAIN world scripts |
 | Persistence | `tab-state.ts` — `persistTabStates`, `restoreTabStatesFromStorage` — survives worker restarts |
@@ -39,6 +42,8 @@ polling → tab-state, entry-storage, server-sync
 messages → tab-state, consent, entry-storage, server-sync, polling
 index → all of the above + content-scripts, storage, debugger-capture
 ```
+
+`messages/` itself is internally layered: `index.ts` (router) → per-domain handlers (`tab-lifecycle`, `capture-control`, `always-log`, `export-handlers`, `server-preview`) → background core (`tab-state`, `entry-storage`, `server-sync`).
 
 ## CONVENTIONS
 - Per-tab state (`TabCaptureState`) tracks mode, logCount, connected flag.
