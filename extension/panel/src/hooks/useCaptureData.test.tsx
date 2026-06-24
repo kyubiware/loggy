@@ -97,11 +97,20 @@ describe('useCaptureData', () => {
 
     // Override browser.devtools.network.onNavigated so the hook's
     // useLifecycleEffect registers its listener on mockOnNavigated.
-    // chromeBrowser was created at module load time and its event-sink
-    // references are stale (they point to the vitest.setup eventSinkStub).
-    // Direct property assignment on the module-level `browser` object is the
-    // least-invasive fix; it does not require vi.mock on the browser-apis module.
-    browser.devtools.network.onNavigated = mockOnNavigated
+    // chromeBrowser's `onNavigated` is a lazy getter (it returns
+    // `eventSink(chrome.devtools.network.onNavigated)` on each access), so
+    // direct assignment throws "which has only a getter". Use
+    // defineProperty to install a configurable data descriptor instead; the
+    // getter's freshness means we could also overwrite the underlying
+    // `chrome.devtools.network.onNavigated` mock, but defineProperty keeps
+    // the override scoped to `browser.devtools.network` and matches the
+    // original intent.
+    Object.defineProperty(browser.devtools.network, 'onNavigated', {
+      configurable: true,
+      enumerable: true,
+      value: mockOnNavigated,
+      writable: true,
+    })
 
     // Start with visible state
     Object.defineProperty(document, 'visibilityState', {
