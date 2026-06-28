@@ -209,10 +209,18 @@ export async function applyStorageLimits(entries: StoredCapturedEntry[]): Promis
 export function getEntryKey(entry: StoredCapturedEntry): string {
   if (entry.kind === 'console') {
     const e = entry.entry
-    return `c:${e.timestamp}:${e.level}:${e.message.slice(0, 100)}`
+    // seq disambiguates same-ms identical messages (e.g. repeated
+    // console.error calls in a loop). The `?? ''` fallback keeps the
+    // key stable for entries captured via paths that don't assign seq
+    // (e.g. debugger-capture, HAR conversion).
+    return `c:${e.timestamp}:${e.level}:${e.message.slice(0, 100)}:${e.seq ?? ''}`
   }
   const e = entry.entry
-  return `n:${e.timestamp}:${e.url}:${e.method}`
+  // seq disambiguates same-ms parallel fetches to the same URL+method
+  // (e.g. Promise.all of identical requests, retry bursts, polling
+  // endpoints). Without it, two concurrent identical requests collide
+  // and the second is silently dropped by polling dedup.
+  return `n:${e.timestamp}:${e.url}:${e.method}:${e.seq ?? ''}`
 }
 
 export async function getTokenLimit(): Promise<number> {

@@ -20,6 +20,15 @@ export interface CapturedConsoleEntry {
   level: ConsoleLevel
   /** Log message text. */
   message: string
+  /**
+   * Per-frame monotonic sequence number assigned at capture time.
+   * Disambiguates entries that share timestamp+level+message so the
+   * background dedup key (entry-storage.ts `getEntryKey`) never
+   * collapses distinct captures into one. Optional because older
+   * captures and certain code paths (e.g. debugger-capture) may not
+   * assign it.
+   */
+  seq?: number
 }
 
 /**
@@ -46,6 +55,14 @@ export interface CapturedNetworkEntry {
   contentType?: string
   /** Request duration in milliseconds. */
   duration?: number
+  /**
+   * Per-frame monotonic sequence number assigned at capture time.
+   * Disambiguates entries that share timestamp+url+method (parallel
+   * fetches, retries) so the background dedup key never collapses
+   * distinct captures into one. Optional: older captures and the
+   * debugger/HAR conversion paths do not assign it.
+   */
+  seq?: number
 }
 
 /**

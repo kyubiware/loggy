@@ -10,17 +10,23 @@ import {
 } from './entry-storage'
 import type { StoredCapturedEntry } from './entry-storage'
 import { getAutoServerSync, exportTabToServer, lastExportFingerprintByTab } from './server-sync'
-import type { CapturedConsoleEntry, TabCaptureState } from '../types/messages'
+import type { CapturedConsoleEntry, CapturedNetworkEntry, TabCaptureState } from '../types/messages'
 import { debugLog } from '../utils/debug-logger'
 
 export const AUTO_SYNC_ALARM_NAME = 'loggy-auto-sync'
-export const POLL_COUNT_KEY_PREFIX = 'loggy_poll_count_'
 
 /**
  * Raw data shape returned from the MAIN world capture arrays.
+ *
+ * The optional `seq` field is a per-frame monotonic counter assigned by
+ * console-bootstrap.mjs at capture time. It disambiguates entries that
+ * share timestamp+url+method (parallel fetches, retries) and entries
+ * that share timestamp+level+message (repeated identical console
+ * calls), so the background dedup key never collapses distinct
+ * captures into one.
  */
 export interface RawBufferData {
-  consoleLogs: Array<{ timestamp: string; level: string; message: string }>
+  consoleLogs: Array<{ timestamp: string; level: string; message: string; seq?: number }>
   networkLogs: Array<{
     timestamp: string
     url: string
@@ -31,29 +37,8 @@ export interface RawBufferData {
     contentType?: string
     duration?: number
     error?: string
+    seq?: number
   }>
-}
-
-/**
- * Returns the last polled entry count for the tab, used to compute the
- * delta between the current MAIN-world array length and what we
- * previously persisted. Defaults to 0 when unset (first poll or after
- * storage reset).
- */
-export async function getPolledCount(tabId: number): Promise<number> {
-  const key = `${POLL_COUNT_KEY_PREFIX}${tabId}`
-  const result = (await browser.storage.session.get(key)) as Record<string, unknown>
-  return typeof result[key] === 'number' ? (result[key] as number) : 0
-}
-
-/**
- * Persists the total MAIN-world entry count observed during the most
- * recent successful poll. Used by `getPolledCount` to compute the
- * delta on the next poll.
- */
-export async function setPolledCount(tabId: number, count: number): Promise<void> {
-  const key = `${POLL_COUNT_KEY_PREFIX}${tabId}`
-  await browser.storage.session.set({ [key]: count })
 }
 
 /**
@@ -61,14 +46,19 @@ export async function setPolledCount(tabId: number, count: number): Promise<void
  * server when new data is detected. This is the primary data path for
  * background auto-sync when the DevTools panel is not open.
  *
- * Uses a per-tab `lastPolledCount` tracker in `browser.storage.session`
- * to compute a delta between the current MAIN-world array length and
- * what we previously persisted. New entries are deduplicated against
- * entries already stored by the concurrent `storeCapturedData` path
- * using entry keys, then merged and written in a single batched
- * append. This preserves pre-reload entries on page reload (the
- * MAIN-world arrays reset, so the count shrinks — we reset the
- * counter to 0 and append all new entries).
+ * Every poll compares the FULL current MAIN-world snapshot against the
+ * entries already persisted for the tab, and appends only those whose
+ * `getEntryKey` is not already present. This is O(N) per poll (N ≤
+ * 1500 — 1000 console + 500 network ring-buffer cap) and is correct
+ * under the ring-buffer `.shift()` eviction in the bootstrap, which
+ * earlier index-based delta schemes were not.
+ *
+ * Dedup is the single source of truth: the per-entry key now embeds a
+ * monotonic `seq` counter (see console-bootstrap.mjs), so concurrent
+ * identical requests and repeated identical console messages no longer
+ * collapse into a single stored entry. The export fingerprint
+ * (`lastExportFingerprintByTab`) prevents redundant server pushes when
+ * nothing has changed.
  */
 export async function pollAndSyncTab(tabId: number): Promise<void> {
   const current = getOrCreateTabState(tabId)
@@ -106,50 +96,44 @@ export async function pollAndSyncTab(tabId: number): Promise<void> {
 
     const consoleLogs = Array.isArray(raw.consoleLogs) ? raw.consoleLogs : []
     const networkLogs = Array.isArray(raw.networkLogs) ? raw.networkLogs : []
-    const totalEntries = consoleLogs.length + networkLogs.length
 
-    if (totalEntries === 0) {
+    if (consoleLogs.length === 0 && networkLogs.length === 0) {
       return
     }
 
-    const lastCount = await getPolledCount(tabId)
-
-    // Nothing changed since the last poll.
-    if (totalEntries === lastCount) {
-      debugLog('capture', 'background', `pollAndSyncTab: no new data (count unchanged, ${totalEntries} entries)`, { tabId })
-      return
-    }
-
-    debugLog('capture', 'background', `pollAndSyncTab: new data detected (${totalEntries} entries, last=${lastCount})`, { tabId })
-
-    // Convert raw entries to the stored format
-    const allEntries: StoredCapturedEntry[] = []
+    // Convert raw entries to the stored format. `seq` flows through
+    // from the MAIN-world bootstrap; entries from paths that don't
+    // assign seq get `undefined`, which `getEntryKey` handles via the
+    // `?? ''` fallback.
+    const polled: StoredCapturedEntry[] = []
 
     for (const log of consoleLogs) {
-      allEntries.push({
-        kind: 'console',
-        entry: {
-          timestamp: log.timestamp,
-          level: log.level as CapturedConsoleEntry['level'],
-          message: log.message,
-        },
-      })
+      const entry: CapturedConsoleEntry = {
+        timestamp: log.timestamp,
+        level: log.level as CapturedConsoleEntry['level'],
+        message: log.message,
+      }
+      if (typeof log.seq === 'number') {
+        entry.seq = log.seq
+      }
+      polled.push({ kind: 'console', entry })
     }
 
     for (const net of networkLogs) {
-      allEntries.push({
-        kind: 'network',
-        entry: {
-          timestamp: net.timestamp,
-          url: net.url,
-          method: net.method,
-          status: net.status,
-          requestBody: net.requestBody,
-          responseBody: net.responseBody,
-          contentType: net.contentType,
-          duration: net.duration,
-        },
-      })
+      const entry: CapturedNetworkEntry = {
+        timestamp: net.timestamp,
+        url: net.url,
+        method: net.method,
+        status: net.status,
+        requestBody: net.requestBody,
+        responseBody: net.responseBody,
+        contentType: net.contentType,
+        duration: net.duration,
+      }
+      if (typeof net.seq === 'number') {
+        entry.seq = net.seq
+      }
+      polled.push({ kind: 'network', entry })
     }
 
     // Read existing stored entries (preserved across reloads by the
@@ -157,27 +141,19 @@ export async function pollAndSyncTab(tabId: number): Promise<void> {
     const existingEntries = await readStoredEntries(tabId)
     const existingKeySet = new Set(existingEntries.map((e) => getEntryKey(e)))
 
-    // Reload detection: if the MAIN-world array shrank, the page
-    // reloaded. Reset the counter to 0 and append ALL polled entries.
-    const effectiveLastCount = totalEntries < lastCount ? 0 : lastCount
-
-    // Compute the candidate delta: the new tail of the polled arrays.
-    const candidates = allEntries.slice(effectiveLastCount)
-
     // Deduplicate against entries already stored by the concurrent
-    // `storeCapturedData` path (or by a previous poll cycle).
-    const genuinelyNew = candidates.filter((entry) => !existingKeySet.has(getEntryKey(entry)))
-
-    // Update the counter to reflect what we've now observed. Even if
-    // no new entries are appended (all already in storage), we still
-    // want the counter to match `totalEntries` so subsequent polls
-    // correctly detect "nothing new".
-    await setPolledCount(tabId, totalEntries)
+    // `storeCapturedData` path or by a previous poll cycle. Comparing
+    // the full polled set (rather than an index-based delta tail)
+    // survives the bootstrap ring-buffer `.shift()` eviction — see
+    // Bug B regression test in auto-sync.test.ts.
+    const genuinelyNew = polled.filter((entry) => !existingKeySet.has(getEntryKey(entry)))
 
     if (genuinelyNew.length === 0) {
-      debugLog('capture', 'background', `pollAndSyncTab: no genuinely new entries (all already stored)`, { tabId })
+      debugLog('capture', 'background', `pollAndSyncTab: no genuinely new entries (${polled.length} polled, ${existingEntries.length} stored)`, { tabId })
       return
     }
+
+    debugLog('capture', 'background', `pollAndSyncTab: ${genuinelyNew.length} new of ${polled.length} polled (${existingEntries.length} stored)`, { tabId })
 
     // Merge stored entries with the genuinely new ones, then apply caps.
     const merged = [...existingEntries, ...genuinelyNew]

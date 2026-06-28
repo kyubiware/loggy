@@ -526,7 +526,7 @@ describe('background polling auto-sync (pollAndSyncTab)', () => {
     expect(newCalls).toBeGreaterThanOrEqual(0)
   })
 
-  it('persists poll count to chrome.storage.session', async () => {
+  it('writes polled entries to capture storage (no longer uses a count tracker)', async () => {
     setLocalStorageState({
       loggyPanelSettings: {
         autoServerSync: true,
@@ -539,7 +539,7 @@ describe('background polling auto-sync (pollAndSyncTab)', () => {
     scriptingExecute().mockResolvedValue([{
       result: {
         consoleLogs: [
-          { timestamp: '2024-01-01T00:00:00.000Z', level: 'log', message: 'fp-test' },
+          { timestamp: '2024-01-01T00:00:00.000Z', level: 'log', message: 'fp-test', seq: 1 },
         ],
         networkLogs: [],
       },
@@ -549,14 +549,18 @@ describe('background polling auto-sync (pollAndSyncTab)', () => {
     alarmListener!({ name: 'loggy-auto-sync' })
     await flushAsync()
 
-    // Verify count tracker was stored in session storage as a number
-    const countKey = `loggy_poll_count_${TAB_POLL_FP}`
-    expect(countKey in sessionStorageState).toBe(true)
-    expect(typeof sessionStorageState[countKey]).toBe('number')
-    expect(sessionStorageState[countKey]).toBe(1)
+    // The legacy `loggy_poll_count_<tab>` tracker is gone; verify the
+    // polled entry landed in capture storage instead.
+    expect(`loggy_poll_count_${TAB_POLL_FP}` in sessionStorageState).toBe(false)
+    const stored = sessionStorageState[`loggy_capture_${TAB_POLL_FP}`] as Array<{
+      entry: { message: string }
+    }>
+    expect(Array.isArray(stored)).toBe(true)
+    expect(stored.length).toBe(1)
+    expect(stored[0].entry.message).toBe('fp-test')
   })
 
-  it('preserves pre-reload entries in session storage when polling (delta append)', async () => {
+  it('preserves pre-reload entries in session storage when polling', async () => {
     setLocalStorageState({
       loggyPanelSettings: {
         autoServerSync: true,
@@ -570,7 +574,7 @@ describe('background polling auto-sync (pollAndSyncTab)', () => {
     await tabStateModule.setMode(TAB_POLL_PRESERVE, 'content-script')
 
     // Pre-populate session storage with pre-reload entries (simulating
-    // entries preserved by the onUpdated loading guard at index.ts:184-198)
+    // entries preserved by the onUpdated loading guard at index.ts).
     const preReloadEntries = [
       {
         kind: 'console',
@@ -582,9 +586,6 @@ describe('background polling auto-sync (pollAndSyncTab)', () => {
       },
     ]
     sessionStorageState[`loggy_capture_${TAB_POLL_PRESERVE}`] = preReloadEntries
-
-    // Reset lastPolledCount to 0 so the poll would normally append everything
-    sessionStorageState[`loggy_poll_count_${TAB_POLL_PRESERVE}`] = 0
 
     // Mock executeScript to return NEW post-reload entries only
     scriptingExecute().mockResolvedValue([{
@@ -632,7 +633,6 @@ describe('background polling auto-sync (pollAndSyncTab)', () => {
       entry: { level: 'log', message: 'shared-1', timestamp: '2024-01-01T00:00:00.000Z' },
     }
     sessionStorageState[`loggy_capture_${TAB_POLL_DELTA}`] = [preExisting]
-    sessionStorageState[`loggy_poll_count_${TAB_POLL_DELTA}`] = 0
 
     // Mock executeScript to return 3 entries: the shared one + 2 new
     scriptingExecute().mockResolvedValue([{
@@ -663,7 +663,7 @@ describe('background polling auto-sync (pollAndSyncTab)', () => {
     expect(messages.filter((m) => m === 'shared-1').length).toBe(1)
   })
 
-  it('detects reload (count shrinks) and appends all polled entries without wiping', async () => {
+  it('appends all polled entries after reload without wiping preserved entries', async () => {
     setLocalStorageState({
       loggyPanelSettings: {
         autoServerSync: true,
@@ -681,10 +681,8 @@ describe('background polling auto-sync (pollAndSyncTab)', () => {
       { kind: 'console', entry: { level: 'log', message: 'preserved-C', timestamp: '2024-01-01T00:00:02.000Z' } },
     ]
     sessionStorageState[`loggy_capture_${TAB_POLL_RELOAD}`] = preservedEntries
-    // Pre-reload poll count was 10 (page had 10 MAIN-world entries)
-    sessionStorageState[`loggy_poll_count_${TAB_POLL_RELOAD}`] = 10
 
-    // After reload, MAIN-world arrays reset to small size (3 entries)
+    // After reload, MAIN-world arrays reset to a fresh small set.
     scriptingExecute().mockResolvedValue([{
       result: {
         consoleLogs: [
@@ -714,7 +712,7 @@ describe('background polling auto-sync (pollAndSyncTab)', () => {
     expect(messages).toContain('fresh-3')
   })
 
-  it('skips write when polled count is unchanged (idempotent poll)', async () => {
+  it('skips write+export when a second poll returns the same entries (idempotent via dedup+fingerprint)', async () => {
     setLocalStorageState({
       loggyPanelSettings: {
         autoServerSync: true,
@@ -725,30 +723,52 @@ describe('background polling auto-sync (pollAndSyncTab)', () => {
     const tabStateModule = await import('./tab-state')
     await tabStateModule.setMode(TAB_POLL_IDEMPOTENT, 'content-script')
 
-    // Pre-set the count tracker to match the polled array length
-    sessionStorageState[`loggy_poll_count_${TAB_POLL_IDEMPOTENT}`] = 5
+    const polledConsoleLogs = [
+      { timestamp: '2024-01-01T00:00:00.000Z', level: 'log', message: 'a', seq: 1 },
+      { timestamp: '2024-01-01T00:00:01.000Z', level: 'log', message: 'b', seq: 2 },
+      { timestamp: '2024-01-01T00:00:02.000Z', level: 'log', message: 'c', seq: 3 },
+      { timestamp: '2024-01-01T00:00:03.000Z', level: 'log', message: 'd', seq: 4 },
+      { timestamp: '2024-01-01T00:00:04.000Z', level: 'log', message: 'e', seq: 5 },
+    ]
 
-    // Mock executeScript to return 5 entries (same count as tracker)
-    scriptingExecute().mockResolvedValue([{
-      result: {
-        consoleLogs: [
-          { timestamp: '2024-01-01T00:00:00.000Z', level: 'log', message: 'a' },
-          { timestamp: '2024-01-01T00:00:01.000Z', level: 'log', message: 'b' },
-          { timestamp: '2024-01-01T00:00:02.000Z', level: 'log', message: 'c' },
-          { timestamp: '2024-01-01T00:00:03.000Z', level: 'log', message: 'd' },
-          { timestamp: '2024-01-01T00:00:04.000Z', level: 'log', message: 'e' },
-        ],
-        networkLogs: [],
-      },
-    }])
+    scriptingExecute().mockResolvedValue([
+      { result: { consoleLogs: polledConsoleLogs, networkLogs: [] } },
+    ])
 
     const alarmListener = onAlarmListeners[0]
+
+    // First poll — writes all 5 entries.
     alarmListener!({ name: 'loggy-auto-sync' })
     await flushAsync()
 
-    // No write to capture storage: the key should not exist
     const captureKey = `loggy_capture_${TAB_POLL_IDEMPOTENT}`
-    expect(captureKey in sessionStorageState).toBe(false)
+    const afterFirst = sessionStorageState[captureKey] as Array<{ entry: { message: string } }>
+    expect(Array.isArray(afterFirst)).toBe(true)
+    expect(afterFirst).toHaveLength(5)
+    const fetchAfterFirst = mockFetch.mock.calls.length
+    expect(fetchAfterFirst).toBeGreaterThan(0)
+
+    // Second poll — same data. Dedup against existing keys yields zero
+    // new entries, and the export fingerprint is unchanged, so no
+    // re-write and no re-export.
+    mockFetch.mockClear()
+    alarmListener!({ name: 'loggy-auto-sync' })
+    await flushAsync()
+
+    const afterSecond = sessionStorageState[captureKey] as Array<{ entry: { message: string } }>
+    expect(afterSecond).toHaveLength(5)
+    // The fingerprint gate suppresses redundant exports. Either no
+    // fetch fires, or none carries our tab's payload.
+    const exportedBodies = mockFetch.mock.calls.map(
+      (call: unknown[]) =>
+        typeof call[1] === 'object' && call[1] !== null && 'body' in (call[1] as Record<string, unknown>)
+          ? (call[1] as Record<string, unknown>).body
+          : '',
+    )
+    const hasOurData = exportedBodies.some(
+      (body: unknown) => typeof body === 'string' && body.includes('idempotent-poll-marker'),
+    )
+    expect(hasOurData).toBe(false)
   })
 
   it('ignores alarms with wrong name', async () => {
@@ -770,5 +790,127 @@ describe('background polling auto-sync (pollAndSyncTab)', () => {
     // No new executeScript calls for the wrong alarm name
     expect(scriptingExecute().mock.calls.length).toBe(initialCallCount)
     expect(mockFetch).not.toHaveBeenCalled()
+  })
+
+  it('Bug A regression: stores both entries when two polled network entries share ts+url+method', async () => {
+    const TAB_POLL_COLLISION = 409
+    setLocalStorageState({
+      loggyPanelSettings: {
+        autoServerSync: true,
+        serverUrl: 'http://localhost:8743',
+      },
+    })
+
+    const tabStateModule = await import('./tab-state')
+    await tabStateModule.setMode(TAB_POLL_COLLISION, 'content-script')
+
+    // Two polled entries with IDENTICAL ts/url/method. Distinguishing
+    // them requires the per-entry seq counter assigned in MAIN world.
+    scriptingExecute().mockResolvedValue([
+      {
+        result: {
+          consoleLogs: [],
+          networkLogs: [
+            {
+              timestamp: '2024-01-01T00:00:00.000Z',
+              url: 'https://api.test/parallel',
+              method: 'POST',
+              status: 200,
+              seq: 1,
+            },
+            {
+              timestamp: '2024-01-01T00:00:00.000Z',
+              url: 'https://api.test/parallel',
+              method: 'POST',
+              status: 200,
+              seq: 2,
+            },
+          ],
+        },
+      },
+    ])
+
+    const alarmListener = onAlarmListeners[0]
+    alarmListener!({ name: 'loggy-auto-sync' })
+    await flushAsync()
+
+    const stored = sessionStorageState[`loggy_capture_${TAB_POLL_COLLISION}`] as Array<{
+      kind: string
+      entry: { url: string; seq?: number }
+    }>
+    expect(Array.isArray(stored)).toBe(true)
+    expect(stored.length).toBe(2)
+    // Both must survive — without seq in the dedup key the second would
+    // be filtered out as a duplicate.
+    expect(stored[0].entry.seq).toBe(1)
+    expect(stored[1].entry.seq).toBe(2)
+  })
+
+  it('Bug B regression: new entries past the 500-entry ring-buffer cap are NOT dropped', async () => {
+    const TAB_POLL_RINGBUF = 410
+    setLocalStorageState({
+      loggyPanelSettings: {
+        autoServerSync: true,
+        serverUrl: 'http://localhost:8743',
+      },
+    })
+
+    const tabStateModule = await import('./tab-state')
+    await tabStateModule.setMode(TAB_POLL_RINGBUF, 'content-script')
+
+    // Seed storage with 500 already-stored entries (cap reached).
+    const fullBuffer = Array.from({ length: 500 }, (_, i) => ({
+      kind: 'network',
+      entry: {
+        timestamp: `2024-01-01T00:00:${String(i).padStart(2, '0')}.000Z`,
+        url: `https://api.test/old/${i}`,
+        method: 'GET',
+        status: 200,
+        seq: i + 1,
+      },
+    }))
+    sessionStorageState[`loggy_capture_${TAB_POLL_RINGBUF}`] = fullBuffer
+    // Pre-set the count tracker to 500 so the OLD count-based delta
+    // early-returns on "totalEntries === lastCount". Under the fix
+    // (no count tracker), this value is simply ignored.
+    sessionStorageState[`loggy_poll_count_${TAB_POLL_RINGBUF}`] = 500
+
+    // Simulate the post-rotation MAIN-world array: still 500 long, but
+    // the OLDEST entry has been evicted and a brand-new one appended.
+    const rotatedPolledEntries = Array.from({ length: 499 }, (_, i) => ({
+      timestamp: `2024-01-01T00:00:${String(i + 1).padStart(2, '0')}.000Z`,
+      url: `https://api.test/old/${i + 1}`,
+      method: 'GET',
+      status: 200,
+      seq: i + 2,
+    }))
+    rotatedPolledEntries.push({
+      timestamp: '2024-01-01T00:30:00.000Z',
+      url: 'https://api.test/brand-new',
+      method: 'GET',
+      status: 200,
+      seq: 501,
+    })
+
+    scriptingExecute().mockResolvedValue([
+      {
+        result: {
+          consoleLogs: [],
+          networkLogs: rotatedPolledEntries,
+        },
+      },
+    ])
+
+    const alarmListener = onAlarmListeners[0]
+    alarmListener!({ name: 'loggy-auto-sync' })
+    await flushAsync()
+
+    const stored = sessionStorageState[`loggy_capture_${TAB_POLL_RINGBUF}`] as Array<{
+      entry: { url: string }
+    }>
+    expect(Array.isArray(stored)).toBe(true)
+    // The brand-new entry MUST be present. Under the old count-based delta
+    // (totalEntries === lastCount → early return) it was silently dropped.
+    expect(stored.map((e) => e.entry.url)).toContain('https://api.test/brand-new')
   })
 })

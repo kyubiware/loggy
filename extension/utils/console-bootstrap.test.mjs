@@ -180,6 +180,103 @@ describe('console bootstrap network buffer', () => {
     expect(window.__loggyNetworkLogs[499].url).toBe('https://example.test/504')
   })
 
+  test('assigns unique monotonic seq across same-ms same-URL fetches (Bug A regression)', async () => {
+    // Force every Date.now()/toISOString to a fixed value so the only
+    // differentiator between the two requests is the monotonic seq counter.
+    const fixedNow = 1_700_000_000_000
+    const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(fixedNow)
+    const toIsoSpy = vi.spyOn(globalThis.Date.prototype, 'toISOString').mockReturnValue(
+      '2024-01-01T00:00:00.000Z'
+    )
+
+    window.fetch = vi.fn().mockResolvedValue({
+      url: 'https://example.test/parallel',
+      status: 200,
+      headers: { get: vi.fn().mockReturnValue('application/json') },
+      clone: vi.fn().mockReturnValue({ text: vi.fn().mockResolvedValue('{}') }),
+    })
+
+    runBootstrap()
+
+    await Promise.all([
+      window.fetch('https://example.test/parallel', { method: 'POST', body: 'a' }),
+      window.fetch('https://example.test/parallel', { method: 'POST', body: 'b' }),
+    ])
+    await flushMicrotasks()
+
+    expect(window.__loggyNetworkLogs).toHaveLength(2)
+    const [first, second] = window.__loggyNetworkLogs
+    expect(first.seq).toEqual(expect.any(Number))
+    expect(second.seq).toEqual(expect.any(Number))
+    expect(first.seq).not.toBe(second.seq)
+    // Identical ts/url/method — without seq these would collide.
+    expect(first.timestamp).toBe(second.timestamp)
+    expect(first.url).toBe(second.url)
+    expect(first.method).toBe(second.method)
+
+    dateNowSpy.mockRestore()
+    toIsoSpy.mockRestore()
+  })
+
+  test('assigns unique monotonic seq across same-ms XHR and fetch (Bug A regression)', async () => {
+    const fixedNow = 1_700_000_000_000
+    const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(fixedNow)
+    const toIsoSpy = vi.spyOn(globalThis.Date.prototype, 'toISOString').mockReturnValue(
+      '2024-01-01T00:00:00.000Z'
+    )
+
+    window.fetch = vi.fn().mockResolvedValue({
+      url: 'https://example.test/parallel',
+      status: 200,
+      headers: { get: vi.fn().mockReturnValue('application/json') },
+      clone: vi.fn().mockReturnValue({ text: vi.fn().mockResolvedValue('{}') }),
+    })
+
+    runBootstrap()
+
+    const xhr = new window.XMLHttpRequest()
+    xhr.open('POST', 'https://example.test/parallel')
+    xhr.status = 200
+    xhr.send('xhr-body')
+    await window.fetch('https://example.test/parallel', { method: 'POST', body: 'fetch-body' })
+    await flushMicrotasks()
+
+    expect(window.__loggyNetworkLogs).toHaveLength(2)
+    const seqs = window.__loggyNetworkLogs.map((e) => e.seq)
+    expect(seqs[0]).toEqual(expect.any(Number))
+    expect(seqs[1]).toEqual(expect.any(Number))
+    expect(seqs[0]).not.toBe(seqs[1])
+
+    dateNowSpy.mockRestore()
+    toIsoSpy.mockRestore()
+  })
+
+  test('assigns unique monotonic seq to same-ms console calls (console side of Bug A)', () => {
+    const fixedNow = 1_700_000_000_000
+    const dateNowSpy = vi.spyOn(Date, 'now').mockReturnValue(fixedNow)
+    const toIsoSpy = vi.spyOn(globalThis.Date.prototype, 'toISOString').mockReturnValue(
+      '2024-01-01T00:00:00.000Z'
+    )
+
+    runBootstrap()
+
+    // Use `log` level: `error` is intentionally deduped by the
+    // bootstrap's recent-errors window, which is unrelated to this
+    // regression. Two identical `log` calls in the same ms share
+    // ts+level+message and only differ by seq.
+    console.log('same message')
+    console.log('same message')
+
+    expect(window.__loggyConsoleLogs).toHaveLength(2)
+    const [first, second] = window.__loggyConsoleLogs
+    expect(first.seq).toEqual(expect.any(Number))
+    expect(second.seq).toEqual(expect.any(Number))
+    expect(first.seq).not.toBe(second.seq)
+
+    dateNowSpy.mockRestore()
+    toIsoSpy.mockRestore()
+  })
+
   test('network buffer entries remain JSON serializable', async () => {
     window.fetch = vi
       .fn()

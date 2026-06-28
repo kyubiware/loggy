@@ -32,6 +32,22 @@ function bootstrapConsoleCapture() {
     ? window.__loggyNetworkLogs
     : [];
 
+  // Monotonic per-frame sequence counters. Each captured entry (console
+  // and network) gets the next value at the moment it is recorded. This
+  // disambiguates entries that share timestamp+url+method (parallel
+  // fetches, retries, repeated identical console calls) so background
+  // dedup (getEntryKey in entry-storage.ts) never collapses distinct
+  // captures into one. Counters are intentionally per-frame: two frames
+  // can each see the same seq value, but ts+url+method still differs
+  // between frames in the common case, and the prior behavior (no seq)
+  // is unchanged for cross-frame collisions.
+  if (typeof window.__loggyConsoleSeq !== 'number') {
+    window.__loggyConsoleSeq = 0;
+  }
+  if (typeof window.__loggyNetworkSeq !== 'number') {
+    window.__loggyNetworkSeq = 0;
+  }
+
   const originalConsole = {
     log: console.log,
     warn: console.warn,
@@ -253,23 +269,20 @@ function bootstrapConsoleCapture() {
   }
 
   function pushLog(level, message) {
-    const timestamp = new Date().toISOString();
-
-    window.__loggyConsoleLogs.push({
-      timestamp: timestamp,
+    const entry = {
+      timestamp: new Date().toISOString(),
       level: level,
-      message: message
-    });
+      message: message,
+      seq: (window.__loggyConsoleSeq = (window.__loggyConsoleSeq || 0) + 1),
+    };
+
+    window.__loggyConsoleLogs.push(entry);
 
     if (window.__loggyConsoleLogs.length > 1000) {
       window.__loggyConsoleLogs.shift();
     }
 
-    relay('console', {
-      timestamp: timestamp,
-      level: level,
-      message: message
-    });
+    relay('console', entry);
   }
 
   function formatErrorType(error, fallbackMessage) {
@@ -412,7 +425,7 @@ function bootstrapConsoleCapture() {
               .clone()
               .text()
               .then(function (body) {
-                relay('network', {
+                const entry = {
                   timestamp: new Date(startTime).toISOString(),
                   url: responseUrl,
                   method: responseMethod,
@@ -420,23 +433,16 @@ function bootstrapConsoleCapture() {
                   requestBody: requestBody,
                   responseBody: String(body || ''),
                   contentType: contentType,
-                  duration: Date.now() - startTime
-                });
+                  duration: Date.now() - startTime,
+                  seq: (window.__loggyNetworkSeq = (window.__loggyNetworkSeq || 0) + 1),
+                };
 
-                window.__loggyNetworkLogs.push({
-                  timestamp: new Date(startTime).toISOString(),
-                  url: responseUrl,
-                  method: responseMethod,
-                  status: status,
-                  requestBody: requestBody,
-                  responseBody: String(body || ''),
-                  contentType: contentType,
-                  duration: Date.now() - startTime
-                });
+                relay('network', entry);
+                window.__loggyNetworkLogs.push(entry);
                 if (window.__loggyNetworkLogs.length > 500) { window.__loggyNetworkLogs.shift(); }
               })
               .catch(function () {
-                relay('network', {
+                const entry = {
                   timestamp: new Date(startTime).toISOString(),
                   url: responseUrl,
                   method: responseMethod,
@@ -444,66 +450,47 @@ function bootstrapConsoleCapture() {
                   requestBody: requestBody,
                   responseBody: '',
                   contentType: contentType,
-                  duration: Date.now() - startTime
-                });
+                  duration: Date.now() - startTime,
+                  seq: (window.__loggyNetworkSeq = (window.__loggyNetworkSeq || 0) + 1),
+                };
 
-                window.__loggyNetworkLogs.push({
-                  timestamp: new Date(startTime).toISOString(),
-                  url: responseUrl,
-                  method: responseMethod,
-                  status: status,
-                  requestBody: requestBody,
-                  responseBody: '',
-                  contentType: contentType,
-                  duration: Date.now() - startTime
-                });
+                relay('network', entry);
+                window.__loggyNetworkLogs.push(entry);
                 if (window.__loggyNetworkLogs.length > 500) { window.__loggyNetworkLogs.shift(); }
               });
           } catch (_error) {
-            relay('network', {
+            const entry = {
               timestamp: new Date(startTime).toISOString(),
               url: responseUrl,
               method: responseMethod,
               status: status,
               responseBody: '',
               contentType: contentType,
-              duration: Date.now() - startTime
-            });
+              duration: Date.now() - startTime,
+              seq: (window.__loggyNetworkSeq = (window.__loggyNetworkSeq || 0) + 1),
+            };
 
-            window.__loggyNetworkLogs.push({
-              timestamp: new Date(startTime).toISOString(),
-              url: responseUrl,
-              method: responseMethod,
-              status: status,
-              responseBody: '',
-              contentType: contentType,
-              duration: Date.now() - startTime
-            });
+            relay('network', entry);
+            window.__loggyNetworkLogs.push(entry);
             if (window.__loggyNetworkLogs.length > 500) { window.__loggyNetworkLogs.shift(); }
           }
 
           return response;
         },
         function (error) {
-          relay('network', {
+          const entry = {
             timestamp: new Date(startTime).toISOString(),
             url: url,
             method: method,
             status: 0,
             responseBody: '',
             error: error && error.message ? String(error.message) : String(error || 'Fetch failed'),
-            duration: Date.now() - startTime
-          });
+            duration: Date.now() - startTime,
+            seq: (window.__loggyNetworkSeq = (window.__loggyNetworkSeq || 0) + 1),
+          };
 
-          window.__loggyNetworkLogs.push({
-            timestamp: new Date(startTime).toISOString(),
-            url: url,
-            method: method,
-            status: 0,
-            responseBody: '',
-            error: error && error.message ? String(error.message) : String(error || 'Fetch failed'),
-            duration: Date.now() - startTime
-          });
+          relay('network', entry);
+          window.__loggyNetworkLogs.push(entry);
           if (window.__loggyNetworkLogs.length > 500) { window.__loggyNetworkLogs.shift(); }
 
           throw error;
@@ -531,23 +518,18 @@ function bootstrapConsoleCapture() {
       this.addEventListener(
         'loadend',
         function () {
-          relay('network', {
+          const entry = {
             timestamp: new Date(startTime).toISOString(),
             url: this.__loggyUrl ? String(this.__loggyUrl) : '',
             method: this.__loggyMethod ? String(this.__loggyMethod) : 'GET',
             status: typeof this.status === 'number' ? this.status : 0,
             requestBody: requestBody,
-            duration: Date.now() - startTime
-          });
+            duration: Date.now() - startTime,
+            seq: (window.__loggyNetworkSeq = (window.__loggyNetworkSeq || 0) + 1),
+          };
 
-          window.__loggyNetworkLogs.push({
-            timestamp: new Date(startTime).toISOString(),
-            url: this.__loggyUrl ? String(this.__loggyUrl) : '',
-            method: this.__loggyMethod ? String(this.__loggyMethod) : 'GET',
-            status: typeof this.status === 'number' ? this.status : 0,
-            requestBody: requestBody,
-            duration: Date.now() - startTime
-          });
+          relay('network', entry);
+          window.__loggyNetworkLogs.push(entry);
           if (window.__loggyNetworkLogs.length > 500) { window.__loggyNetworkLogs.shift(); }
         }.bind(this),
         { once: true }

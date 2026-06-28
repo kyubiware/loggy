@@ -36,7 +36,7 @@ import {
   getPreserveLogs,
   lastExportFingerprintByTab,
 } from './server-sync'
-import { AUTO_SYNC_ALARM_NAME, pollAllActiveTabs, setPolledCount } from './polling'
+import { AUTO_SYNC_ALARM_NAME, pollAllActiveTabs } from './polling'
 import {
   handleCaptureMessage,
   handleControlMessage,
@@ -294,9 +294,8 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
         // Navigation = a URL change was seen for this tab. Refresh = no URL change.
         const isNavigation = pendingNavigationByTab.delete(tabId)
 
-        // Reset poll delta counter on both nav and refresh — MAIN-world
-        // arrays reset on new document load.
-        await setPolledCount(tabId, 0)
+        // Clear the export fingerprint on both nav and refresh so the
+        // next poll re-exports after a new document load.
         lastExportFingerprintByTab.delete(tabId)
 
         if (isNavigation) {
