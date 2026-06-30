@@ -1,4 +1,4 @@
-import { clearDebugEntries, debugLog } from '../utils/debug-logger'
+import { debugLog } from '../utils/debug-logger'
 import { LOGGY_MESSAGE_NAMESPACE, type CaptureMessage, type LoggyMessage } from '../types/messages'
 import { browser } from '../browser-apis/index'
 import type { BrowserPort } from '../browser-apis/index'
@@ -28,12 +28,10 @@ import {
   restoreLogCountsFromStorage,
   restoreExplicitlyStoppedTabsFromStorage,
   refreshActiveTabId,
-  pendingNavigationByTab,
 } from './tab-state'
 import { evaluateConsent } from './consent'
 import {
   getFailedBufferStorageKeyForTab,
-  getPreserveLogs,
   lastExportFingerprintByTab,
 } from './server-sync'
 import { AUTO_SYNC_ALARM_NAME, pollAllActiveTabs } from './polling'
@@ -255,7 +253,6 @@ browser.tabs.onRemoved.addListener((tabId) => {
   previousModeByTab.delete(tabId)
   tabStates.delete(tabId)
   lastExportFingerprintByTab.delete(tabId)
-  pendingNavigationByTab.delete(tabId)
   const wasExplicitlyStopped = explicitlyStoppedByTab.delete(tabId)
   if (activeTabId === tabId) {
     setActiveTabId(null)
@@ -278,41 +275,27 @@ browser.tabs.onActivated.addListener((activeInfo) => {
 })
 
 browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  // Mark navigation start when Chrome reports a URL change. Consumed by the
-  // loading handler below. This fires BEFORE status:'loading' for navigations
-  // and NEVER fires for refreshes — making it a reliable nav/refresh signal
-  // even after service worker restarts (Chrome keeps the SW alive between
-  // the url and loading events, which are milliseconds apart).
-  if (changeInfo.url) {
-    pendingNavigationByTab.add(tabId)
-  }
-
-  // Navigation should ALWAYS preserve logs; refresh is controlled by preserveLogs.
+  // On any new document load (navigation OR refresh), reset the export
+  // fingerprint so the next poll re-exports, and re-attach the debugger
+  // if it was auto-detached.
+  //
+  // We deliberately do NOT auto-clear stored entries on refresh. The
+  // previous implementation used a `pendingNavigationByTab` Set to
+  // distinguish navigation from refresh by assuming Chrome always fires
+  // `changeInfo.url` before `changeInfo.status === 'loading'`. That
+  // assumption is unreliable — Chrome does not guarantee url-before-loading
+  // ordering across all navigation types (programmatic location changes,
+  // form POST → GET redirects, fragment navigations, BFCache restores).
+  // When the race hit, the loading handler mistook navigation for refresh
+  // and silently wiped `loggy_tab_{tabId}` storage. On the panel-closed
+  // path (popup only, content-script/debugger mode) this was destructive
+  // because storage is the only source — toggle off/on couldn't restore
+  // the lost entries. Users get a fresh slate via the explicit Clear
+  // button (handleClearTabData) when they want one.
   if (changeInfo.status === 'loading') {
     void (async () => {
       try {
-        // Navigation = a URL change was seen for this tab. Refresh = no URL change.
-        const isNavigation = pendingNavigationByTab.delete(tabId)
-
-        // Clear the export fingerprint on both nav and refresh so the
-        // next poll re-exports after a new document load.
         lastExportFingerprintByTab.delete(tabId)
-
-        if (isNavigation) {
-          debugLog('capture', 'background', `Navigation: preserving entries`, { tabId })
-        } else {
-          // Refresh — clear only if preserveLogs is disabled.
-          const preserveLogs = await getPreserveLogs()
-          if (!preserveLogs) {
-            debugLog('capture', 'background', `Refresh: clearing stored entries (preserveLogs=false)`, { tabId })
-            await browser.storage.session.remove(getStorageKeyForTab(tabId))
-            const current = getOrCreateTabState(tabId)
-            await setTabState({ ...current, logCount: 0 })
-            clearDebugEntries()
-          } else {
-            debugLog('capture', 'background', `Refresh: preserving entries (preserveLogs=true)`, { tabId })
-          }
-        }
 
         // Re-attach the debugger if it was auto-detached by navigation or
         // refresh. Chrome detaches on every new document load; without
@@ -323,11 +306,6 @@ browser.tabs.onUpdated.addListener((tabId, changeInfo) => {
         debugLog('capture', 'background', `Tab loading: handler failed`, { tabId, error: String(error) })
       }
     })()
-  }
-
-  // Clean up the pending-navigation flag when the page finishes loading.
-  if (changeInfo.status === 'complete') {
-    pendingNavigationByTab.delete(tabId)
   }
 
   // Only react to URL changes (SPA navigation or full page navigation)
