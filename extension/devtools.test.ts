@@ -33,6 +33,10 @@ describe('devtools bootstrap', () => {
         },
       },
     } as unknown as typeof chrome
+
+    // NOTE: globalThis.browser is a live getter pointing to globalThis.chrome
+    // (set up in vitest.setup.firefox.ts), so the reassignment above is
+    // automatically reflected in browser.* — no manual sync needed.
   })
 
   test('installs console capture immediately and on navigation', async () => {

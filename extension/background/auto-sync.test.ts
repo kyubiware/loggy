@@ -154,27 +154,34 @@ beforeAll(() => {
     },
   }
 
-  c.runtime = {
-    onMessage: {
-      addListener: vi.fn((fn: MessageListener) => {
-        onMessageListeners.push(fn)
-      }),
-    },
-    onConnect: { addListener: vi.fn() },
-    onInstalled: { addListener: vi.fn() },
-    onStartup: { addListener: vi.fn() },
-    sendMessage: vi.fn(),
-  }
+      c.runtime = {
+        lastError: undefined,
+        onMessage: {
+          addListener: vi.fn((fn: MessageListener) => {
+            onMessageListeners.push(fn)
+          }),
+        },
+        onConnect: { addListener: vi.fn() },
+        onInstalled: { addListener: vi.fn() },
+        onStartup: { addListener: vi.fn() },
+        sendMessage: vi.fn(),
+      }
 
   const existingTabs = c.tabs as Record<string, unknown>
-  c.tabs = {
-    ...existingTabs,
-    onRemoved: { addListener: vi.fn() },
-    onActivated: { addListener: vi.fn() },
-    onUpdated: { addListener: vi.fn() },
-    sendMessage: vi.fn(),
-    get: vi.fn(() => Promise.resolve({ id: 1, url: 'http://localhost:3000' })),
-  }
+      c.tabs = {
+        ...existingTabs,
+        onRemoved: { addListener: vi.fn() },
+        onActivated: { addListener: vi.fn() },
+        onUpdated: { addListener: vi.fn() },
+        sendMessage: vi.fn((_tabId: number, _message: unknown, callback?: (response: unknown) => void) => {
+          if (callback) {
+            callback({})
+            return
+          }
+          return Promise.resolve({})
+        }),
+        get: vi.fn(() => Promise.resolve({ id: 1, url: 'http://localhost:3000' })),
+      }
 
   c.action = { setIcon: vi.fn() }
 

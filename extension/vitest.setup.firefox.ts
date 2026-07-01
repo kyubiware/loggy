@@ -27,9 +27,29 @@ const {
   resetStorage,
 } = createBaseChromeMock()
 
-// Assign the mock to both globals: chrome.* (compat shim) and browser.* (native
-// Firefox WebExtensions API). firefox.ts references both at runtime.
-;(globalThis as Record<string, unknown>).browser = globalThis.chrome = baseChrome
+// Assign the mock to chrome.* (compat shim). The browser.* global is set up as
+// a live getter that always returns globalThis.chrome, so any test that updates
+// chrome via vi.stubGlobal('chrome', ...) or direct assignment is automatically
+// reflected in browser.* as well. This is critical because firefox.ts's
+// browser-apis layer resolves all API calls against the `browser` global.
+globalThis.chrome = baseChrome
+
+// Live getter: keeps globalThis.browser in sync with globalThis.chrome when
+// tests use vi.stubGlobal('chrome', ...) or directly reassign chrome. Without
+// this, firefox.ts (which reads browser.runtime, browser.storage, etc.) would
+// see stale mock objects.
+Object.defineProperty(globalThis, 'browser', {
+  get() {
+    return globalThis.chrome
+  },
+  set() {
+    // Silently ignore direct assignments to globalThis.browser — the getter
+    // already returns globalThis.chrome, so setting browser separately would
+    // create a divergence that breaks test mocking.
+  },
+  configurable: true,
+  enumerable: true,
+})
 
 // Export mock functions for use in tests
 export const mockChromeEval = mockEval
